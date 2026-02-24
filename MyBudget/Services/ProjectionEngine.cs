@@ -477,8 +477,7 @@ public class ProjectionEngine : IProjectionEngine {
                 }
                 else if (toAcc != null &&
                          (toAcc.Type == AccountType.Mortgage || toAcc.Type == AccountType.PersonalLoan)) {
-                    // Standard payment/transfer to debt - in MainViewModel it increases balance (deposits) unless it's a payment.
-                    // Actually, MainViewModel's else branch does accountBalances[ev.ToAccountId.Value] += amount;
+                    // Standard payment/transfer to debt increases balance (deposits) unless it's a payment.
                     accountBalances[e.ToAccountId.Value] += amountChange;
                     if (includedTotalAccounts.Contains(e.ToAccountId.Value)) {
                         runningBalance -= amountChange;
@@ -500,6 +499,7 @@ public class ProjectionEngine : IProjectionEngine {
             var item = new ProjectionItem {
                 Date = e.Date,
                 Description = e.Description,
+                PaycheckId = e.PaycheckId,
                 Amount = currentEventAmount,
                 Balance = runningBalance,
                 AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value)

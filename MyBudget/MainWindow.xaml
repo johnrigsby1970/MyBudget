@@ -27,9 +27,6 @@
             </MenuItem>
         </Menu>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="5">
-            <CheckBox x:Name="UseNewLogicCheckBox" Content="Use New Projection Logic" Margin="10,0" Checked="UseNewLogicCheckBox_Changed" Unchecked="UseNewLogicCheckBox_Changed" />
-        </StackPanel>
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>

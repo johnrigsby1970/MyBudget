@@ -1,16 +1,7 @@
-﻿using System.Text;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using MyBudget.ViewModels;
-using System.Linq;
-using MyBudget.Models;
 
 namespace MyBudget;
 
@@ -18,51 +9,27 @@ namespace MyBudget;
 /// Interaction logic for MainWindow.xaml
 /// </summary>
 public partial class MainWindow : Window {
-    private MainViewModel _mainViewModel;
-    private AlternativeMainViewModel _alternativeMainViewModel;
+    private readonly MainViewModel _viewModel;
 
     public MainWindow() {
         InitializeComponent();
-        _mainViewModel = new MainViewModel();
-        _alternativeMainViewModel = new AlternativeMainViewModel();
-        DataContext = _mainViewModel;
+        _viewModel = new MainViewModel();
+        DataContext = _viewModel;
         Loaded += MainWindow_Loaded;
-    }
-
-    private void UseNewLogicCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (UseNewLogicCheckBox.IsChecked == true)
-        {
-            DataContext = _alternativeMainViewModel;
-            UpdateProjectionColumns(_alternativeMainViewModel.Accounts.Select(a => a.Name));
-        }
-        else
-        {
-            DataContext = _mainViewModel;
-            UpdateProjectionColumns(_mainViewModel.Accounts.Select(a => a.Name));
-        }
     }
 
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        _mainViewModel.PropertyChanged += Vm_PropertyChanged;
-        _alternativeMainViewModel.PropertyChanged += Vm_PropertyChanged;
-        
-        if (DataContext is MainViewModel vm)
-        {
-            UpdateProjectionColumns(vm.Accounts.Select(a => a.Name));
-        }
+        _viewModel.PropertyChanged += Vm_PropertyChanged;
+        UpdateProjectionColumns(_viewModel.Accounts.Select(a => a.Name));
     }
 
     private void Vm_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MainViewModel.Accounts))
+        if (e.PropertyName == nameof(MainViewModel.Accounts) && sender == DataContext)
         {
-            if (sender == DataContext)
-            {
-                if (DataContext is MainViewModel vm) UpdateProjectionColumns(vm.Accounts.Select(a => a.Name));
-                else if (DataContext is AlternativeMainViewModel avm) UpdateProjectionColumns(avm.Accounts.Select(a => a.Name));
-            }
+            if (DataContext is MainViewModel vm)
+                UpdateProjectionColumns(vm.Accounts.Select(a => a.Name));
         }
     }
 
