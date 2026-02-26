@@ -16,3 +16,7 @@
 /encodings.xml
 /indexLayout.xml
 /vcs.xml
+
+# Ignore all bin folders
+bin/
+obj/
