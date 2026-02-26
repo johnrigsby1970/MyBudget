@@ -1,8 +1,4 @@
-﻿using Dapper;
-using MyBudget.Data;
-using MyBudget.Models;
-using System.Collections.Generic;
-using System.Linq;
+﻿using MyBudget.Data;
 
 namespace MyBudget.Services;
 

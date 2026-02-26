@@ -2,7 +2,7 @@
 
 namespace MyBudget.Models;
 
-public class AdHocTransaction : ViewModelBase
+public class Transaction : ViewModelBase
 {
     private string _description = string.Empty;
     private decimal _amount;

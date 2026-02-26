@@ -1,7 +1,5 @@
 ﻿using Dapper;
 using Microsoft.Data.Sqlite;
-using MyBudget.Models;
-using System;
 using System.IO;
 
 namespace MyBudget.Data;
@@ -147,7 +145,7 @@ public class DatabaseContext
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
             );
 
-            CREATE TABLE IF NOT EXISTS AdHocTransactions (
+            CREATE TABLE IF NOT EXISTS Transactions (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Description TEXT,
                 Amount DECIMAL NOT NULL,
@@ -185,21 +183,21 @@ public class DatabaseContext
             );
         ");
   
-        var columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('AdHocTransactions') WHERE name='BillId'");
-        
-        if (columnExists == 0)
-        {
-            // If the table exists but the column doesn't, add it. 
-            // We check if table exists first.
-            var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='AdHocTransactions'");
-            
-            if (tableExists > 0)
-            {
-                connection.Execute("ALTER TABLE AdHocTransactions ADD COLUMN BillId INTEGER REFERENCES Bills(Id)");
-            }
-        }
+        // var columnExists = connection.ExecuteScalar<int>(@"
+        //     SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='BillId'");
+        //
+        // if (columnExists == 0)
+        // {
+        //     // If the table exists but the column doesn't, add it. 
+        //     // We check if table exists first.
+        //     var tableExists = connection.ExecuteScalar<int>(@"
+        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
+        //     
+        //     if (tableExists > 0)
+        //     {
+        //         connection.Execute("ALTER TABLE Transactions ADD COLUMN BillId INTEGER REFERENCES Bills(Id)");
+        //     }
+        // }
         
         // // Check if BalanceAsOf exists in Accounts table
         // var balanceAsOfExists = connection.ExecuteScalar<int>(@"
@@ -278,33 +276,33 @@ public class DatabaseContext
         //     }
         // }
         //
-        // // Check if IsPrincipalOnly exists in AdHocTransactions table
+        // // Check if IsPrincipalOnly exists in Transactions table
         // var isPrincipalOnlyExists = connection.ExecuteScalar<int>(@"
-        //     SELECT COUNT(*) FROM pragma_table_info('AdHocTransactions') WHERE name='IsPrincipalOnly'");
+        //     SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='IsPrincipalOnly'");
         //
         // if (isPrincipalOnlyExists == 0)
         // {
         //     var tableExists = connection.ExecuteScalar<int>(@"
-        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='AdHocTransactions'");
+        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
         //     
         //     if (tableExists > 0)
         //     {
-        //         connection.Execute("ALTER TABLE AdHocTransactions ADD COLUMN IsPrincipalOnly INTEGER DEFAULT 0");
+        //         connection.Execute("ALTER TABLE Transactions ADD COLUMN IsPrincipalOnly INTEGER DEFAULT 0");
         //     }
         // }
         //
-        // // Check if BucketId exists in AdHocTransactions table
+        // // Check if BucketId exists in Transactions table
         // var bucketIdExists = connection.ExecuteScalar<int>(@"
-        //     SELECT COUNT(*) FROM pragma_table_info('AdHocTransactions') WHERE name='BucketId'");
+        //     SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='BucketId'");
         //
         // if (bucketIdExists == 0)
         // {
         //     var tableExists = connection.ExecuteScalar<int>(@"
-        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='AdHocTransactions'");
+        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
         //     
         //     if (tableExists > 0)
         //     {
-        //         connection.Execute("ALTER TABLE AdHocTransactions ADD COLUMN BucketId INTEGER REFERENCES Buckets(Id)");
+        //         connection.Execute("ALTER TABLE Transactions ADD COLUMN BucketId INTEGER REFERENCES Buckets(Id)");
         //     }
         // }
         //
@@ -338,16 +336,16 @@ public class DatabaseContext
         //     }
         // }
         //
-        // // Ensure FITID columns exist in AdHocTransactions, PeriodBills, PeriodBuckets
-        // var adHocFitIdExists = connection.ExecuteScalar<int>(@"
-        //     SELECT COUNT(*) FROM pragma_table_info('AdHocTransactions') WHERE name='FitId'");
-        // if (adHocFitIdExists == 0)
+        // // Ensure FITID columns exist in Transactions, PeriodBills, PeriodBuckets
+        // var transactionFitIdExists = connection.ExecuteScalar<int>(@"
+        //     SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='FitId'");
+        // if (transactionFitIdExists == 0)
         // {
         //     var tableExists = connection.ExecuteScalar<int>(@"
-        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='AdHocTransactions'");
+        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
         //     if (tableExists > 0)
         //     {
-        //         connection.Execute("ALTER TABLE AdHocTransactions ADD COLUMN FitId TEXT");
+        //         connection.Execute("ALTER TABLE Transactions ADD COLUMN FitId TEXT");
         //     }
         // }
         //
@@ -376,10 +374,10 @@ public class DatabaseContext
         // }
         //
         // // Populate missing FITIDs for existing rows
-        // var adHocIds = connection.Query<int>("SELECT Id FROM AdHocTransactions WHERE FitId IS NULL OR FitId = ''");
-        // foreach (var id in adHocIds)
+        // var transactionIds = connection.Query<int>("SELECT Id FROM Transactions WHERE FitId IS NULL OR FitId = ''");
+        // foreach (var id in transactionIds)
         // {
-        //     connection.Execute("UPDATE AdHocTransactions SET FitId = @fitId WHERE Id = @id", new { id, fitId = Guid.NewGuid().ToString() });
+        //     connection.Execute("UPDATE Transactions SET FitId = @fitId WHERE Id = @id", new { id, fitId = Guid.NewGuid().ToString() });
         // }
         // var periodBillIds = connection.Query<int>("SELECT Id FROM PeriodBills WHERE FitId IS NULL OR FitId = ''");
         // foreach (var id in periodBillIds)
@@ -392,19 +390,19 @@ public class DatabaseContext
         //     connection.Execute("UPDATE PeriodBuckets SET FitId = @fitId WHERE Id = @id", new { id, fitId = Guid.NewGuid().ToString() });
         // }
         //
-        // // Check if PaycheckId exists in AdHocTransactions table
+        // // Check if PaycheckId exists in Transactions table
         // var paycheckIdExists = connection.ExecuteScalar<int>(@"
-        //     SELECT COUNT(*) FROM pragma_table_info('AdHocTransactions') WHERE name='PaycheckId'");
+        //     SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='PaycheckId'");
         //
         // if (paycheckIdExists == 0)
         // {
         //     var tableExists = connection.ExecuteScalar<int>(@"
-        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='AdHocTransactions'");
+        //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
         //     
         //     if (tableExists > 0)
         //     {
-        //         connection.Execute("ALTER TABLE AdHocTransactions ADD COLUMN PaycheckId INTEGER REFERENCES Paychecks(Id)");
-        //         connection.Execute("ALTER TABLE AdHocTransactions ADD COLUMN PaycheckOccurrenceDate TEXT");
+        //         connection.Execute("ALTER TABLE Transactions ADD COLUMN PaycheckId INTEGER REFERENCES Paychecks(Id)");
+        //         connection.Execute("ALTER TABLE Transactions ADD COLUMN PaycheckOccurrenceDate TEXT");
         //     }
         // }
     }

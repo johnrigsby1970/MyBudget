@@ -1,6 +1,4 @@
-﻿using MyBudget.ViewModels;
-
-namespace MyBudget.Models;
+﻿namespace MyBudget.Models;
 
 public enum TransactionType
 {

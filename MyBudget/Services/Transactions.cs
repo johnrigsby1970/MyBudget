@@ -1,21 +1,18 @@
 ﻿using Dapper;
-using MyBudget.Data;
 using MyBudget.Models;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace MyBudget.Services;
 
 public partial class BudgetService
 {
-    public IEnumerable<AdHocTransaction> GetAdHocTransactions(DateTime periodDate)
+    public IEnumerable<Transaction> GetTransactions(DateTime periodDate)
     {
         using var conn = _db.GetConnection();
-        return conn.Query<AdHocTransaction>(@"
+        return conn.Query<Transaction>(@"
             SELECT t.*, a1.Name as AccountName, a2.Name as ToAccountName 
             , Bills.Name as BillName 
             , Buckets.Name as BucketName 
-            FROM AdHocTransactions t
+            FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Accounts a2 ON t.ToAccountId = a2.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
@@ -23,13 +20,13 @@ public partial class BudgetService
             WHERE t.PeriodDate = @periodDate", new { periodDate = periodDate.ToString("yyyy-MM-dd") });
     }
 
-    public IEnumerable<AdHocTransaction> GetAllAdHocTransactions()
+    public IEnumerable<Transaction> GetAllTransactions()
     {
         using var conn = _db.GetConnection();
-        return conn.Query<AdHocTransaction>("SELECT * FROM AdHocTransactions");
+        return conn.Query<Transaction>("SELECT * FROM Transactions");
     }
 
-    public void UpsertAdHocTransaction(AdHocTransaction t)
+    public void UpsertTransaction(Transaction t)
     {
         using var conn = _db.GetConnection();
         var param = new
@@ -50,19 +47,19 @@ public partial class BudgetService
         };
         if (t.Id == 0)
         {
-            conn.Execute(@"INSERT INTO AdHocTransactions (Description, Amount, Date, AccountId, ToAccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, FitId, PaycheckId, PaycheckOccurrenceDate) 
+            conn.Execute(@"INSERT INTO Transactions (Description, Amount, Date, AccountId, ToAccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, FitId, PaycheckId, PaycheckOccurrenceDate) 
                            VALUES (@Description, @Amount, @Date, @AccountId, @ToAccountId, @BillId, @BucketId, @PeriodDate, @IsPrincipalOnly, @FitId, @PaycheckId, @PaycheckOccurrenceDate)", param);
         }
         else
         {
-            conn.Execute(@"UPDATE AdHocTransactions SET Description=@Description, Amount=@Amount, Date=@Date, 
+            conn.Execute(@"UPDATE Transactions SET Description=@Description, Amount=@Amount, Date=@Date, 
                            AccountId=@AccountId, ToAccountId=@ToAccountId, BillId=@BillId, BucketId=@BucketId, PeriodDate=@PeriodDate, IsPrincipalOnly=@IsPrincipalOnly, PaycheckId=@PaycheckId, PaycheckOccurrenceDate=@PaycheckOccurrenceDate WHERE Id=@Id", param);
         }
     }
 
-    public void DeleteAdHocTransaction(int id)
+    public void DeleteTransaction(int id)
     {
         using var conn = _db.GetConnection();
-        conn.Execute("DELETE FROM AdHocTransactions WHERE Id = @id", new { id });
+        conn.Execute("DELETE FROM Transactions WHERE Id = @id", new { id });
     }
 }

@@ -1,6 +1,4 @@
-﻿using MyBudget.Models;
-
-namespace MyBudget.ViewModels;
+﻿namespace MyBudget.ViewModels;
 
 public class ProjectionItem : ViewModelBase
 {
@@ -25,12 +23,12 @@ public class ProjectionItem : ViewModelBase
             {
                 // if (PaycheckId.HasValue && Date.Date <= DateTime.Today.Date)
                 // {
-                //     // Update or create AdHocTransaction
+                //     // Update or create Transaction
                 //     var mainVM = MainViewModel.Instance;
                 //     if (mainVM != null)
                 //     {
                 //         // Actually, we should use the service to find/create it based on Date and PaycheckId
-                //         var existing = mainVM.GetAdHocForPaycheck(PaycheckId.Value, Date);
+                //         var existing = mainVM.GetTransactionForPaycheck(PaycheckId.Value, Date);
                 //         if (existing != null)
                 //         {
                 //             existing.Amount = value;
@@ -44,7 +42,7 @@ public class ProjectionItem : ViewModelBase
                 //             // Find the correct period date for this Date
                 //             DateTime pDate = mainVM.FindPeriodDateFor(Date);
                 //
-                //             var adHoc = new AdHocTransaction
+                //             var transaction = new Transaction
                 //             {
                 //                 Description = Description,
                 //                 Amount = value,
@@ -53,7 +51,7 @@ public class ProjectionItem : ViewModelBase
                 //                 ToAccountId = paycheck?.AccountId ?? cashAccount?.Id,
                 //                 PaycheckId = PaycheckId.Value
                 //             };
-                //             mainVM.SaveNewAdHoc(adHoc);
+                //             mainVM.SaveNewTransaction(transaction);
                 //         }
                 //         if (mainVM.IsCalculatingProjections) return;
                 //         mainVM.CalculateProjections();

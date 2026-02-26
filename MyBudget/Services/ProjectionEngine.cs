@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using MyBudget.Models;
+﻿using MyBudget.Models;
 using MyBudget.ViewModels;
 
 namespace MyBudget.Services;
@@ -16,7 +13,7 @@ public interface IProjectionEngine {
         IEnumerable<BudgetBucket> buckets,
         IEnumerable<PeriodBill> periodBills,
         IEnumerable<PeriodBucket> periodBuckets,
-        IEnumerable<AdHocTransaction> adHocTransactions);
+        IEnumerable<Transaction> transactions);
 }
 
 public class ProjectionEngine : IProjectionEngine {
@@ -25,7 +22,7 @@ public class ProjectionEngine : IProjectionEngine {
         Bill,
         Transfer,
         Bucket,
-        AdHoc,
+        Transaction,
         Interest,
         Growth,
         Final
@@ -40,7 +37,7 @@ public class ProjectionEngine : IProjectionEngine {
         IEnumerable<BudgetBucket> buckets,
         IEnumerable<PeriodBill> periodBills,
         IEnumerable<PeriodBucket> periodBuckets,
-        IEnumerable<AdHocTransaction> adHocTransactions) {
+        IEnumerable<Transaction> transactions) {
         var list = new List<ProjectionItem>();
         DateTime current = startDate;
 
@@ -76,12 +73,12 @@ public class ProjectionEngine : IProjectionEngine {
 
             while (nextPay < endDate) {
                 if (nextPay >= current && (pay.EndDate == null || nextPay <= pay.EndDate)) {
-                    // Association mechanism: check if an AdHocTransaction overrides this paycheck occurrence
-                    var adHocOverride = adHocTransactions.FirstOrDefault(a =>
+                    // Association mechanism: check if a transaction overrides this paycheck occurrence
+                    var transactionOverride = transactions.FirstOrDefault(a =>
                         a.PaycheckId == pay.Id && a.Date >= nextPay &&
                         a.Date < endPay); //&& a.PaycheckOccurrenceDate?.Date == nextPay.Date);
 
-                    if (adHocOverride == null) {
+                    if (transactionOverride == null) {
                         int? toAccountId = pay.AccountId ?? cashAccount?.Id;
                         events.Add((nextPay, pay.ExpectedAmount, $"Expected Pay: {pay.Name}", null, toAccountId, null,
                             pay.Id, nextPay, ProjectionEventType.Paycheck, false, false));
@@ -166,12 +163,12 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        // 4. Ad-Hoc Transactions
-        foreach (var adHoc in adHocTransactions) {
-            // We need to collect ALL ad-hocs that could affect balances from the earliest BalanceAsOf
-            events.Add((adHoc.Date, adHoc.Amount, adHoc.Description, adHoc.AccountId, adHoc.ToAccountId, adHoc.BucketId,
-                adHoc.PaycheckId, adHoc.PaycheckOccurrenceDate, ProjectionEventType.AdHoc, adHoc.IsPrincipalOnly,
-                adHoc.IsRebalance));
+        // 4. Transactions
+        foreach (var transaction in transactions) {
+            // We need to collect ALL transactions that could affect balances from the earliest BalanceAsOf
+            events.Add((transaction.Date, transaction.Amount, transaction.Description, transaction.AccountId, transaction.ToAccountId, transaction.BucketId,
+                transaction.PaycheckId, transaction.PaycheckOccurrenceDate, ProjectionEventType.Transaction, transaction.IsPrincipalOnly,
+                transaction.IsRebalance));
         }
 
         // 5. Interest & Growth
@@ -182,13 +179,13 @@ public class ProjectionEngine : IProjectionEngine {
                 while (nextInterest < startDate) nextInterest = nextInterest.AddMonths(1);
 
                 while (nextInterest < endDate) {
-                    // Check if there is an ad-hoc transaction to this account on this date
-                    // The user said: "If an ad-hoc transaction has a toaccountifd that is an interest accruing account, 
+                    // Check if there is a transaction to this account on this date
+                    // The user said: "If a transaction has a toaccountifd that is an interest accruing account, 
                     // then the record is either interest or a rebalance of the account and should be treated as the interest for that period."
-                    var hasInterestAdHoc =
-                        adHocTransactions.Any(a => a.ToAccountId == acc.Id && a.Date.Date == nextInterest.Date);
+                    var hasInterestTransaction =
+                        transactions.Any(a => a.ToAccountId == acc.Id && a.Date.Date == nextInterest.Date);
 
-                    if (!hasInterestAdHoc) {
+                    if (!hasInterestTransaction) {
                         events.Add((nextInterest, 0, $"Interest: {acc.Name}", acc.Id, null, null, null, null,
                             ProjectionEventType.Interest, false, false));
                     }
@@ -230,9 +227,9 @@ public class ProjectionEngine : IProjectionEngine {
                     bool isRebalance = e.IsRebalance;
 
                     // Robust interest/rebalance detection as per requirements:
-                    // "If an ad-hoc transaction has a toaccountifd that is an interest accruing account, 
+                    // "If a transaction has a toaccountifd that is an interest accruing account, 
                     // then the record is either interest or a rebalance of the account and should be treated as the interest for that period."
-                    bool isInterestOrRebalance = isMortgage && (e.Type == ProjectionEventType.AdHoc && isRebalance);
+                    bool isInterestOrRebalance = isMortgage && (e.Type == ProjectionEventType.Transaction && isRebalance);
 
                     if (isInterestOrRebalance) {
                         accountBalances[acc.Id] += amountChange;
@@ -247,10 +244,10 @@ public class ProjectionEngine : IProjectionEngine {
 
                         accountBalances[acc.Id] -= principal;
                     }
-                    else if (isPersonalLoan && (e.Type == ProjectionEventType.AdHoc && isPrincipalOnly)) {
+                    else if (isPersonalLoan && (e.Type == ProjectionEventType.Transaction && isPrincipalOnly)) {
                         accountBalances[acc.Id] -= amountChange;
                     }
-                    else if (isPersonalLoan && (e.Type == ProjectionEventType.AdHoc && isRebalance)) {
+                    else if (isPersonalLoan && (e.Type == ProjectionEventType.Transaction && isRebalance)) {
                         // Explicit rebalance for personal loan increases debt
                         accountBalances[acc.Id] += amountChange;
                     }
@@ -275,7 +272,7 @@ public class ProjectionEngine : IProjectionEngine {
         var futureEvents = sortedEvents.Where(e => e.Date >= current).ToList();
         var paycheckDates = futureEvents
             .Where(e => e.Type == ProjectionEventType.Paycheck ||
-                        (e.Type == ProjectionEventType.AdHoc && e.PaycheckId.HasValue)).Select(e => e.Date).Distinct()
+                        (e.Type == ProjectionEventType.Transaction && e.PaycheckId.HasValue)).Select(e => e.Date).Distinct()
             .OrderBy(d => d).ToList();
 
         // Ensure the projection start date is considered a period boundary if no paycheck falls on it
@@ -285,14 +282,14 @@ public class ProjectionEngine : IProjectionEngine {
 
         // Track bucket spending per period
         var bucketSpending = new Dictionary<(DateTime PeriodDate, int BucketId), decimal>();
-        foreach (var adHoc in adHocTransactions) {
-            if (adHoc.BucketId.HasValue) {
-                // Find which period this ad-hoc falls into
-                DateTime periodDate = paycheckDates.LastOrDefault(d => d <= adHoc.Date);
+        foreach (var transaction in transactions) {
+            if (transaction.BucketId.HasValue) {
+                // Find which period this transaction falls into
+                DateTime periodDate = paycheckDates.LastOrDefault(d => d <= transaction.Date);
                 if (periodDate != DateTime.MinValue) {
-                    var key = (periodDate, adHoc.BucketId.Value);
+                    var key = (periodDate, transaction.BucketId.Value);
                     if (!bucketSpending.ContainsKey(key)) bucketSpending[key] = 0;
-                    bucketSpending[key] += Math.Abs(adHoc.Amount);
+                    bucketSpending[key] += Math.Abs(transaction.Amount);
                 }
             }
         }
@@ -366,13 +363,13 @@ public class ProjectionEngine : IProjectionEngine {
                 }
             }
 
-            // Check if this is an ad-hoc interest/rebalance for an interest-accruing account
-            // As per requirements: "If an ad-hoc transaction has a toaccountifd that is an interest accruing account, 
+            // Check if this is an transaction interest/rebalance for an interest-accruing account
+            // As per requirements: "If a transaction has a toaccountifd that is an interest accruing account, 
             // then the record is either interest or a rebalance of the account and should be treated as the interest for that period."
-            if (e.ToAccountId.HasValue && e.Type == ProjectionEventType.AdHoc) {
+            if (e.ToAccountId.HasValue && e.Type == ProjectionEventType.Transaction) {
                 var toAcc = accounts.FirstOrDefault(a => a.Id == e.ToAccountId.Value);
                 if (toAcc != null && toAcc.Type == AccountType.Mortgage) {
-                    // This ad-hoc will be processed by the generic balance application below (as a deposit to the mortgage account, which increases the debt).
+                    // This transaction will be processed by the generic balance application below (as a deposit to the mortgage account, which increases the debt).
                     // We don't need to do anything special here, just ensuring we don't accidentally treat it as a regular transfer.
                 }
             }
@@ -436,9 +433,9 @@ public class ProjectionEngine : IProjectionEngine {
                 bool isPrincipalOnly = e.IsPrincipalOnly;
                 bool isRebalance = e.IsRebalance;
 
-                // As per requirements: "If an ad-hoc transaction has a toaccountifd that is an interest accruing account, 
+                // As per requirements: "If a transaction has a toaccountifd that is an interest accruing account, 
                 // then the record is either interest or a rebalance of the account and should be treated as the interest for that period."
-                bool isInterestOrRebalance = isMortgagePayment && (e.Type == ProjectionEventType.AdHoc && isRebalance);
+                bool isInterestOrRebalance = isMortgagePayment && (e.Type == ProjectionEventType.Transaction && isRebalance);
 
                 if (isInterestOrRebalance) {
                     // Increases the debt
@@ -461,15 +458,15 @@ public class ProjectionEngine : IProjectionEngine {
                         runningBalance += principal;
                     }
                 }
-                else if (isPersonalLoanPayment && (e.Type == ProjectionEventType.AdHoc && isPrincipalOnly)) {
-                    // Ad-hoc principal only payment to a personal loan
+                else if (isPersonalLoanPayment && (e.Type == ProjectionEventType.Transaction && isPrincipalOnly)) {
+                    // Transaction principal only payment to a personal loan
                     accountBalances[e.ToAccountId.Value] -= amountChange;
                     if (includedTotalAccounts.Contains(e.ToAccountId.Value)) {
                         runningBalance += amountChange;
                     }
                 }
-                else if (isPersonalLoanPayment && (e.Type == ProjectionEventType.AdHoc && isRebalance)) {
-                    // Ad-hoc rebalance increases debt
+                else if (isPersonalLoanPayment && (e.Type == ProjectionEventType.Transaction && isRebalance)) {
+                    // Transaction rebalance increases debt
                     accountBalances[e.ToAccountId.Value] += amountChange;
                     if (includedTotalAccounts.Contains(e.ToAccountId.Value)) {
                         runningBalance -= amountChange;
@@ -494,7 +491,7 @@ public class ProjectionEngine : IProjectionEngine {
 
             // If neither is set but amount is positive, assume it's income to primary? No, better be robust.
             // If it's a bill/bucket and no AccountId, it already used primaryChecking.
-            // If it's an AdHoc and no accounts, it might just be a note or something, but usually it should have an account.
+            // If it's a transaction and no accounts, it might just be a note or something, but usually it should have an account.
 
             var item = new ProjectionItem {
                 Date = e.Date,

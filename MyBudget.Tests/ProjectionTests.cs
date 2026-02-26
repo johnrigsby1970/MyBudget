@@ -1,10 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using MyBudget.Models;
 using MyBudget.Services;
-using MyBudget.ViewModels;
 
 namespace MyBudget.Tests
 {
@@ -32,10 +28,10 @@ namespace MyBudget.Tests
                 new Paycheck { Id = 1, Name = "Salary", ExpectedAmount = 2000, Frequency = Frequency.BiWeekly, StartDate = new DateTime(2026, 2, 20), AccountId = 1 }
             };
             
-            // Ad-hoc transaction associated with the paycheck on 2026-02-20
-            var adHocs = new List<AdHocTransaction>
+            // Transaction associated with the paycheck on 2026-02-20
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction 
+                new Transaction 
                 { 
                     Id = 101, 
                     Description = "Actual Salary", 
@@ -51,10 +47,10 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 1);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
-            // We expect one paycheck entry on 2/20. Since we have an ad-hoc override, the "Pay: Salary" should be missing and replaced by "Actual Salary".
+            // We expect one paycheck entry on 2/20. Since we have an transaction override, the "Pay: Salary" should be missing and replaced by "Actual Salary".
             var salaryEntries = results.Where(r => r.Date == new DateTime(2026, 2, 20)).ToList();
             
             Assert.AreEqual(1, salaryEntries.Count, "Should only have one entry for the paycheck date");
@@ -75,10 +71,10 @@ namespace MyBudget.Tests
                 new Paycheck { Id = 1, Name = "Salary", ExpectedAmount = 2000, Frequency = Frequency.BiWeekly, StartDate = new DateTime(2026, 2, 20), AccountId = 1 }
             };
             
-            // Ad-hoc transaction NOT associated with the paycheck, but has same date and description-based "Pay: Salary"
-            var adHocs = new List<AdHocTransaction>
+            // Transaction NOT associated with the paycheck, but has same date and description-based "Pay: Salary"
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction 
+                new Transaction 
                 { 
                     Id = 101, 
                     Description = "Pay: Salary", 
@@ -92,15 +88,15 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 1);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
-            // Since the heuristic is removed, we expect BOTH the projected "Pay: Salary" and the ad-hoc "Pay: Salary".
+            // Since the heuristic is removed, we expect BOTH the projected "Pay: Salary" and the transactioon "Pay: Salary".
             var salaryEntries = results.Where(r => r.Date == new DateTime(2026, 2, 20)).ToList();
             
             Assert.AreEqual(2, salaryEntries.Count, "Should have two entries for the paycheck date because heuristic was removed");
             Assert.IsTrue(salaryEntries.Any(r => r.Description == "Expected Pay: Salary" && r.Amount == 2000), "Missing projected paycheck");
-            Assert.IsTrue(salaryEntries.Any(r => r.Description == "Pay: Salary" && r.Amount == 2100), "Missing ad-hoc transaction");
+            Assert.IsTrue(salaryEntries.Any(r => r.Description == "Pay: Salary" && r.Amount == 2100), "Missing transaction");
         }
 
         [TestMethod]
@@ -121,7 +117,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 1);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<AdHocTransaction>()).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
 
             // Assert
             var rentEntry = results.FirstOrDefault(r => r.Description.Contains("Rent"));
@@ -159,7 +155,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 10); // Should trigger one interest event
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<AdHocTransaction>()).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
 
             // Assert
             var interestEntry = results.FirstOrDefault(r => r.Description.Contains("Interest: Mortgage"));
@@ -194,7 +190,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 2, 11); // 10 days of growth
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<AdHocTransaction>()).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
 
             // Assert
             // After 10 days, 10,000 * 0.0001 * 10 = 10
@@ -228,7 +224,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 1);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<AdHocTransaction>()).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
 
             // Assert
             // Period 1: 2/1 to 2/14. Events: Pay1 (2000), Bill1 (-500). Net = 1500.
@@ -248,7 +244,7 @@ namespace MyBudget.Tests
         }
 
         [TestMethod]
-        public void TestAdHocInterest_OverridesProjectedInterest()
+        public void TestTransactionInterest_OverridesProjectedInterest()
         {
             // Arrange
             var accounts = new List<Account>
@@ -269,11 +265,11 @@ namespace MyBudget.Tests
                 }
             };
 
-            // Ad-hoc transaction on the same date as projected interest (2/15)
+            // Transaction on the same date as projected interest (2/15)
             // It has ToAccountId = 1, so it should be treated as interest/rebalance
-            var adHocs = new List<AdHocTransaction>
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction
+                new Transaction
                 {
                     Id = 101,
                     Description = "Actual Interest",
@@ -288,7 +284,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 1);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
             // We expect "Actual Interest" to exist and "Interest: Mortgage" to be missing.
@@ -303,7 +299,7 @@ namespace MyBudget.Tests
         }
 
         [TestMethod]
-        public void TestBucketReduction_AdHocReducesProjectedBucket()
+        public void TestBucketReduction_TransactionReducesProjectedBucket()
         {
             // Arrange
             var accounts = new List<Account>
@@ -319,10 +315,10 @@ namespace MyBudget.Tests
                 new BudgetBucket { Id = 1, Name = "Groceries", ExpectedAmount = 500, AccountId = 1 }
             };
 
-            // Ad-hoc transaction for this bucket in this period
-            var adHocs = new List<AdHocTransaction>
+            // Transaction for this bucket in this period
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction
+                new Transaction
                 {
                     Id = 101,
                     Description = "Store Purchase",
@@ -337,22 +333,22 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 2, 14); // One period
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
             // Bucket Groceries should be reduced by 200. Original 500 - 200 = 300.
             var bucketEntry = results.FirstOrDefault(r => r.Description.Contains("Bucket: Groceries"));
             Assert.IsNotNull(bucketEntry, "Should have a bucket entry");
-            Assert.AreEqual(-300m, bucketEntry.Amount, "Bucket amount should be reduced by ad-hoc spending");
+            Assert.AreEqual(-300m, bucketEntry.Amount, "Bucket amount should be reduced by transaction spending");
 
             // Total balance impact should be:
-            // 1000 (starting) + 2000 (paycheck) - 200 (ad-hoc) - 300 (remaining bucket) = 2500
+            // 1000 (starting) + 2000 (paycheck) - 200 (transaction) - 300 (remaining bucket) = 2500
             var lastEntry = results.Last();
             Assert.AreEqual(2500m, lastEntry.Balance);
         }
 
         [TestMethod]
-        public void TestBucketReduction_AdHocExceedsProjectedBucket()
+        public void TestBucketReduction_TransactionExceedsProjectedBucket()
         {
             // Arrange
             var accounts = new List<Account>
@@ -368,10 +364,10 @@ namespace MyBudget.Tests
                 new BudgetBucket { Id = 1, Name = "Groceries", ExpectedAmount = 500, AccountId = 1 }
             };
 
-            // Ad-hoc transaction exceeding this bucket
-            var adHocs = new List<AdHocTransaction>
+            // Transaction exceeding this bucket
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction
+                new Transaction
                 {
                     Id = 101,
                     Description = "Big Grocery Run",
@@ -386,7 +382,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 2, 14);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
             // Bucket Groceries should be reduced to 0 because spending (600) >= projected (500).
@@ -395,7 +391,7 @@ namespace MyBudget.Tests
             Assert.AreEqual(0m, bucketEntry.Amount, "Bucket amount should be reduced to 0 when spending exceeds budget");
 
             // Total balance impact should be:
-            // 1000 (starting) + 2000 (paycheck) - 600 (ad-hoc) - 0 (remaining bucket) = 2400
+            // 1000 (starting) + 2000 (paycheck) - 600 (transaction) - 0 (remaining bucket) = 2400
             var lastEntry = results.Last();
             Assert.AreEqual(2400m, lastEntry.Balance);
         }
@@ -405,7 +401,7 @@ namespace MyBudget.Tests
             // Arrange
             // Bucket "Grayson" with $50 allotted.
             // Paychecks on 2/19/2026 and 3/5/2026.
-            // Ad-hoc transaction for $500 on 2/20/2026 associated with "Grayson" bucket.
+            // Transaction for $500 on 2/20/2026 associated with "Grayson" bucket.
             
             var accounts = new List<Account>
             {
@@ -419,29 +415,29 @@ namespace MyBudget.Tests
             {
                 new BudgetBucket { Id = 1, Name = "Grayson", ExpectedAmount = 50, AccountId = 1 }
             };
-            var adHocs = new List<AdHocTransaction>
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction { Id = 101, Description = "Grayson Ad-Hoc", Amount = 500, Date = new DateTime(2026, 2, 20), BucketId = 1, AccountId = 1 }
+                new Transaction { Id = 101, Description = "Grayson Transaction", Amount = 500, Date = new DateTime(2026, 2, 20), BucketId = 1, AccountId = 1 }
             };
 
             var startDate = new DateTime(2026, 2, 19);
             var endDate = new DateTime(2026, 3, 10);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
             // Paycheck on 2/19. Next on 3/5.
-            // Bucket Grayson on 2/19 should be reduced by ad-hoc on 2/20 (same period).
+            // Bucket Grayson on 2/19 should be reduced by transaction on 2/20 (same period).
             // Since 500 > 50, Grayson bucket on 2/19 should be 0.
             
             var graysonBucketEntry = results.FirstOrDefault(r => r.Description.Contains("Bucket: Grayson") && r.Date == new DateTime(2026, 2, 19));
             Assert.IsNotNull(graysonBucketEntry, "Grayson bucket entry should exist");
-            Assert.AreEqual(0m, graysonBucketEntry.Amount, "Grayson bucket amount should be reduced to 0 because ad-hoc exceeds it");
+            Assert.AreEqual(0m, graysonBucketEntry.Amount, "Grayson bucket amount should be reduced to 0 because transaction exceeds it");
         }
 
         [TestMethod]
-        public void TestAdHocMortgagePayment_ReducesDebt()
+        public void TestTransactionMortgagePayment_ReducesDebt()
         {
             // Arrange
             var accounts = new List<Account>
@@ -472,11 +468,11 @@ namespace MyBudget.Tests
                 }
             };
 
-            // Ad-hoc transaction: Payment of 1500 to the mortgage account.
+            // Transaction: Payment of 1500 to the mortgage account.
             // Expected principal reduction = 1500 - 400 (escrow) - 100 (insurance) = 1000.
-            var adHocs = new List<AdHocTransaction>
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction
+                new Transaction
                 {
                     Id = 101,
                     Description = "Mortgage Payment",
@@ -491,7 +487,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 1);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
             var paymentEntry = results.FirstOrDefault(r => r.Description == "Mortgage Payment");
@@ -505,7 +501,7 @@ namespace MyBudget.Tests
         }
 
         [TestMethod]
-        public void TestAdHocMortgageRebalance_IncreasesDebt()
+        public void TestTransactionMortgageRebalance_IncreasesDebt()
         {
             // Arrange
             var accounts = new List<Account>
@@ -530,11 +526,11 @@ namespace MyBudget.Tests
                 }
             };
 
-            // Ad-hoc transaction: Rebalance of 1500 to the mortgage account.
+            // Transaction: Rebalance of 1500 to the mortgage account.
             // Expected debt increase = 1500.
-            var adHocs = new List<AdHocTransaction>
+            var transactions = new List<Transaction>
             {
-                new AdHocTransaction
+                new Transaction
                 {
                     Id = 101,
                     Description = "Mortgage Rebalance",
@@ -549,7 +545,7 @@ namespace MyBudget.Tests
             var endDate = new DateTime(2026, 3, 1);
 
             // Act
-            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), adHocs).ToList();
+            var results = _engine.CalculateProjections(startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
 
             // Assert
             var rebalanceEntry = results.FirstOrDefault(r => r.Description == "Mortgage Rebalance");

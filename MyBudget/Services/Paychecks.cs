@@ -1,8 +1,5 @@
 ﻿using Dapper;
-using MyBudget.Data;
 using MyBudget.Models;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace MyBudget.Services;
 
@@ -43,7 +40,7 @@ public partial class BudgetService
     public void DeletePaycheck(int id)
     {
         using var conn = _db.GetConnection();
-        conn.Execute("UPDATE AdHocTransactions SET PaycheckId=null WHERE PaycheckId = @id", new { id }); //Disassociate the transaction from the paycheck
+        conn.Execute("UPDATE Transactions SET PaycheckId=null WHERE PaycheckId = @id", new { id }); //Disassociate the transaction from the paycheck
         conn.Execute("DELETE FROM Paychecks WHERE Id = @id", new { id });
     }
 }

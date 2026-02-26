@@ -21,8 +21,8 @@
                 <scm:SortDescription PropertyName="Name" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
-        <CollectionViewSource x:Key="SortedCurrentPeriodAdHocTransactions"
-                              Source="{Binding CurrentPeriodAdHocTransactions}">
+        <CollectionViewSource x:Key="SortedCurrentPeriodTransactions"
+                              Source="{Binding CurrentPeriodTransactions}">
             <CollectionViewSource.SortDescriptions>
                 <scm:SortDescription PropertyName="Date" />
             </CollectionViewSource.SortDescriptions>
@@ -129,14 +129,14 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </TabItem>
-                            <TabItem Header="Ad-Hoc">
+                            <TabItem Header="Transaction">
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5">
-                                        <Button Content="Add Ad-Hoc" Command="{Binding AddAdHocTransactionCommand}"
-                                                Visibility="{Binding IsNotEditingAdHocTransaction, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        <Button Content="Add Transaction" Command="{Binding AddTransactionCommand}"
+                                                Visibility="{Binding IsNotEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                 Margin="2" />
-                                        <Button Content="Edit" Command="{Binding EditAdHocTransactionCommand}"
-                                                Visibility="{Binding CanEditAdHocTransaction, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        <Button Content="Edit" Command="{Binding EditTransactionCommand}"
+                                                Visibility="{Binding CanEditTransaction, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                 Margin="2" />
                                     </StackPanel>
 
@@ -147,8 +147,8 @@
                                         </Grid.RowDefinitions>
 
                                         <DataGrid Grid.Row="0"
-                                                  ItemsSource="{Binding Source={StaticResource SortedCurrentPeriodAdHocTransactions}}"
-                                                  SelectedItem="{Binding SelectedAdHocTransaction}"
+                                                  ItemsSource="{Binding Source={StaticResource SortedCurrentPeriodTransactions}}"
+                                                  SelectedItem="{Binding SelectedTransaction}"
                                                   AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
                                             <DataGrid.Columns>
                                                 <DataGridTextColumn Header="Date"
@@ -166,9 +166,9 @@
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
                                                             <Button Content="Remove"
-                                                                    Command="{Binding DataContext.DeleteAdHocTransactionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                    Command="{Binding DataContext.DeleteTransactionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                     CommandParameter="{Binding}"
-                                                                    Visibility="{Binding DataContext.IsNotEditingAdHocTransaction, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                    Visibility="{Binding DataContext.IsNotEditingTransaction, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                         </DataTemplate>
                                                     </DataGridTemplateColumn.CellTemplate>
                                                 </DataGridTemplateColumn>
@@ -176,8 +176,8 @@
                                         </DataGrid>
 
                                         <StackPanel Grid.Row="1" Margin="5"
-                                                    Visibility="{Binding IsEditingAdHocTransaction, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <TextBlock Text="Edit Ad-Hoc Item" FontWeight="Bold" Margin="0,5" />
+                                                    Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="Edit Transaction Item" FontWeight="Bold" Margin="0,5" />
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="Auto" />
@@ -196,76 +196,74 @@
 
                                                 <Label Grid.Column="0" Grid.Row="0" Content="Date:" />
                                                 <DatePicker Grid.Column="1" Grid.Row="0"
-                                                            SelectedDate="{Binding EditingAdHocTransactionClone.Date}"
+                                                            SelectedDate="{Binding EditingTransactionClone.Date}"
                                                             Margin="5" />
 
                                                 <Label Grid.Column="2" Grid.Row="0" Content="Description:" />
                                                 <TextBox Grid.Column="3" Grid.Row="0"
-                                                         Text="{Binding EditingAdHocTransactionClone.Description}"
+                                                         Text="{Binding EditingTransactionClone.Description}"
                                                          Margin="5" />
 
                                                 <Label Grid.Column="0" Grid.Row="1" Content="Amount:" />
                                                 <TextBox Grid.Column="1" Grid.Row="1"
-                                                         Text="{Binding EditingAdHocTransactionClone.Amount, StringFormat=F2}"
+                                                         Text="{Binding EditingTransactionClone.Amount, StringFormat=F2}"
                                                          Margin="5" />
 
                                                 <Label Grid.Column="2" Grid.Row="1" Content="From Account:" />
                                                 <ComboBox Grid.Column="3" Grid.Row="1" ItemsSource="{Binding Accounts}"
-                                                          SelectedValue="{Binding EditingAdHocTransactionClone.AccountId}"
+                                                          SelectedValue="{Binding EditingTransactionClone.AccountId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                                 <Label Grid.Column="0" Grid.Row="2" Content="To Account:" />
                                                 <ComboBox Grid.Column="1" Grid.Row="2" x:Name="ToAccountComboBox"
                                                           ItemsSource="{Binding Accounts}"
-                                                          SelectedValue="{Binding EditingAdHocTransactionClone.ToAccountId}"
+                                                          SelectedValue="{Binding EditingTransactionClone.ToAccountId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                                 <Label Grid.Column="0" Grid.Row="3" Content="Bill:" />
                                                 <ComboBox Grid.Column="1" Grid.Row="3"
                                                           ItemsSource="{Binding Source={StaticResource SortedBills}}"
-                                                          SelectedValue="{Binding EditingAdHocTransactionClone.BillId}"
+                                                          SelectedValue="{Binding EditingTransactionClone.BillId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
-                                                <!-- <ComboBox Grid.Column="1" Grid.Row="3" ItemsSource="{Binding Bills}"  -->
-                                                <!--           SelectedValue="{Binding EditingAdHocTransactionClone.BillId}"  -->
-                                                <!--           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" /> -->
+                                                
                                                 <Label Grid.Column="2" Grid.Row="3" Content="Bucket:" />
                                                 <ComboBox Grid.Column="3" Grid.Row="3" ItemsSource="{Binding Buckets}"
-                                                          SelectedValue="{Binding EditingAdHocTransactionClone.BucketId}"
+                                                          SelectedValue="{Binding EditingTransactionClone.BucketId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                                 <Label Grid.Column="0" Grid.Row="4" Content="Paycheck:"
-                                                       Visibility="{Binding EditingAdHocTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                       Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
                                                 <ComboBox Grid.Column="1" Grid.Row="4"
                                                           ItemsSource="{Binding Paychecks}"
-                                                          SelectedValue="{Binding EditingAdHocTransactionClone.PaycheckId}"
+                                                          SelectedValue="{Binding EditingTransactionClone.PaycheckId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5"
-                                                          Visibility="{Binding EditingAdHocTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                          Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
 
                                                 <Label Grid.Column="2" Grid.Row="4" Content="Occurrence Date:"
-                                                       Visibility="{Binding EditingAdHocTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                       Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
                                                 <DatePicker Grid.Column="3" Grid.Row="4"
-                                                            SelectedDate="{Binding EditingAdHocTransactionClone.PaycheckOccurrenceDate}"
+                                                            SelectedDate="{Binding EditingTransactionClone.PaycheckOccurrenceDate}"
                                                             Margin="5"
-                                                            Visibility="{Binding EditingAdHocTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                            Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
 
                                                 <StackPanel Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="4"
                                                             Orientation="Horizontal" Margin="5">
                                                     <CheckBox Content="Principal Only (Mortgage/Loan Extra)"
-                                                              IsChecked="{Binding EditingAdHocTransactionClone.IsPrincipalOnly}"
+                                                              IsChecked="{Binding EditingTransactionClone.IsPrincipalOnly}"
                                                               VerticalAlignment="Center" Margin="0,0,10,0"
                                                               Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
                                                     <CheckBox Content="Rebalance (Adds to Debt)"
-                                                              IsChecked="{Binding EditingAdHocTransactionClone.IsRebalance}"
+                                                              IsChecked="{Binding EditingTransactionClone.IsRebalance}"
                                                               VerticalAlignment="Center"
                                                               Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
                                                 </StackPanel>
                                             </Grid>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
                                                         Margin="0,5,0,0">
-                                                <Button Content="Save" Command="{Binding SaveAdHocTransactionCommand}"
+                                                <Button Content="Save" Command="{Binding SaveTransactionCommand}"
                                                         Width="80" Margin="2" />
                                                 <Button Content="Cancel"
-                                                        Command="{Binding CancelAdHocTransactionCommand}" Width="80"
+                                                        Command="{Binding CancelTransactionCommand}" Width="80"
                                                         Margin="2" />
                                             </StackPanel>
                                         </StackPanel>
@@ -278,15 +276,10 @@
                 <TabItem Header="Buckets">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
-                            
                             <Button Content="Add Bucket" Command="{Binding AddBucketCommand}" Margin="5"  Width="80"
                                     Visibility="{Binding IsNotEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
                             <Button Content="Edit" Command="{Binding EditBucketCommand}" Margin="5"  Width="80"
                                     Visibility="{Binding CanEditBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                            
-                            
-                            <!-- <Button Content="Add Bucket" Command="{Binding AddBucketCommand}" Margin="5" Width="80" /> -->
-                            <!-- <Button Content="Edit" Command="{Binding EditBucketCommand}" Margin="5" Width="80" /> -->
                             <Button Content="Save" Command="{Binding SaveBucketCommand}" Margin="5" Width="80" 
                                     Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             <Button Content="Cancel" Command="{Binding CancelBucketCommand}" Margin="5" Width="80"  
@@ -464,7 +457,6 @@
                             <Button Content="Cancel" Command="{Binding CancelPaycheckCommand}" Margin="5"
                                     Visibility="{Binding IsEditingPaycheck, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </StackPanel>
-                        <!-- <Button DockPanel.Dock="Bottom" Content="Add Paycheck" Command="{Binding AddPaycheckCommand}" Margin="5" /> -->
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*" />
@@ -547,10 +539,7 @@
                                     <ComboBox Grid.Column="1" Grid.Row="1"
                                               ItemsSource="{Binding Source={StaticResource EnumFrequency}}"
                                               SelectedItem="{Binding EditingPaycheckClone.Frequency}" Margin="5" />
-                                    <!-- <ComboBox Grid.Column="1" Grid.Row="1" ItemsSource="{Binding Frequencies}"  -->
-                                    <!--           SelectedValue="{Binding EditingPaycheckClone.Frequency}"  -->
-                                    <!--           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" /> -->
-
+                                    
                                     <Label Grid.Column="0" Grid.Row="2" Content="Start date:" />
                                     <DatePicker Grid.Column="1" Grid.Row="2"
                                                 SelectedDate="{Binding EditingPaycheckClone.StartDate}" Margin="5" />

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using MyBudget.Models;
@@ -18,20 +16,20 @@ public class MainViewModel : ViewModelBase {
     private ObservableCollection<PeriodBill> _currentPeriodBills = new();
     private ObservableCollection<BudgetBucket> _buckets = new();
     private ObservableCollection<PeriodBucket> _currentPeriodBuckets = new();
-    private ObservableCollection<AdHocTransaction> _currentPeriodAdHocTransactions = new();
+    private ObservableCollection<Transaction> _currentPeriodTransactions = new();
     private Bill? _selectedBill;
     private BudgetBucket? _selectedBucket;
     private Account? _selectedAccount;
-    private AdHocTransaction? _selectedAdHocTransaction;
+    private Transaction? _selectedTransaction;
     private bool _isEditingBill;
     private bool _isEditingBucket;
     private bool _isEditingAccount;
-    private bool _isEditingAdHocTransaction;
+    private bool _isEditingTransaction;
     private bool _isCalculatingProjections;
     private Bill? _editingBillClone;
     private BudgetBucket? _editingBucketClone;
     private Account? _editingAccountClone;
-    private AdHocTransaction? _editingAdHocTransactionClone;
+    private Transaction? _editingTransactionClone;
     private Paycheck? _editingPaycheckClone;
     private DateTime _currentPeriodDate = DateTime.MinValue;
     private bool _showByMonth;
@@ -93,9 +91,9 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _currentPeriodBuckets, value);
     }
 
-    public ObservableCollection<AdHocTransaction> CurrentPeriodAdHocTransactions {
-        get => _currentPeriodAdHocTransactions;
-        set => SetProperty(ref _currentPeriodAdHocTransactions, value);
+    public ObservableCollection<Transaction> CurrentPeriodTransactions {
+        get => _currentPeriodTransactions;
+        set => SetProperty(ref _currentPeriodTransactions, value);
     }
 
     public bool ShowByMonth {
@@ -167,11 +165,11 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    public AdHocTransaction? SelectedAdHocTransaction {
-        get => _selectedAdHocTransaction;
+    public Transaction? SelectedTransaction {
+        get => _selectedTransaction;
         set {
-            if (SetProperty(ref _selectedAdHocTransaction, value)) {
-                OnPropertyChanged(nameof(CanEditAdHocTransaction));
+            if (SetProperty(ref _selectedTransaction, value)) {
+                OnPropertyChanged(nameof(CanEditTransaction));
             }
         }
     }
@@ -239,18 +237,18 @@ public class MainViewModel : ViewModelBase {
     public bool IsNotEditingAccount => !IsEditingAccount;
     public bool CanEditAccount => SelectedAccount != null && !IsEditingAccount;
 
-    public bool IsEditingAdHocTransaction {
-        get => _isEditingAdHocTransaction;
+    public bool IsEditingTransaction {
+        get => _isEditingTransaction;
         set {
-            if (SetProperty(ref _isEditingAdHocTransaction, value)) {
-                OnPropertyChanged(nameof(IsNotEditingAdHocTransaction));
-                OnPropertyChanged(nameof(CanEditAdHocTransaction));
+            if (SetProperty(ref _isEditingTransaction, value)) {
+                OnPropertyChanged(nameof(IsNotEditingTransaction));
+                OnPropertyChanged(nameof(CanEditTransaction));
             }
         }
     }
 
-    public bool IsNotEditingAdHocTransaction => !IsEditingAdHocTransaction;
-    public bool CanEditAdHocTransaction => SelectedAdHocTransaction != null && !IsEditingAdHocTransaction;
+    public bool IsNotEditingTransaction => !IsEditingTransaction;
+    public bool CanEditTransaction => SelectedTransaction != null && !IsEditingTransaction;
 
     public Bill? EditingBillClone {
         get => _editingBillClone;
@@ -267,9 +265,9 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _editingAccountClone, value);
     }
 
-    public AdHocTransaction? EditingAdHocTransactionClone {
-        get => _editingAdHocTransactionClone;
-        set => SetProperty(ref _editingAdHocTransactionClone, value);
+    public Transaction? EditingTransactionClone {
+        get => _editingTransactionClone;
+        set => SetProperty(ref _editingTransactionClone, value);
     }
     
     public Paycheck? EditingPaycheckClone {
@@ -289,15 +287,15 @@ public class MainViewModel : ViewModelBase {
     public ICommand CancelBucketCommand => new RelayCommand(_ => CancelBucket(), _ => IsEditingBucket);
     public ICommand DeletePeriodBucketCommand => new RelayCommand(pb => DeletePeriodBucket(pb as PeriodBucket));
 
-    public ICommand AddAdHocTransactionCommand =>
-        new RelayCommand(_ => AddAdHocTransaction(), _ => IsNotEditingAdHocTransaction);
+    public ICommand AddTransactionCommand =>
+        new RelayCommand(_ => AddTransaction(), _ => IsNotEditingTransaction);
 
-    public ICommand EditAdHocTransactionCommand =>
-        new RelayCommand(_ => EditAdHocTransaction(), _ => CanEditAdHocTransaction);
+    public ICommand EditTransactionCommand =>
+        new RelayCommand(_ => EditTransaction(), _ => CanEditTransaction);
     public ICommand EditPaycheckCommand =>
         new RelayCommand(_ => EditPaycheck(), _ => CanEditPaycheck);
-    public ICommand SaveAdHocTransactionCommand =>
-        new RelayCommand(_ => SaveAdHocTransaction(), _ => IsEditingAdHocTransaction);
+    public ICommand SaveTransactionCommand =>
+        new RelayCommand(_ => SaveTransaction(), _ => IsEditingTransaction);
 
     public ICommand CancelPaycheckCommand =>
         new RelayCommand(_ => CancelPaycheck(), _ => IsEditingPaycheck);
@@ -305,11 +303,11 @@ public class MainViewModel : ViewModelBase {
     public ICommand SavePaycheckCommand =>
         new RelayCommand(_ => SavePaycheck(), _ => IsEditingPaycheck);
     
-    public ICommand CancelAdHocTransactionCommand =>
-        new RelayCommand(_ => CancelAdHocTransaction(), _ => IsEditingAdHocTransaction);
+    public ICommand CancelTransactionCommand =>
+        new RelayCommand(_ => CancelTransaction(), _ => IsEditingTransaction);
 
-    public ICommand DeleteAdHocTransactionCommand =>
-        new RelayCommand(t => DeleteAdHocTransaction(t as AdHocTransaction));
+    public ICommand DeleteTransactionCommand =>
+        new RelayCommand(t => DeleteTransaction(t as Transaction));
 
     public ICommand AddPaycheckCommand => new RelayCommand(_ => AddPaycheck());
     public ICommand AddAccountCommand => new RelayCommand(_ => AddAccount(), _ => IsNotEditingAccount);
@@ -322,7 +320,7 @@ public class MainViewModel : ViewModelBase {
 
     public ICommand NextPeriodCommand => new RelayCommand(_ => NavigatePeriod(1));
     public ICommand PrevPeriodCommand => new RelayCommand(_ => NavigatePeriod(-1));
-    public ICommand ShowAmortizationCommand => new RelayCommand(a => ShowAmortization(a as Account));
+    public ICommand ShowAmortizationCommand => new RelayCommand(a => ShowAmortization(a as Account ?? throw new InvalidOperationException()));
     public ICommand ShowAboutCommand => new RelayCommand(_ => ShowAbout());
 
     private bool _isLoadingData;
@@ -362,9 +360,9 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private void AdHocTransaction_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
-        if (sender is AdHocTransaction t) {
-            _budgetService.UpsertAdHocTransaction(t);
+    private void Transaction_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
+        if (sender is Transaction t) {
+            _budgetService.UpsertTransaction(t);
             CalculateProjections();
         }
     }
@@ -567,49 +565,49 @@ public class MainViewModel : ViewModelBase {
 
     #endregion
 
-    #region AdHocTransaction CRUD
+    #region Transaction CRUD
 
-    private void AddAdHocTransaction() {
-        EditingAdHocTransactionClone = new AdHocTransaction
-            { Description = "New Ad-Hoc", Amount = 0, Date = DateTime.Today, PeriodDate = CurrentPeriodDate };
-        SelectedAdHocTransaction = null;
-        IsEditingAdHocTransaction = true;
+    private void AddTransaction() {
+        EditingTransactionClone = new Transaction
+            { Description = "New Transaction", Amount = 0, Date = DateTime.Today, PeriodDate = CurrentPeriodDate };
+        SelectedTransaction = null;
+        IsEditingTransaction = true;
     }
 
-    private void EditAdHocTransaction() {
-        if (SelectedAdHocTransaction != null) {
-            EditingAdHocTransactionClone = new AdHocTransaction {
-                Id = SelectedAdHocTransaction.Id, Description = SelectedAdHocTransaction.Description,
-                Amount = SelectedAdHocTransaction.Amount, Date = SelectedAdHocTransaction.Date,
-                AccountId = SelectedAdHocTransaction.AccountId, ToAccountId = SelectedAdHocTransaction.ToAccountId,
-                BucketId = SelectedAdHocTransaction.BucketId, PeriodDate = SelectedAdHocTransaction.PeriodDate,
-                IsPrincipalOnly = SelectedAdHocTransaction.IsPrincipalOnly,
-                IsRebalance = SelectedAdHocTransaction.IsRebalance, PaycheckId = SelectedAdHocTransaction.PaycheckId,
-                PaycheckOccurrenceDate = SelectedAdHocTransaction.PaycheckOccurrenceDate
+    private void EditTransaction() {
+        if (SelectedTransaction != null) {
+            EditingTransactionClone = new Transaction {
+                Id = SelectedTransaction.Id, Description = SelectedTransaction.Description,
+                Amount = SelectedTransaction.Amount, Date = SelectedTransaction.Date,
+                AccountId = SelectedTransaction.AccountId, ToAccountId = SelectedTransaction.ToAccountId,
+                BucketId = SelectedTransaction.BucketId, PeriodDate = SelectedTransaction.PeriodDate,
+                IsPrincipalOnly = SelectedTransaction.IsPrincipalOnly,
+                IsRebalance = SelectedTransaction.IsRebalance, PaycheckId = SelectedTransaction.PaycheckId,
+                PaycheckOccurrenceDate = SelectedTransaction.PaycheckOccurrenceDate
             };
-            IsEditingAdHocTransaction = true;
+            IsEditingTransaction = true;
         }
     }
 
-    private void SaveAdHocTransaction() {
-        if (EditingAdHocTransactionClone != null) {
-            if (SelectedAdHocTransaction != null) {
-                UpdateAdHocFromClone(SelectedAdHocTransaction, EditingAdHocTransactionClone);
-                _budgetService.UpsertAdHocTransaction(SelectedAdHocTransaction);
+    private void SaveTransaction() {
+        if (EditingTransactionClone != null) {
+            if (SelectedTransaction != null) {
+                UpdateTransactionFromClone(SelectedTransaction, EditingTransactionClone);
+                _budgetService.UpsertTransaction(SelectedTransaction);
             }
             else {
-                _budgetService.UpsertAdHocTransaction(EditingAdHocTransactionClone);
+                _budgetService.UpsertTransaction(EditingTransactionClone);
             }
 
-            IsEditingAdHocTransaction = false;
-            EditingAdHocTransactionClone = null;
+            IsEditingTransaction = false;
+            EditingTransactionClone = null;
             
             LoadPeriodBills();
             CalculateProjections();
         }
     }
 
-    private void UpdateAdHocFromClone(AdHocTransaction target, AdHocTransaction clone) {
+    private void UpdateTransactionFromClone(Transaction target, Transaction clone) {
         target.Description = clone.Description;
         target.Amount = clone.Amount;
         target.Date = clone.Date;
@@ -623,16 +621,16 @@ public class MainViewModel : ViewModelBase {
         target.PaycheckOccurrenceDate = clone.PaycheckOccurrenceDate;
     }
 
-    private void CancelAdHocTransaction() {
-        if (SelectedAdHocTransaction != null && SelectedAdHocTransaction.Id == 0) {
-            CurrentPeriodAdHocTransactions.Remove(SelectedAdHocTransaction);
+    private void CancelTransaction() {
+        if (SelectedTransaction != null && SelectedTransaction.Id == 0) {
+            CurrentPeriodTransactions.Remove(SelectedTransaction);
         }
 
-        IsEditingAdHocTransaction = false;
-        EditingAdHocTransactionClone = null;
+        IsEditingTransaction = false;
+        EditingTransactionClone = null;
     }
 
-    private void DeleteAdHocTransaction(AdHocTransaction? t) {
+    private void DeleteTransaction(Transaction? t) {
         if (t != null) {
             MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
                 "Are you sure you want to delete this transaction?", // Message
@@ -644,7 +642,7 @@ public class MainViewModel : ViewModelBase {
             // Check the user's response
             if (messageBoxResult == MessageBoxResult.Yes) {
                 // User confirmed deletion, proceed with your delete logic here
-                _budgetService.DeleteAdHocTransaction(t.Id);
+                _budgetService.DeleteTransaction(t.Id);
                 LoadPeriodBills();
                 CalculateProjections();
             }
@@ -834,13 +832,13 @@ public class MainViewModel : ViewModelBase {
             var buckets = _budgetService.GetAllBuckets();
             var periodBills = _budgetService.GetAllPeriodBills();
             var periodBuckets = _budgetService.GetAllPeriodBuckets();
-            var adHocTransactions = _budgetService.GetAllAdHocTransactions();
+            var transactions = _budgetService.GetAllTransactions();
 
             DateTime start = CurrentPeriodDate == DateTime.MinValue ? DateTime.Today : CurrentPeriodDate;
             DateTime end = start.AddYears(1);
 
             var results = _projectionEngine.CalculateProjections(
-                start, end, accounts, paychecks, bills, buckets, periodBills, periodBuckets, adHocTransactions);
+                start, end, accounts, paychecks, bills, buckets, periodBills, periodBuckets, transactions);
 
             Projections = new ObservableCollection<ProjectionItem>(results);
         }
@@ -869,8 +867,8 @@ public class MainViewModel : ViewModelBase {
     //     return allPaycheckDates.Where(d => d <= date).OrderByDescending(d => d).FirstOrDefault();
     // }
     
-    // public AdHocTransaction? GetAdHocForPaycheck(int paycheckId, DateTime date) {
-    //     return _budgetService.GetAllAdHocTransactions()
+    // public Transaction? GetForPaycheck(int paycheckId, DateTime date) {
+    //     return _budgetService.GetAllTransactions()
     //         .FirstOrDefault(a => a.PaycheckId == paycheckId && a.Date.Date == date.Date);
     // }
 
@@ -1042,10 +1040,10 @@ public class MainViewModel : ViewModelBase {
         CurrentPeriodBuckets = new ObservableCollection<PeriodBucket>(pBuckets);
         foreach (var pb in CurrentPeriodBuckets) pb.PropertyChanged += PeriodBucket_PropertyChanged;
 
-        var adHocs = _budgetService.GetAdHocTransactions(CurrentPeriodDate).ToList();
-        adHocs = adHocs.OrderBy(pb => pb.Date).ToList();
-        CurrentPeriodAdHocTransactions = new ObservableCollection<AdHocTransaction>(adHocs);
-        foreach (var t in CurrentPeriodAdHocTransactions) t.PropertyChanged += AdHocTransaction_PropertyChanged;
+        var transactions = _budgetService.GetTransactions(CurrentPeriodDate).ToList();
+        transactions = transactions.OrderBy(pb => pb.Date).ToList();
+        CurrentPeriodTransactions = new ObservableCollection<Transaction>(transactions);
+        foreach (var t in CurrentPeriodTransactions) t.PropertyChanged += Transaction_PropertyChanged;
     }
 
     private void InitializePeriod() {
@@ -1108,8 +1106,8 @@ public class MainViewModel : ViewModelBase {
         PeriodPaychecks = new ObservableCollection<Paycheck>(allPaychecks);
     }
 
-    public void SaveNewAdHoc(AdHocTransaction adHoc) {
-        _budgetService.UpsertAdHocTransaction(adHoc);
+    public void SaveNewTransaction(Transaction transaction) {
+        _budgetService.UpsertTransaction(transaction);
     }
     
     private void SetCurrentPeriodDate(int? id = null) {
@@ -1176,7 +1174,7 @@ public class MainViewModel : ViewModelBase {
         about.ShowDialog();
     }
     
-    private void ShowAmortization(Account? account) {
+    private void ShowAmortization(Account account) {
         var amortization = new AmortizationWindow(account) {
             Owner = Application.Current.MainWindow
         };

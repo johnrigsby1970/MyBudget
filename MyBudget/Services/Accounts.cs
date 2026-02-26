@@ -1,8 +1,5 @@
 ﻿using Dapper;
-using MyBudget.Data;
 using MyBudget.Models;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace MyBudget.Services;
 
@@ -97,11 +94,11 @@ public partial class BudgetService
             new { accountId });
         if (bucketCount > 0) return true;
 
-        // Check AdHocTransactions (AccountId or ToAccountId)
-        var adHocCount = conn.ExecuteScalar<int>(
-            "SELECT COUNT(*) FROM AdHocTransactions WHERE AccountId = @accountId OR ToAccountId = @accountId", 
+        // Check Transactions (AccountId or ToAccountId)
+        var transactionCount = conn.ExecuteScalar<int>(
+            "SELECT COUNT(*) FROM Transactions WHERE AccountId = @accountId OR ToAccountId = @accountId", 
             new { accountId });
-        if (adHocCount > 0) return true;
+        if (transactionCount > 0) return true;
 
         return false;
     }
