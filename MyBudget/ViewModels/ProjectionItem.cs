@@ -23,42 +23,42 @@ public class ProjectionItem : ViewModelBase
         {
             if (SetProperty(ref _amount, value))
             {
-                if (PaycheckId.HasValue && Date.Date <= DateTime.Today.Date)
-                {
-                    // Update or create AdHocTransaction
-                    var mainVM = MainViewModel.Instance;
-                    if (mainVM != null)
-                    {
-                        // Actually, we should use the service to find/create it based on Date and PaycheckId
-                        var existing = mainVM.GetAdHocForPaycheck(PaycheckId.Value, Date);
-                        if (existing != null)
-                        {
-                            existing.Amount = value;
-                        }
-                        else
-                        {
-                            // Create new one
-                            var cashAccount = mainVM.Accounts.FirstOrDefault(a => a.Name == "Household Cash");
-                            var paycheck = mainVM.Paychecks.FirstOrDefault(p => p.Id == PaycheckId.Value);
-
-                            // Find the correct period date for this Date
-                            DateTime pDate = mainVM.FindPeriodDateFor(Date);
-
-                            var adHoc = new AdHocTransaction
-                            {
-                                Description = Description,
-                                Amount = value,
-                                Date = Date,
-                                PeriodDate = pDate,
-                                ToAccountId = paycheck?.AccountId ?? cashAccount?.Id,
-                                PaycheckId = PaycheckId.Value
-                            };
-                            mainVM.SaveNewAdHoc(adHoc);
-                        }
-                        if (mainVM.IsCalculatingProjections) return;
-                        mainVM.CalculateProjections();
-                    }
-                }
+                // if (PaycheckId.HasValue && Date.Date <= DateTime.Today.Date)
+                // {
+                //     // Update or create AdHocTransaction
+                //     var mainVM = MainViewModel.Instance;
+                //     if (mainVM != null)
+                //     {
+                //         // Actually, we should use the service to find/create it based on Date and PaycheckId
+                //         var existing = mainVM.GetAdHocForPaycheck(PaycheckId.Value, Date);
+                //         if (existing != null)
+                //         {
+                //             existing.Amount = value;
+                //         }
+                //         else
+                //         {
+                //             // Create new one
+                //             var cashAccount = mainVM.Accounts.FirstOrDefault(a => a.Name == "Household Cash");
+                //             var paycheck = mainVM.Paychecks.FirstOrDefault(p => p.Id == PaycheckId.Value);
+                //
+                //             // Find the correct period date for this Date
+                //             DateTime pDate = mainVM.FindPeriodDateFor(Date);
+                //
+                //             var adHoc = new AdHocTransaction
+                //             {
+                //                 Description = Description,
+                //                 Amount = value,
+                //                 Date = Date,
+                //                 PeriodDate = pDate,
+                //                 ToAccountId = paycheck?.AccountId ?? cashAccount?.Id,
+                //                 PaycheckId = PaycheckId.Value
+                //             };
+                //             mainVM.SaveNewAdHoc(adHoc);
+                //         }
+                //         if (mainVM.IsCalculatingProjections) return;
+                //         mainVM.CalculateProjections();
+                //     }
+                // }
             }
         }
     }

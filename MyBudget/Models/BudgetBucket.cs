@@ -7,6 +7,7 @@ public class BudgetBucket : ViewModelBase
     private string _name = string.Empty;
     private decimal _expectedAmount;
     private int? _accountId;
+    private int? _paycheckId;
 
     public int Id { get; set; }
 
@@ -26,5 +27,11 @@ public class BudgetBucket : ViewModelBase
     {
         get => _accountId;
         set => SetProperty(ref _accountId, value);
+    }
+    
+    public int? PayCheckId
+    {
+        get => _paycheckId;
+        set => SetProperty(ref _paycheckId, value);
     }
 }

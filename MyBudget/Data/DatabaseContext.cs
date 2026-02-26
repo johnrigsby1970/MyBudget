@@ -170,6 +170,7 @@ public class DatabaseContext
                 Name TEXT NOT NULL,
                 ExpectedAmount DECIMAL NOT NULL,
                 AccountId INTEGER,
+                FOREIGN KEY(PayCheckId) REFERENCES PayChecks(Id),
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
             );
 
@@ -184,6 +185,22 @@ public class DatabaseContext
             );
         ");
   
+        var columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('AdHocTransactions') WHERE name='BillId'");
+        
+        if (columnExists == 0)
+        {
+            // If the table exists but the column doesn't, add it. 
+            // We check if table exists first.
+            var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='AdHocTransactions'");
+            
+            if (tableExists > 0)
+            {
+                connection.Execute("ALTER TABLE AdHocTransactions ADD COLUMN BillId INTEGER REFERENCES Bills(Id)");
+            }
+        }
+        
         // // Check if BalanceAsOf exists in Accounts table
         // var balanceAsOfExists = connection.ExecuteScalar<int>(@"
         //     SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='BalanceAsOf'");

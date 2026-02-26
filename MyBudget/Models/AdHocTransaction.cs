@@ -11,6 +11,7 @@ public class AdHocTransaction : ViewModelBase
     private int? _toAccountId; // For transfers
     private int? _paycheckId; // For associating with a projected paycheck
     private DateTime? _paycheckOccurrenceDate; // The date of the projected paycheck occurrence being replaced
+    private int? _billId; // For bill association
     private int? _bucketId; // For bucket association
     private DateTime _periodDate;
     private bool _isPrincipalOnly;
@@ -61,6 +62,12 @@ public class AdHocTransaction : ViewModelBase
         set => SetProperty(ref _paycheckOccurrenceDate, value);
     }
 
+    public int? BillId
+    {
+        get => _billId;
+        set => SetProperty(ref _billId, value);
+    }
+    
     public int? BucketId
     {
         get => _bucketId;
@@ -88,4 +95,6 @@ public class AdHocTransaction : ViewModelBase
     // Helper for UI
     public string? AccountName { get; set; }
     public string? ToAccountName { get; set; }
+    public string? BillName { get; set; }
+    public string? BucketName { get; set; }
 }
