@@ -20,3 +20,4 @@
 # Ignore all bin folders
 bin/
 obj/
+.idea/
