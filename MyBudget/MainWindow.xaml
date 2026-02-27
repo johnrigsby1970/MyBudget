@@ -86,10 +86,10 @@
                                         <DataGridTextColumn Header="Bill" Binding="{Binding BillName}"
                                                             IsReadOnly="True" Width="*" />
                                         <DataGridTextColumn Header="Due Date"
-                                                            Binding="{Binding DueDate, StringFormat=d}"
-                                                            IsReadOnly="True" Width="80" />
+                                                            Binding="{Binding DueDate, StringFormat=d, UpdateSourceTrigger=PropertyChanged, Delay=500}"
+                                                            IsReadOnly="False" Width="80" />
                                         <DataGridTextColumn Header="Actual Amount"
-                                                            Binding="{Binding ActualAmount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
+                                                            Binding="{Binding ActualAmount, StringFormat=C, UpdateSourceTrigger=PropertyChanged, Delay=500}"
                                                             Width="100" />
                                         <DataGridTemplateColumn Width="80">
                                             <DataGridTemplateColumn.CellTemplate>
@@ -128,7 +128,7 @@
                                         <DataGridTextColumn Header="Envelope" Binding="{Binding BucketName}"
                                                             IsReadOnly="True" Width="*" />
                                         <DataGridTextColumn Header="Actual Amount"
-                                                            Binding="{Binding ActualAmount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
+                                                            Binding="{Binding ActualAmount, StringFormat=C, UpdateSourceTrigger=PropertyChanged, Delay=500}"
                                                             Width="100" />
                                         <DataGridTemplateColumn Width="80">
                                             <DataGridTemplateColumn.CellTemplate>

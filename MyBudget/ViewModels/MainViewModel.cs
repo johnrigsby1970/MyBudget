@@ -491,6 +491,13 @@ public class MainViewModel : ViewModelBase {
             }
         }
     }
+    
+    private void UpdatePeriodBillFromClone(PeriodBill target, PeriodBill clone) {
+        target.Id = clone.Id;
+        target.ActualAmount = clone.ActualAmount;
+        target.DueDate = clone.DueDate;
+        target.IsPaid = clone.IsPaid;
+    }
 
     public ICommand DeleteBillCommand => new RelayCommand(b => DeleteBill(b as Bill));
 
@@ -1098,20 +1105,27 @@ public class MainViewModel : ViewModelBase {
         pBills = pBills.OrderBy(pb => pb.DueDate).ToList();
         // Always ensure projected bills for this period are in the database and collection
         var projectedBillsForPeriod = GetProjectedBillsForPeriod(CurrentPeriodDate);
-        bool addedAny = false;
+        //bool addedAny = false;
         foreach (var pb in projectedBillsForPeriod) {
-            if (!pBills.Any(existing => existing.BillId == pb.BillId && existing.DueDate.Date == pb.DueDate.Date)) {
-                _budgetService.UpsertPeriodBill(pb);
-                addedAny = true;
+            if (!pBills.Any(existing => existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date)) {
+                //Bills don't get added just because a period is viewed or is current. They get added if the amount differs
+                //_budgetService.UpsertPeriodBill(pb);
+                //addedAny = true;
+                
+            }
+            else {
+                var periodBill = pBills.SingleOrDefault(existing => existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date);
+                UpdatePeriodBillFromClone(pb, periodBill!);
             }
         }
 
-        if (addedAny) {
-            pBills = _budgetService.GetPeriodBills(CurrentPeriodDate).ToList();
-            pBills = pBills.OrderBy(pb => pb.DueDate).ToList();
-        }
-
-        CurrentPeriodBills = new ObservableCollection<PeriodBill>(pBills);
+        // if (addedAny) {
+        //     pBills = _budgetService.GetPeriodBills(CurrentPeriodDate).ToList();
+        //     pBills = pBills.OrderBy(pb => pb.DueDate).ToList();
+        // }
+        projectedBillsForPeriod = projectedBillsForPeriod.OrderBy(pb => pb.DueDate).ToList();
+        //CurrentPeriodBills = new ObservableCollection<PeriodBill>(pBills);
+        CurrentPeriodBills = new ObservableCollection<PeriodBill>(projectedBillsForPeriod);
         foreach (var pb in CurrentPeriodBills) pb.PropertyChanged += PeriodBill_PropertyChanged;
     }
 
@@ -1119,7 +1133,7 @@ public class MainViewModel : ViewModelBase {
         var pBuckets = _budgetService.GetPeriodBucketsIncludingMonthly(CurrentPeriodDate).ToList();
 
         // Same for buckets
-        bool addedAnyBucket = false;
+        //bool addedAnyBucket = false;
         foreach (var bucket in Buckets.Where(b=>b.PaycheckId == null || (b.PaycheckId == SelectedPeriodPaycheckId && !ShowByMonth))) {
             if (!pBuckets.Any(existing => existing.BucketId == bucket.Id)) {
                 var pb = new PeriodBucket {
@@ -1131,7 +1145,7 @@ public class MainViewModel : ViewModelBase {
                     FitId = Guid.NewGuid() 
                 };
                 pBuckets.Add(pb);
-                addedAnyBucket = true;
+                //addedAnyBucket = true;
             }
         }
         

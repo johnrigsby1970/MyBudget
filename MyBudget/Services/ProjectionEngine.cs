@@ -113,17 +113,19 @@ public class ProjectionEngine : IProjectionEngine {
             }
 
             while (nextDue < endDate) {
-                var pb = periodBills.FirstOrDefault(p => p.BillId == bill.Id && p.DueDate.Date == nextDue.Date);
+                //It is possible for the actual bill date to be different from the expected. If someone changes it in the period bill, we want to use the actual date
+                var pb = periodBills.FirstOrDefault(p => p.BillId == bill.Id && (p.DueDate.Date == nextDue.Date || (p.DueDate.Date >= new DateTime(nextDue.Year, nextDue.Month, 1) && p.DueDate.Date <= new DateTime(nextDue.Year, nextDue.Month, DateTime.DaysInMonth(nextDue.Year, nextDue.Month)))));
                 decimal amountToUse = (pb != null) ? pb.ActualAmount : bill.ExpectedAmount;
+                DateTime dueDate = (pb != null) ? pb.DueDate : nextDue;
                 string paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";
 
                 int? fromAccId = bill.AccountId ?? primaryChecking;
                 if (bill.ToAccountId.HasValue) {
-                    events.Add((nextDue, amountToUse, $"Transfer: {bill.Name}{paidSuffix}", fromAccId,
+                    events.Add((dueDate, amountToUse, $"Transfer: {bill.Name}{paidSuffix}", fromAccId,
                         bill.ToAccountId.Value, null, null, null, ProjectionEventType.Transfer, false, false));
                 }
                 else {
-                    events.Add((nextDue, -amountToUse, $"Bill: {bill.Name}{paidSuffix}", fromAccId, null, null, null,
+                    events.Add((dueDate, -amountToUse, $"Bill: {bill.Name}{paidSuffix}", fromAccId, null, null, null,
                         null, ProjectionEventType.Bill, false, false));
                 }
 
@@ -143,6 +145,13 @@ public class ProjectionEngine : IProjectionEngine {
             foreach (var pay in paychecks) {
                 DateTime nextPay = pay.StartDate;
                 while (nextPay < endDate) {
+                    var payPeriodEndDate = (pay.Frequency switch {
+                        Frequency.Weekly => nextPay.AddDays(7),
+                        Frequency.BiWeekly => nextPay.AddDays(14),
+                        Frequency.Monthly => nextPay.AddMonths(1),
+                        _ => nextPay.AddYears(100)
+                    }).AddDays(-1);
+                        
                     if (nextPay >= current && (pay.EndDate == null || nextPay <= pay.EndDate)) {
                         PeriodBucket?  pb = periodBuckets.FirstOrDefault(p =>
                                 p.BucketId == bucket.Id && (p.PeriodDate.Date == nextPay.Date));
@@ -151,7 +160,12 @@ public class ProjectionEngine : IProjectionEngine {
                         string paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";
 
                         int? fromAccId = bucket.AccountId ?? primaryChecking;
-                        events.Add((nextPay, -amountToUse, $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
+                        //events.Add((nextPay, -amountToUse, $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
+                        //    bucket.Id, null, null, ProjectionEventType.Bucket, false, false));
+                        
+                        //Because bucket money is expected money, not real transactions, we should apply them as late in the 
+                        //period as possible so that the user can watch their account balance reflect actual transactions.
+                        events.Add((payPeriodEndDate, -amountToUse, $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
                             bucket.Id, null, null, ProjectionEventType.Bucket, false, false));
                     }
 
