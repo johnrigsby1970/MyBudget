@@ -137,14 +137,16 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        // 3. Buckets
-        foreach (var bucket in buckets) {
+        var monthlyBuckets = new List<(int, DateTime)>();
+        // 3. Buckets that are specific to a pay check and thus pay period
+        foreach (var bucket in buckets.Where(x=>x.PaycheckId.HasValue)) {
             foreach (var pay in paychecks) {
                 DateTime nextPay = pay.StartDate;
                 while (nextPay < endDate) {
                     if (nextPay >= current && (pay.EndDate == null || nextPay <= pay.EndDate)) {
-                        var pb = periodBuckets.FirstOrDefault(p =>
-                            p.BucketId == bucket.Id && p.PeriodDate.Date == nextPay.Date);
+                        PeriodBucket?  pb = periodBuckets.FirstOrDefault(p =>
+                                p.BucketId == bucket.Id && (p.PeriodDate.Date == nextPay.Date));
+                        
                         decimal amountToUse = (pb != null) ? pb.ActualAmount : bucket.ExpectedAmount;
                         string paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";
 

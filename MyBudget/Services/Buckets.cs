@@ -16,12 +16,12 @@ public partial class BudgetService
         using var conn = _db.GetConnection();
         if (bucket.Id == 0)
         {
-            conn.Execute(@"INSERT INTO Buckets (Name, ExpectedAmount, AccountId, PayCheckId) 
-                           VALUES (@Name, @ExpectedAmount, @AccountId, @PayCheckId)", bucket);
+            conn.Execute(@"INSERT INTO Buckets (Name, ExpectedAmount, AccountId, PaycheckId) 
+                           VALUES (@Name, @ExpectedAmount, @AccountId, @PaycheckId)", bucket);
         }
         else
         {
-            conn.Execute(@"UPDATE Buckets SET Name=@Name, ExpectedAmount=@ExpectedAmount, AccountId=@AccountId, PayCheckId=@PayCheckId WHERE Id=@Id", bucket);
+            conn.Execute(@"UPDATE Buckets SET Name=@Name, ExpectedAmount=@ExpectedAmount, AccountId=@AccountId, PaycheckId=@PaycheckId WHERE Id=@Id", bucket);
         }
     }
 

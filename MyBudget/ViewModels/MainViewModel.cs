@@ -19,15 +19,18 @@ public class MainViewModel : ViewModelBase {
     private ObservableCollection<Transaction> _currentPeriodTransactions = new();
     private Bill? _selectedBill;
     private BudgetBucket? _selectedBucket;
+    private PeriodBucket? _selectedPeriodBucket;
     private Account? _selectedAccount;
     private Transaction? _selectedTransaction;
     private bool _isEditingBill;
     private bool _isEditingBucket;
+    private bool _isEditingPeriodBucket;
     private bool _isEditingAccount;
     private bool _isEditingTransaction;
     private bool _isCalculatingProjections;
     private Bill? _editingBillClone;
     private BudgetBucket? _editingBucketClone;
+    private PeriodBucket? _editingPeriodBucketClone;
     private Account? _editingAccountClone;
     private Transaction? _editingTransactionClone;
     private Paycheck? _editingPaycheckClone;
@@ -48,7 +51,7 @@ public class MainViewModel : ViewModelBase {
         _projectionEngine = new ProjectionEngine();
         LoadData();
         InitializePeriod();
-        LoadPeriodBills();
+        LoadPeriodData();
         CalculateProjections();
     }
 
@@ -101,7 +104,7 @@ public class MainViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _showByMonth, value)) {
                 InitializePeriod();
-                LoadPeriodBills();
+                LoadPeriodData();
             }
         }
     }
@@ -133,7 +136,7 @@ public class MainViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _currentPeriodDate, value)) {
                 OnPropertyChanged(nameof(PeriodDisplay));
-                LoadPeriodBills();
+                LoadPeriodData();
             }
         }
     }
@@ -155,6 +158,16 @@ public class MainViewModel : ViewModelBase {
             }
         }
     }
+
+    public PeriodBucket? SelectedPeriodBucket {
+        get => _selectedPeriodBucket;
+        set {
+            if (SetProperty(ref _selectedPeriodBucket, value)) {
+                OnPropertyChanged(nameof(CanEditPeriodBucket));
+            }
+        } 
+    }
+    
 
     public Account? SelectedAccount {
         get => _selectedAccount;
@@ -211,6 +224,16 @@ public class MainViewModel : ViewModelBase {
     
     public bool CanEditPaycheck => SelectedPaycheck != null && !IsEditingPaycheck;
     
+    public bool IsEditingPeriodBucket {
+        get => _isEditingPeriodBucket;
+        set {
+            if (SetProperty(ref _isEditingPeriodBucket, value)) {
+                OnPropertyChanged(nameof(IsNotEditingPeriodBucket));
+                OnPropertyChanged(nameof(CanEditPeriodBucket));
+            }
+        }
+    }
+    
     public bool IsEditingBucket {
         get => _isEditingBucket;
         set {
@@ -222,7 +245,13 @@ public class MainViewModel : ViewModelBase {
     }
 
     public bool IsNotEditingBucket => !IsEditingBucket;
+    
     public bool CanEditBucket => SelectedBucket != null && !IsEditingBucket;
+    
+    public bool IsNotEditingPeriodBucket => !IsEditingPeriodBucket;
+    
+    public bool CanEditPeriodBucket => SelectedPeriodBucket != null && !IsEditingPeriodBucket;
+    
 
     public bool IsEditingAccount {
         get => _isEditingAccount;
@@ -259,7 +288,12 @@ public class MainViewModel : ViewModelBase {
         get => _editingBucketClone;
         set => SetProperty(ref _editingBucketClone, value);
     }
-
+    
+    public PeriodBucket? EditingPeriodBucketClone {
+        get => _editingPeriodBucketClone;
+        set => SetProperty(ref _editingPeriodBucketClone, value);
+    }
+    
     public Account? EditingAccountClone {
         get => _editingAccountClone;
         set => SetProperty(ref _editingAccountClone, value);
@@ -281,11 +315,18 @@ public class MainViewModel : ViewModelBase {
     public ICommand SaveBillCommand => new RelayCommand(_ => SaveBill(), _ => IsEditingBill);
     public ICommand CancelBillCommand => new RelayCommand(_ => CancelBill(), _ => IsEditingBill);
     public ICommand DeletePeriodBillCommand => new RelayCommand(pb => DeletePeriodBill(pb as PeriodBill));
+    
     public ICommand AddBucketCommand => new RelayCommand(_ => AddBucket(), _ => IsNotEditingBucket);
     public ICommand EditBucketCommand => new RelayCommand(_ => EditBucket(), _ => CanEditBucket);
     public ICommand SaveBucketCommand => new RelayCommand(_ => SaveBucket(), _ => IsEditingBucket);
     public ICommand CancelBucketCommand => new RelayCommand(_ => CancelBucket(), _ => IsEditingBucket);
+    public ICommand DeleteBucketCommand => new RelayCommand(b => DeleteBucket(b as BudgetBucket));
+    
+    public ICommand EditPeriodBucketCommand => new RelayCommand(_ => EditPeriodBucket(), _ => CanEditPeriodBucket);
+    public ICommand SavePeriodBucketCommand => new RelayCommand(_ => SavePeriodBucket(), _ => IsEditingPeriodBucket);
+    public ICommand CancelPeriodBucketCommand => new RelayCommand(_ => CancelPeriodBucket(), _ => IsEditingPeriodBucket);
     public ICommand DeletePeriodBucketCommand => new RelayCommand(pb => DeletePeriodBucket(pb as PeriodBucket));
+    
 
     public ICommand AddTransactionCommand =>
         new RelayCommand(_ => AddTransaction(), _ => IsNotEditingTransaction);
@@ -337,7 +378,7 @@ public class MainViewModel : ViewModelBase {
             RefreshPaychecks();
             if (p.Id == _selectedPeriodPaycheckId) {
                 OnPropertyChanged(nameof(SelectedPeriodPaycheckId));
-                LoadPeriodBills();
+                LoadPeriodData();
             }
         }
 
@@ -349,6 +390,7 @@ public class MainViewModel : ViewModelBase {
     private void PeriodBill_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
         if (sender is PeriodBill pb) {
             _budgetService.UpsertPeriodBill(pb);
+            LoadPeriodData();
             CalculateProjections();
         }
     }
@@ -356,6 +398,7 @@ public class MainViewModel : ViewModelBase {
     private void PeriodBucket_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
         if (sender is PeriodBucket pb) {
             _budgetService.UpsertPeriodBucket(pb);
+            LoadPeriodData();
             CalculateProjections();
         }
     }
@@ -363,6 +406,7 @@ public class MainViewModel : ViewModelBase {
     private void Transaction_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
         if (sender is Transaction t) {
             _budgetService.UpsertTransaction(t);
+            LoadPeriodData();
             CalculateProjections();
         }
     }
@@ -431,18 +475,18 @@ public class MainViewModel : ViewModelBase {
 
     private void DeletePeriodBill(PeriodBill? pb) {
         if (pb != null) {
-            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
+            MessageBoxResult messageBoxResult = MessageBox.Show(
                 "Are you sure you want to delete this period's bill?", // Message
                 "Delete Confirmation", // Title
-                System.Windows.MessageBoxButton.YesNo, // Buttons
-                System.Windows.MessageBoxImage.Warning // Icon
+                MessageBoxButton.YesNo, // Buttons
+                MessageBoxImage.Warning // Icon
             );
 
             // Check the user's response
             if (messageBoxResult == MessageBoxResult.Yes) {
                 // User confirmed deletion, proceed with your delete logic here
                 _budgetService.DeletePeriodBill(pb.Id);
-                LoadPeriodBills();
+                LoadPeriodData();
                 CalculateProjections();
             }
         }
@@ -452,11 +496,11 @@ public class MainViewModel : ViewModelBase {
 
     private void DeleteBill(Bill? b) {
         if (b != null) {
-            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
+            MessageBoxResult messageBoxResult = MessageBox.Show(
                 "Are you sure you want to delete this bill?", // Message
                 "Delete Confirmation", // Title
-                System.Windows.MessageBoxButton.YesNo, // Buttons
-                System.Windows.MessageBoxImage.Warning // Icon
+                MessageBoxButton.YesNo, // Buttons
+                MessageBoxImage.Warning // Icon
             );
 
             // Check the user's response
@@ -492,7 +536,7 @@ public class MainViewModel : ViewModelBase {
             IsEditingBucket = true;
         }
     }
-
+    
     private void SaveBucket() {
         //if (EditingBucketClone != null && SelectedBucket != null) {
         if (EditingBucketClone != null) {
@@ -510,47 +554,26 @@ public class MainViewModel : ViewModelBase {
             CalculateProjections();
         }
     }
-
+    
     private void UpdateBucketFromClone(BudgetBucket target, BudgetBucket clone) {
         target.Name = clone.Name;
         target.ExpectedAmount = clone.ExpectedAmount;
         target.AccountId = clone.AccountId;
-        target.PayCheckId = clone.PayCheckId;
+        target.PaycheckId = clone.PaycheckId;
     }
-
+    
     private void CancelBucket() {
         IsEditingBucket = false;
         EditingBucketClone = null;
     }
-
-    private void DeletePeriodBucket(PeriodBucket? pb) {
-        if (pb != null) {
-            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
-                "Are you sure you want to delete this period's bucket?", // Message
-                "Delete Confirmation", // Title
-                System.Windows.MessageBoxButton.YesNo, // Buttons
-                System.Windows.MessageBoxImage.Warning // Icon
-            );
-
-            // Check the user's response
-            if (messageBoxResult == MessageBoxResult.Yes) {
-                // User confirmed deletion, proceed with your delete logic here
-                _budgetService.DeletePeriodBucket(pb.Id);
-                LoadPeriodBills();
-                CalculateProjections();
-            }
-        }
-    }
-
-    public ICommand DeleteBucketCommand => new RelayCommand(b => DeleteBucket(b as BudgetBucket));
-
+    
     private void DeleteBucket(BudgetBucket? b) {
         if (b != null) {
-            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
+            MessageBoxResult messageBoxResult = MessageBox.Show(
                 "Are you sure you want to delete this bucket?", // Message
                 "Delete Confirmation", // Title
-                System.Windows.MessageBoxButton.YesNo, // Buttons
-                System.Windows.MessageBoxImage.Warning // Icon
+                MessageBoxButton.YesNo, // Buttons
+                MessageBoxImage.Warning // Icon
             );
 
             // Check the user's response
@@ -558,6 +581,74 @@ public class MainViewModel : ViewModelBase {
                 // User confirmed deletion, proceed with your delete logic here
                 _budgetService.DeleteBucket(b.Id);
                 LoadData();
+                CalculateProjections();
+            }
+        }
+    }
+    
+    private void EditPeriodBucket() {
+        //until a user customizes a bucket, it uses the budgeted bucket and the period bucket is a copy of that.
+        if (SelectedPeriodBucket != null) {
+            EditingPeriodBucketClone = new PeriodBucket {
+                Id = SelectedPeriodBucket.Id, 
+                BucketName = SelectedPeriodBucket.BucketName,
+                ActualAmount = SelectedPeriodBucket.ActualAmount,
+                BucketId = SelectedPeriodBucket.BucketId,
+                FitId = SelectedPeriodBucket.FitId,
+                PeriodDate = SelectedPeriodBucket.PeriodDate,
+                IsPaid = SelectedPeriodBucket.IsPaid
+            };
+            IsEditingPeriodBucket = true;
+        }
+    }
+    
+    private void SavePeriodBucket() {
+        //until a user customizes a bucket, it uses the budgeted bucket and the period bucket is a copy of that.
+        if (EditingPeriodBucketClone != null) {
+            if (SelectedPeriodBucket != null) {
+                UpdatePeriodBucketFromClone(SelectedPeriodBucket, EditingPeriodBucketClone);
+                //_budgetService.UpsertPeriodBucket(SelectedPeriodBucket);
+            }
+            else {
+                _budgetService.UpsertPeriodBucket(EditingPeriodBucketClone);
+            }
+
+            LoadPeriodData();
+            IsEditingPeriodBucket = false;
+            EditingPeriodBucketClone = null;
+            CalculateProjections();
+        }
+    }
+
+    private void UpdatePeriodBucketFromClone(PeriodBucket target, PeriodBucket clone) {
+        target.Id = clone.Id;
+        target.BucketName = clone.BucketName;
+        target.ActualAmount = clone.ActualAmount;
+        target.BucketId = clone.BucketId;
+        target.FitId = clone.FitId;
+        target.PeriodDate = clone.PeriodDate;
+        target.IsPaid = clone.IsPaid;
+    }
+
+    private void CancelPeriodBucket() {
+        IsEditingPeriodBucket = false;
+        EditingPeriodBucketClone = null;
+    }
+    
+    private void DeletePeriodBucket(PeriodBucket? pb) {
+        if (pb != null) {
+            MessageBoxResult messageBoxResult = MessageBox.Show(
+                "Are you sure you want to delete this period's bucket?\r\n\r\nIt will use the budgetted amount for the bucket instead. Save a $0 amount if you do not want to budget for this bucket for this period.", // Message
+                "Delete Confirmation", // Title
+                MessageBoxButton.YesNo, // Buttons
+                MessageBoxImage.Warning // Icon
+            );
+
+            // Check the user's response
+            if (messageBoxResult == MessageBoxResult.Yes) {
+                // User confirmed deletion, proceed with your delete logic here
+                _budgetService.DeletePeriodBucket(pb.Id);
+                LoadPeriodData();
                 CalculateProjections();
             }
         }
@@ -602,7 +693,7 @@ public class MainViewModel : ViewModelBase {
             IsEditingTransaction = false;
             EditingTransactionClone = null;
             
-            LoadPeriodBills();
+            LoadPeriodData();
             CalculateProjections();
         }
     }
@@ -632,18 +723,18 @@ public class MainViewModel : ViewModelBase {
 
     private void DeleteTransaction(Transaction? t) {
         if (t != null) {
-            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
+            MessageBoxResult messageBoxResult = MessageBox.Show(
                 "Are you sure you want to delete this transaction?", // Message
                 "Delete Confirmation", // Title
-                System.Windows.MessageBoxButton.YesNo, // Buttons
-                System.Windows.MessageBoxImage.Warning // Icon
+                MessageBoxButton.YesNo, // Buttons
+                MessageBoxImage.Warning // Icon
             );
 
             // Check the user's response
             if (messageBoxResult == MessageBoxResult.Yes) {
                 // User confirmed deletion, proceed with your delete logic here
                 _budgetService.DeleteTransaction(t.Id);
-                LoadPeriodBills();
+                LoadPeriodData();
                 CalculateProjections();
             }
         }
@@ -724,11 +815,11 @@ public class MainViewModel : ViewModelBase {
 
     private void DeletePaycheck(Paycheck? p) {
         if (p != null) {
-            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
+            MessageBoxResult messageBoxResult = MessageBox.Show(
                 "Are you sure you want to delete this paycheck?", // Message
                 "Delete Confirmation", // Title
-                System.Windows.MessageBoxButton.YesNo, // Buttons
-                System.Windows.MessageBoxImage.Warning // Icon
+                MessageBoxButton.YesNo, // Buttons
+                MessageBoxImage.Warning // Icon
             );
 
             // Check the user's response
@@ -801,11 +892,11 @@ public class MainViewModel : ViewModelBase {
 
     private void DeleteAccount(Account? a) {
         if (a != null) {
-            MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
+            MessageBoxResult messageBoxResult = MessageBox.Show(
                 "Are you sure you want to delete this account?", // Message
                 "Delete Confirmation", // Title
-                System.Windows.MessageBoxButton.YesNo, // Buttons
-                System.Windows.MessageBoxImage.Warning // Icon
+                MessageBoxButton.YesNo, // Buttons
+                MessageBoxImage.Warning // Icon
             );
 
             // Check the user's response
@@ -995,6 +1086,12 @@ public class MainViewModel : ViewModelBase {
 
         SetCurrentPeriodDate();
     }
+    
+    private void LoadPeriodData() {
+        LoadPeriodBills();
+        LoadPeriodBuckets();
+        LoadPeriodTransactions();
+    }
 
     private void LoadPeriodBills() {
         var pBills = _budgetService.GetPeriodBills(CurrentPeriodDate).ToList();
@@ -1016,36 +1113,39 @@ public class MainViewModel : ViewModelBase {
 
         CurrentPeriodBills = new ObservableCollection<PeriodBill>(pBills);
         foreach (var pb in CurrentPeriodBills) pb.PropertyChanged += PeriodBill_PropertyChanged;
+    }
 
-        var pBuckets = _budgetService.GetPeriodBuckets(CurrentPeriodDate).ToList();
+    private void LoadPeriodBuckets() {
+        var pBuckets = _budgetService.GetPeriodBucketsIncludingMonthly(CurrentPeriodDate).ToList();
 
         // Same for buckets
         bool addedAnyBucket = false;
-        foreach (var bucket in Buckets) {
+        foreach (var bucket in Buckets.Where(b=>b.PaycheckId == null || (b.PaycheckId == SelectedPeriodPaycheckId && !ShowByMonth))) {
             if (!pBuckets.Any(existing => existing.BucketId == bucket.Id)) {
                 var pb = new PeriodBucket {
                     BucketId = bucket.Id,
                     BucketName = bucket.Name,
-                    PeriodDate = CurrentPeriodDate,
+                    PeriodDate = bucket.PaycheckId == null ? new DateTime(CurrentPeriodDate.Year, CurrentPeriodDate.Month, 1) : CurrentPeriodDate,
                     ActualAmount = bucket.ExpectedAmount,
-                    IsPaid = false
+                    IsPaid = false,
+                    FitId = Guid.NewGuid() 
                 };
-                _budgetService.UpsertPeriodBucket(pb);
+                pBuckets.Add(pb);
                 addedAnyBucket = true;
             }
         }
-
-        if (addedAnyBucket) pBuckets = _budgetService.GetPeriodBuckets(CurrentPeriodDate).ToList();
-
+        
         CurrentPeriodBuckets = new ObservableCollection<PeriodBucket>(pBuckets);
         foreach (var pb in CurrentPeriodBuckets) pb.PropertyChanged += PeriodBucket_PropertyChanged;
-
+    }
+        
+    private void LoadPeriodTransactions() {
         var transactions = _budgetService.GetTransactions(CurrentPeriodDate).ToList();
         transactions = transactions.OrderBy(pb => pb.Date).ToList();
         CurrentPeriodTransactions = new ObservableCollection<Transaction>(transactions);
         foreach (var t in CurrentPeriodTransactions) t.PropertyChanged += Transaction_PropertyChanged;
     }
-
+            
     private void InitializePeriod() {
         if (ShowByMonth) {
             CurrentPeriodDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
@@ -1058,7 +1158,7 @@ public class MainViewModel : ViewModelBase {
     private void NavigatePeriod(int direction) {
         if (ShowByMonth) {
             CurrentPeriodDate = CurrentPeriodDate.AddMonths(direction);
-            LoadPeriodBills();
+            LoadPeriodData();
             return;
         }
 
@@ -1091,9 +1191,8 @@ public class MainViewModel : ViewModelBase {
             if (nextIndex >= 0 && nextIndex < sortedDates.Count)
                 CurrentPeriodDate = sortedDates[nextIndex];
         }
-
-        //InitializePeriod();
-        LoadPeriodBills();
+        
+        LoadPeriodData();
     }
     
     private void RefreshPaychecks() {

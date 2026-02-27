@@ -104,14 +104,28 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </TabItem>
-                            <TabItem Header="Buckets">
-                                <DataGrid ItemsSource="{Binding CurrentPeriodBuckets}" AutoGenerateColumns="False"
-                                          CanUserAddRows="False">
+                            <TabItem Header="Envelopes">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5">
+                                        <Button Content="Edit" Command="{Binding EditPeriodBucketCommand}"
+                                                Visibility="{Binding CanEditPeriodBucket, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                Margin="2" />
+                                    </StackPanel>
+                                    
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <DataGrid ItemsSource="{Binding CurrentPeriodBuckets}" 
+                                              SelectedItem="{Binding SelectedPeriodBucket}"
+                                              AutoGenerateColumns="False"
+                                              CanUserAddRows="False">
                                     <DataGrid.Columns>
                                         <DataGridCheckBoxColumn Header="Paid"
                                                                 Binding="{Binding IsPaid, UpdateSourceTrigger=PropertyChanged}"
                                                                 Width="40" />
-                                        <DataGridTextColumn Header="Bucket" Binding="{Binding BucketName}"
+                                        <DataGridTextColumn Header="Envelope" Binding="{Binding BucketName}"
                                                             IsReadOnly="True" Width="*" />
                                         <DataGridTextColumn Header="Actual Amount"
                                                             Binding="{Binding ActualAmount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
@@ -128,6 +142,43 @@
                                         </DataGridTemplateColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
+                                    
+                                     <StackPanel Grid.Row="1" Margin="10"
+                                        Visibility="{Binding IsEditingPeriodBucket, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="Edit Period Bucket" FontWeight="Bold" Margin="0,0,0,5" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <Label Grid.Column="0" Content="Name:" />
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding EditingPeriodBucketClone.BucketName, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="False"
+                                             Margin="5" />
+
+                                    <Label Grid.Column="2" Content="Budgeted:" />
+                                    <TextBox Grid.Column="3"
+                                             Text="{Binding EditingPeriodBucketClone.ActualAmount, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}"
+                                             Margin="5" />
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                            Margin="0,5,0,0">
+                                    <Button Content="Save" Command="{Binding SavePeriodBucketCommand}"
+                                            Width="80" Margin="2" />
+                                    <Button Content="Cancel"
+                                            Command="{Binding CancelPeriodBucketCommand}" Width="80"
+                                            Margin="2" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </DockPanel>
                             </TabItem>
                             <TabItem Header="Transaction">
                                 <DockPanel>
@@ -273,10 +324,10 @@
                         </TabControl>
                     </DockPanel>
                 </TabItem>
-                <TabItem Header="Buckets">
+                <TabItem Header="Envelopes">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="Add Bucket" Command="{Binding AddBucketCommand}" Margin="5"  Width="80"
+                            <Button Content="Add Envelope" Command="{Binding AddBucketCommand}" Margin="5"  Width="80"
                                     Visibility="{Binding IsNotEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
                             <Button Content="Edit" Command="{Binding EditBucketCommand}" Margin="5"  Width="80"
                                     Visibility="{Binding CanEditBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />

@@ -14,6 +14,17 @@ public partial class BudgetService
             JOIN Buckets b ON pb.BucketId = b.Id 
             WHERE pb.PeriodDate = @periodDate", new { periodDate = periodDate.ToString("yyyy-MM-dd") });
     }
+    
+    public IEnumerable<PeriodBucket> GetPeriodBucketsIncludingMonthly(DateTime periodDate)
+    {
+        using var conn = _db.GetConnection();
+        var month = new DateTime(periodDate.Year, periodDate.Month, 1);
+        return conn.Query<PeriodBucket>(@"
+            SELECT pb.*, b.Name as BucketName 
+            FROM PeriodBuckets pb 
+            JOIN Buckets b ON pb.BucketId = b.Id 
+            WHERE pb.PeriodDate = @periodDate OR pb.PeriodDate = @month", new { periodDate = periodDate.ToString("yyyy-MM-dd"), month = month.ToString("yyyy-MM-dd") });
+    }
 
     public IEnumerable<PeriodBucket> GetAllPeriodBuckets()
     {

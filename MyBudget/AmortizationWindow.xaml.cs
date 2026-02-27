@@ -16,7 +16,7 @@ namespace MyBudget
         {
             if (account.MortgageDetails == null) return;
 
-            var schedule = new System.Collections.Generic.List<AmortizationItem>();
+            var schedule = new List<AmortizationItem>();
             decimal balance = account.Balance;
             decimal monthlyInterestRate = account.MortgageDetails.InterestRate / 100 / 12;
             decimal escrowInsurance = account.MortgageDetails.Escrow + account.MortgageDetails.MortgageInsurance;

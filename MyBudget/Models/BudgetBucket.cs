@@ -29,7 +29,7 @@ public class BudgetBucket : ViewModelBase
         set => SetProperty(ref _accountId, value);
     }
     
-    public int? PayCheckId
+    public int? PaycheckId
     {
         get => _paycheckId;
         set => SetProperty(ref _paycheckId, value);

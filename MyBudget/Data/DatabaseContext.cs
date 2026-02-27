@@ -168,7 +168,7 @@ public class DatabaseContext
                 Name TEXT NOT NULL,
                 ExpectedAmount DECIMAL NOT NULL,
                 AccountId INTEGER,
-                FOREIGN KEY(PayCheckId) REFERENCES PayChecks(Id),
+                FOREIGN KEY(PaycheckId) REFERENCES Paychecks(Id),
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
             );
 
