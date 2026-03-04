@@ -675,12 +675,19 @@ public class MainViewModel : ViewModelBase {
     private void EditTransaction() {
         if (SelectedTransaction != null) {
             EditingTransactionClone = new Transaction {
-                Id = SelectedTransaction.Id, Description = SelectedTransaction.Description,
-                Amount = SelectedTransaction.Amount, Date = SelectedTransaction.Date,
-                AccountId = SelectedTransaction.AccountId, ToAccountId = SelectedTransaction.ToAccountId,
-                BucketId = SelectedTransaction.BucketId, PeriodDate = SelectedTransaction.PeriodDate,
+                Id = SelectedTransaction.Id, 
+                Description = SelectedTransaction.Description,
+                Amount = SelectedTransaction.Amount, 
+                Date = SelectedTransaction.Date,
+                AccountId = SelectedTransaction.AccountId, 
+                ToAccountId = SelectedTransaction.ToAccountId,
+                BucketId = SelectedTransaction.BucketId, 
+                PeriodDate = SelectedTransaction.PeriodDate,
                 IsPrincipalOnly = SelectedTransaction.IsPrincipalOnly,
-                IsRebalance = SelectedTransaction.IsRebalance, PaycheckId = SelectedTransaction.PaycheckId,
+                IsRebalance = SelectedTransaction.IsRebalance, 
+                PaycheckId = SelectedTransaction.PaycheckId,
+                BillId = SelectedTransaction.BillId,
+                BillName = SelectedTransaction.BillName,
                 PaycheckOccurrenceDate = SelectedTransaction.PaycheckOccurrenceDate
             };
             IsEditingTransaction = true;

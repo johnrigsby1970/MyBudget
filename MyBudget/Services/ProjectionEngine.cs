@@ -57,7 +57,7 @@ public class ProjectionEngine : IProjectionEngine {
         var events =
             new List<(DateTime Date, decimal Amount, string Description, int? FromAccountId, int? ToAccountId, int?
                 BucketId, int? PaycheckId, DateTime? PaycheckOccurrenceDate, ProjectionEventType Type, bool
-                IsPrincipalOnly, bool IsRebalance)>();
+                IsPrincipalOnly, bool IsRebalance, bool IsReconciled)>();
 
         // 1. Paychecks
         var cashAccount = accounts.FirstOrDefault(a => a.Name == "Household Cash");
@@ -81,7 +81,7 @@ public class ProjectionEngine : IProjectionEngine {
                     if (transactionOverride == null) {
                         int? toAccountId = pay.AccountId ?? cashAccount?.Id;
                         events.Add((nextPay, pay.ExpectedAmount, $"Expected Pay: {pay.Name}", null, toAccountId, null,
-                            pay.Id, nextPay, ProjectionEventType.Paycheck, false, false));
+                            pay.Id, nextPay, ProjectionEventType.Paycheck, false, false, false));
                     }
                 }
 
@@ -115,19 +115,31 @@ public class ProjectionEngine : IProjectionEngine {
             while (nextDue < endDate) {
                 //It is possible for the actual bill date to be different from the expected. If someone changes it in the period bill, we want to use the actual date
                 var pb = periodBills.FirstOrDefault(p => p.BillId == bill.Id && (p.DueDate.Date == nextDue.Date || (p.DueDate.Date >= new DateTime(nextDue.Year, nextDue.Month, 1) && p.DueDate.Date <= new DateTime(nextDue.Year, nextDue.Month, DateTime.DaysInMonth(nextDue.Year, nextDue.Month)))));
-                decimal amountToUse = (pb != null) ? pb.ActualAmount : bill.ExpectedAmount;
-                DateTime dueDate = (pb != null) ? pb.DueDate : nextDue;
-                string paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";
+                if (pb?.BillName=="WJCT") {
+                    var s = "";
+                }
+                var isPaid = pb != null && transactions.Any(t =>
+                        t.BillId == bill.Id && (t.Date >= nextDue || (Math.Abs((t.Date - nextDue).TotalDays) <= 14) ) && t.Date >= pb.PeriodDate && t.Date <= pb.PeriodDate.AddDays(28));//some arbitrary thresholds
+                if (isPaid) {
+                    var s = "";
+                }
+                if (!isPaid) {
+                    //bill has been paid by a logged transaction. We will use the logged transaction instead of the expected bill or paid period bill entry.
+                    decimal amountToUse = (pb != null) ? pb.ActualAmount : bill.ExpectedAmount;
+                    DateTime dueDate = (pb != null) ? pb.DueDate : nextDue;
+                    string paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";
 
-                int? fromAccId = bill.AccountId ?? primaryChecking;
-                if (bill.ToAccountId.HasValue) {
-                    events.Add((dueDate, amountToUse, $"Transfer: {bill.Name}{paidSuffix}", fromAccId,
-                        bill.ToAccountId.Value, null, null, null, ProjectionEventType.Transfer, false, false));
+                    int? fromAccId = bill.AccountId ?? primaryChecking;
+                    if (bill.ToAccountId.HasValue) {
+                        events.Add((dueDate, amountToUse, $"Transfer: {bill.Name}{paidSuffix}", fromAccId,
+                            bill.ToAccountId.Value, null, null, null, ProjectionEventType.Transfer, false, false, false));
+                    }
+                    else {
+                        events.Add((dueDate, -amountToUse, $"Bill: {bill.Name}{paidSuffix}", fromAccId, null, null, null,
+                            null, ProjectionEventType.Bill, false, false, false));
+                    }
                 }
-                else {
-                    events.Add((dueDate, -amountToUse, $"Bill: {bill.Name}{paidSuffix}", fromAccId, null, null, null,
-                        null, ProjectionEventType.Bill, false, false));
-                }
+                
 
                 nextDue = bill.Frequency switch {
                     Frequency.Monthly => nextDue.AddMonths(1),
@@ -166,7 +178,7 @@ public class ProjectionEngine : IProjectionEngine {
                         //Because bucket money is expected money, not real transactions, we should apply them as late in the 
                         //period as possible so that the user can watch their account balance reflect actual transactions.
                         events.Add((payPeriodEndDate, -amountToUse, $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
-                            bucket.Id, null, null, ProjectionEventType.Bucket, false, false));
+                            bucket.Id, null, null, ProjectionEventType.Bucket, false, false, false));
                     }
 
                     nextPay = pay.Frequency switch {
@@ -184,7 +196,7 @@ public class ProjectionEngine : IProjectionEngine {
             // We need to collect ALL transactions that could affect balances from the earliest BalanceAsOf
             events.Add((transaction.Date, transaction.Amount, transaction.Description, transaction.AccountId, transaction.ToAccountId, transaction.BucketId,
                 transaction.PaycheckId, transaction.PaycheckOccurrenceDate, ProjectionEventType.Transaction, transaction.IsPrincipalOnly,
-                transaction.IsRebalance));
+                transaction.IsRebalance, false));
         }
 
         // 5. Interest & Growth
@@ -203,7 +215,7 @@ public class ProjectionEngine : IProjectionEngine {
 
                     if (!hasInterestTransaction) {
                         events.Add((nextInterest, 0, $"Interest: {acc.Name}", acc.Id, null, null, null, null,
-                            ProjectionEventType.Interest, false, false));
+                            ProjectionEventType.Interest, false, false, false));
                     }
 
                     nextInterest = nextInterest.AddMonths(1);
@@ -397,7 +409,7 @@ public class ProjectionEngine : IProjectionEngine {
                 if (periodDate != DateTime.MinValue) {
                     var key = (periodDate, e.BucketId.Value);
                     decimal spent = bucketSpending.ContainsKey(key) ? bucketSpending[key] : 0;
-                    // projected amount is negative, spent is positive.
+                    // The projected amount is negative, spent is positive.
                     // We reduce the absolute value of the projected amount.
                     decimal projectedAmount = Math.Abs(e.Amount);
                     decimal remainingToProject = Math.Max(0, projectedAmount - spent);
