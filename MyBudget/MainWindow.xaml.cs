@@ -21,14 +21,15 @@ public partial class MainWindow : Window {
     private void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _viewModel.PropertyChanged += Vm_PropertyChanged;
-        UpdateProjectionColumns(_viewModel.Accounts.Select(a => a.Name));
+        if (_viewModel.Accounts != null)
+            UpdateProjectionColumns(_viewModel.Accounts.Select(a => a.Name));
     }
 
     private void Vm_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.Accounts) && sender == DataContext)
         {
-            if (DataContext is MainViewModel vm)
+            if (DataContext is MainViewModel vm && vm.Accounts != null)
                 UpdateProjectionColumns(vm.Accounts.Select(a => a.Name));
         }
     }

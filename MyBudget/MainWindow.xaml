@@ -707,6 +707,11 @@
                                              Text="{Binding EditingAccountClone.AnnualGrowthRate, UpdateSourceTrigger=PropertyChanged}"
                                              Margin="5" />
 
+                                    <Label Grid.Column="0" Grid.Row="3" Content="Color (Hex):" />
+                                    <TextBox Grid.Column="1" Grid.Row="3"
+                                             Text="{Binding EditingAccountClone.HexColor, UpdateSourceTrigger=PropertyChanged}"
+                                             Margin="5" />
+
                                     <CheckBox Grid.Column="3" Grid.Row="3" Content="Include In Total"
                                               IsChecked="{Binding EditingAccountClone.IncludeInTotal}"
                                               VerticalAlignment="Center" Margin="5" />
@@ -766,7 +771,7 @@
 
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="3*" />
+                        <RowDefinition Height="2*" />
                         <RowDefinition Height="1*" />
                     </Grid.RowDefinitions>
 
@@ -828,7 +833,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <local:ProjectionChartControl Grid.Row="1" Projections="{Binding Projections}"
+                    <local:ProjectionLiveChartControl Grid.Row="1" Projections="{Binding Projections}"
                                                   Accounts="{Binding Accounts}" Margin="0,5,0,0" />
                 </Grid>
             </DockPanel>

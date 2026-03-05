@@ -35,19 +35,20 @@ public partial class BudgetService
             BalanceAsOf = account.BalanceAsOf.ToString("yyyy-MM-dd"),
             account.AnnualGrowthRate,
             account.IncludeInTotal,
-            account.Type
+            account.Type,
+            account.HexColor
         };
 
         if (account.Id == 0)
         {
-            account.Id = conn.ExecuteScalar<int>(@"INSERT INTO Accounts (Name, BankName, Balance, BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type) 
-                           VALUES (@Name, @BankName, @Balance, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type);
+            account.Id = conn.ExecuteScalar<int>(@"INSERT INTO Accounts (Name, BankName, Balance, BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor) 
+                           VALUES (@Name, @BankName, @Balance, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type, @HexColor);
                            SELECT last_insert_rowid();", accountParam);
         }
         else
         {
             conn.Execute(@"UPDATE Accounts SET Name=@Name, BankName=@BankName, Balance=@Balance, BalanceAsOf=@BalanceAsOf,
-                           AnnualGrowthRate=@AnnualGrowthRate, IncludeInTotal=@IncludeInTotal, Type=@Type WHERE Id=@Id", accountParam);
+                           AnnualGrowthRate=@AnnualGrowthRate, IncludeInTotal=@IncludeInTotal, Type=@Type, HexColor=@HexColor WHERE Id=@Id", accountParam);
         }
 
         if (account.Type == AccountType.Mortgage && account.MortgageDetails != null)

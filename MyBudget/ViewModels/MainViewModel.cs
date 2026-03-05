@@ -916,6 +916,9 @@ public class MainViewModel : ViewModelBase {
             IsEditingAccount = false;
             EditingAccountClone = null;
             CalculateProjections();
+            
+            // Re-trigger Accounts collection change to update chart
+            OnPropertyChanged(nameof(Accounts));
         }
     }
 
@@ -927,6 +930,7 @@ public class MainViewModel : ViewModelBase {
         target.AnnualGrowthRate = clone.AnnualGrowthRate;
         target.IncludeInTotal = clone.IncludeInTotal;
         target.Type = clone.Type;
+        target.HexColor = clone.HexColor;
 
         if (clone.Type == AccountType.Mortgage && clone.MortgageDetails != null) {
             if (target.MortgageDetails == null) target.MortgageDetails = new MortgageDetails();

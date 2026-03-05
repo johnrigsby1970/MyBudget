@@ -11,6 +11,7 @@ public class Account : ViewModelBase
     private decimal _annualGrowthRate;
     private bool _includeInTotal = true;
     private AccountType _type = AccountType.Checking;
+    private string _hexColor = "#FF0000FF"; // Default to Blue
     private MortgageDetails? _mortgageDetails;
     private CreditCardDetails? _creditCardDetails;
 
@@ -56,6 +57,12 @@ public class Account : ViewModelBase
     {
         get => _type;
         set => SetProperty(ref _type, value);
+    }
+
+    public string HexColor
+    {
+        get => _hexColor;
+        set => SetProperty(ref _hexColor, value);
     }
 
     public MortgageDetails? MortgageDetails

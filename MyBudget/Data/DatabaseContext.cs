@@ -93,7 +93,8 @@ public class DatabaseContext
                 BalanceAsOf TEXT DEFAULT '2026-02-19',
                 AnnualGrowthRate DECIMAL DEFAULT 0,
                 IncludeInTotal INTEGER DEFAULT 1,
-                Type INTEGER NOT NULL
+                Type INTEGER NOT NULL,
+                HexColor TEXT DEFAULT '#FF0000FF'
             );
 
             CREATE TABLE IF NOT EXISTS MortgageDetails (
@@ -430,6 +431,15 @@ public class DatabaseContext
                     PayPreviousMonthBalanceInFull INTEGER NOT NULL,
                     FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
                 )");
+        }
+
+        // Check if HexColor exists in Accounts table
+        var hexColorExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='HexColor'");
+
+        if (hexColorExists == 0)
+        {
+            connection.Execute("ALTER TABLE Accounts ADD COLUMN HexColor TEXT DEFAULT '#FF0000FF'");
         }
     }
 }
