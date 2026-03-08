@@ -16,6 +16,7 @@
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
         <local:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        <local:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" />
         <CollectionViewSource x:Key="SortedBills" Source="{Binding Bills}">
             <CollectionViewSource.SortDescriptions>
                 <scm:SortDescription PropertyName="Name" />
@@ -332,20 +333,44 @@
                                                           SelectedValue="{Binding EditingTransactionClone.BucketId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
-                                                <Label Grid.Column="0" Grid.Row="4" Content="Paycheck:"
-                                                       Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                <Label Grid.Column="0" Grid.Row="4" Content="Paycheck:">
+                                                    <Label.Visibility>
+                                                        <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}" FallbackValue="Collapsed">
+                                                            <Binding Path="EditingTransactionClone.ToAccountId" />
+                                                            <Binding Path="Accounts" />
+                                                        </MultiBinding>
+                                                    </Label.Visibility>
+                                                </Label>
                                                 <ComboBox Grid.Column="1" Grid.Row="4"
                                                           ItemsSource="{Binding Paychecks}"
                                                           SelectedValue="{Binding EditingTransactionClone.PaycheckId}"
-                                                          SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5"
-                                                          Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                          SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5">
+                                                    <ComboBox.Visibility>
+                                                        <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}" FallbackValue="Collapsed">
+                                                            <Binding Path="EditingTransactionClone.ToAccountId" />
+                                                            <Binding Path="Accounts" />
+                                                        </MultiBinding>
+                                                    </ComboBox.Visibility>
+                                                </ComboBox>
 
-                                                <Label Grid.Column="2" Grid.Row="4" Content="Occurrence Date:"
-                                                       Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                <Label Grid.Column="2" Grid.Row="4" Content="Payroll Date:">
+                                                    <Label.Visibility>
+                                                        <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}" FallbackValue="Collapsed">
+                                                            <Binding Path="EditingTransactionClone.ToAccountId" />
+                                                            <Binding Path="Accounts" />
+                                                        </MultiBinding>
+                                                    </Label.Visibility>
+                                                </Label>
                                                 <DatePicker Grid.Column="3" Grid.Row="4"
                                                             SelectedDate="{Binding EditingTransactionClone.PaycheckOccurrenceDate}"
-                                                            Margin="5"
-                                                            Visibility="{Binding EditingTransactionClone.ToAccountId, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                            Margin="5">
+                                                    <DatePicker.Visibility>
+                                                        <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}" FallbackValue="Collapsed">
+                                                            <Binding Path="EditingTransactionClone.ToAccountId" />
+                                                            <Binding Path="Accounts" />
+                                                        </MultiBinding>
+                                                    </DatePicker.Visibility>
+                                                </DatePicker>
 
                                                 <StackPanel Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="4"
                                                             Orientation="Horizontal" Margin="5">
