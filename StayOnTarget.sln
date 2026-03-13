@@ -4,6 +4,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StayOnTarget", "StayOnTarge
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StayOnTarget.Tests", "StayOnTarget.Tests\StayOnTarget.Tests.csproj", "{3A601A95-F465-4931-8BC9-EC306D61FB96}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{60852947-0222-49AE-8560-FFB76A23CA24}"
+	ProjectSection(SolutionItems) = preProject
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +24,8 @@ Global
 		{3A601A95-F465-4931-8BC9-EC306D61FB96}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A601A95-F465-4931-8BC9-EC306D61FB96}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A601A95-F465-4931-8BC9-EC306D61FB96}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal
