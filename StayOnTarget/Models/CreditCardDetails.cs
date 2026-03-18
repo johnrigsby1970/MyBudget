@@ -4,7 +4,6 @@ namespace StayOnTarget.Models;
 
 public class CreditCardDetails : ViewModelBase
 {
-    private decimal _apr;
     private int _statementDay = 1;
     private int _dueDay = 1;
     private decimal _minPayFloor;

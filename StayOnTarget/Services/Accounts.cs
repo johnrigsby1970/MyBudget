@@ -102,10 +102,12 @@ public partial class BudgetService
                                PayPreviousMonthBalanceInFull=@PayPreviousMonthBalanceInFull WHERE Id=@Id", ccdParam);
             }
 
-            foreach (var aah in account.AccountAprHistory) {
-                UpsertAccountAprHistory(aah);
+            if (account.AccountAprHistory != null) {
+                foreach (var aah in account.AccountAprHistory) {
+                    UpsertAccountAprHistory(aah);
+                }
             }
-           
+
         }
     }
     

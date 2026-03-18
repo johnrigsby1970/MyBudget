@@ -16,7 +16,7 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         LoadData();
     }   
     
-    private AccountAprHistory _selectedItem;
+    private AccountAprHistory? _selectedItem;
     public AccountAprHistory? SelectedItem {
         get => _selectedItem;
         set {

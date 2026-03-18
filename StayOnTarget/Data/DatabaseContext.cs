@@ -439,7 +439,7 @@ public class DatabaseContext
 
         // Check if CreditCardDetails table exists
         var ccDetailsTableExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='CreditCardDetails'");
+            SELECT COUNT(*) FROM sqlite_master WHERE TYPE='table' AND name='CreditCardDetails'");
         
         if (ccDetailsTableExists == 0)
         {
