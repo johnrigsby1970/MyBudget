@@ -5,19 +5,19 @@ namespace StayOnTarget.Services;
 
 public interface IProjectionEngine {
     IEnumerable<ProjectionItem> CalculateProjections(
-        IEnumerable<Transaction> allPaycheckTransactions, 
-        IEnumerable<Transaction> allBillTransactions, 
-        IEnumerable<Transaction> allBucketTransactions,
+        List<Transaction> allPaycheckTransactions, 
+        List<Transaction> allBillTransactions, 
+        List<Transaction> allBucketTransactions,
         DateTime startDate,
         DateTime endDate,
-        IEnumerable<Account> accounts,
-        IEnumerable<Paycheck> paychecks,
-        IEnumerable<Bill> bills,
-        IEnumerable<BudgetBucket> buckets,
-        IEnumerable<PeriodBill> periodBills,
-        IEnumerable<PeriodBucket> periodBuckets,
-        IEnumerable<Transaction> transactions,
-        IEnumerable<AccountReconciliation>? reconciliations = null, 
+        List<Account> accounts,
+        List<Paycheck> paychecks,
+        List<Bill> bills,
+        List<BudgetBucket> buckets,
+        List<PeriodBill> periodBills,
+        List<PeriodBucket> periodBuckets,
+        List<Transaction> transactions,
+        List<AccountReconciliation>? reconciliations = null, 
         bool showReconciled = false, 
         bool removeZeroBalanceEntries = false);
 }
@@ -35,23 +35,23 @@ public class ProjectionEngine : IProjectionEngine {
     }
 
     public IEnumerable<ProjectionItem> CalculateProjections(
-        IEnumerable<Transaction> allPaycheckTransactions,
-        IEnumerable<Transaction> allBillTransactions,
-        IEnumerable<Transaction> allBucketTransactions,
+        List<Transaction> allPaycheckTransactions,
+        List<Transaction> allBillTransactions,
+        List<Transaction> allBucketTransactions,
         DateTime startDate,
         DateTime endDate,
-        IEnumerable<Account> accounts,
-        IEnumerable<Paycheck> paychecks,
-        IEnumerable<Bill> bills,
-        IEnumerable<BudgetBucket> buckets,
-        IEnumerable<PeriodBill> periodBills,
-        IEnumerable<PeriodBucket> periodBuckets,
-        IEnumerable<Transaction> transactions,
-        IEnumerable<AccountReconciliation>? reconciliations = null, bool showReconciled = false, bool removeZeroBalanceEntries = false) {
+        List<Account> accounts,
+        List<Paycheck> paychecks,
+        List<Bill> bills,
+        List<BudgetBucket> buckets,
+        List<PeriodBill> periodBills,
+        List<PeriodBucket> periodBuckets,
+        List<Transaction> transactions,
+        List<AccountReconciliation>? reconciliations = null, bool showReconciled = false, bool removeZeroBalanceEntries = false) {
         var list = new List<ProjectionItem>();
         DateTime current = startDate;
         
-        var accountBalances = accounts.ToDictionary(a => a.Id, a => a.Balance);
+        var accountBalances = accounts.ToList().ToDictionary(a => a.Id, a => a.Balance);
         var accountNames = accounts.ToDictionary(a => a.Id, a => a.Name);
 
         var includedTotalAccounts = new HashSet<int>(accounts.Where(a => a.IncludeInTotal).Select(a => a.Id));

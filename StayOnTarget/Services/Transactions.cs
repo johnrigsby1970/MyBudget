@@ -70,7 +70,7 @@ LEFT JOIN (
 ) AS ar ON ar.AccountId = a.Id 
 WHERE a.Id=@accountId
 ) As d
-WHERE a.Id=d.Id AND ((t.AccountId=a.Id AND FromAccountReconciledId IS NULL) OR (ToAccountId=a.Id AND ToAccountReconciledId IS NULL))", new { accountId = accountId });
+WHERE a.Id=d.Id AND ((t.AccountId=a.Id AND FromAccountReconciledId IS NULL) OR (ToAccountId=a.Id AND ToAccountReconciledId IS NULL))", new { accountId });
     }
 
     public void UpsertTransaction(Transaction t)

@@ -1,5 +1,4 @@
 ﻿using System.Windows;
-using System.Windows.Input;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
 using StayOnTarget.ViewModels;

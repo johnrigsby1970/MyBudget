@@ -1166,7 +1166,7 @@ public class MainViewModel : ViewModelBase {
     private void SaveAccount() {
         if (EditingAccountClone != null) {
             if (EditingAccountClone.Type == AccountType.Checking && (EditingAccountClone.AccountAprHistory == null || EditingAccountClone.AccountAprHistory.Count == 0)) {
-                MessageBoxResult messageBoxResult = MessageBox.Show(
+                MessageBox.Show(
                     "Before you can save this credit card, you need to set up your interest rates.", // Message
                     "Incomplete Setup", // Title
                     MessageBoxButton.OK, // Buttons
@@ -1295,10 +1295,10 @@ public class MainViewModel : ViewModelBase {
             var allBucketTransactions = _budgetService.GetBucketTransactions();
             
             var results = _projectionEngine.CalculateProjections(
-                allPaycheckTransactions, 
-                allBillTransactions, 
-                allBucketTransactions,
-                start, end, accounts, paychecks, bills, buckets, periodBills, periodBuckets, transactions, reconciliations, ShowReconciled, true);
+                allPaycheckTransactions.ToList(), 
+                allBillTransactions.ToList(), 
+                allBucketTransactions.ToList(),
+                start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(), periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(), ShowReconciled, true);
 
             Projections = new ObservableCollection<ProjectionItem>(results);
         }

@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Windows;
+﻿using System.Windows;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
 using StayOnTarget.ViewModels;
@@ -17,16 +16,16 @@ public partial class ReconciliationWindow : Window {
     }
 
     private void OkButton_Click(object sender, RoutedEventArgs e) {
-        MessageBoxResult messageBoxResult = System.Windows.MessageBox.Show(
+        MessageBoxResult messageBoxResult = MessageBox.Show(
             $"I certify that there are no pending transactions on this account prior to {_viewModel.NewReconciledDate:MM/dd/yyyy} and that the balance is {_viewModel.NewReconciledBalance}?",
-            "Delete Confirmation", System.Windows.MessageBoxButton.YesNo);
+            "Delete Confirmation", MessageBoxButton.YesNo);
 
         if (messageBoxResult == MessageBoxResult.Yes) {
             _viewModel.UpdateReconciliationTransactions();
             DialogResult = true;
         }
         else {
-            System.Windows.MessageBox.Show("Reconciliation cancelled.");
+            MessageBox.Show("Reconciliation cancelled.");
         }
     }
 

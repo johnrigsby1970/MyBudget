@@ -82,12 +82,6 @@ public class ReconciliationViewModel : ViewModelBase {
             out lastReconciledDate, out beginningBalance);
         BeginningBalance = beginningBalance;
         LastReconciledDate = lastReconciledDate ?? DateTime.MinValue;
-        // foreach (var t in reconciliationTransactions) {
-        //     if (t.AccountId == _account.Id) {
-        //         t.Amount = -t.Amount;
-        //     }
-        //     
-        // }
 
         decimal? newReconciledBalance = null;
         DateTime? newReconciledDate = null;
@@ -151,8 +145,8 @@ public class ReconciliationViewModel : ViewModelBase {
             _reconciliationService.ReconcileAccount(
                 _account.Id,
                 ReconciliationTransactions,
-                NewReconciledBalance ?? newReconciledBalance.Value,
-                NewReconciledDate ?? newReconciledDate.Value);
+                NewReconciledBalance ?? newReconciledBalance ?? 0,
+                NewReconciledDate ?? newReconciledDate ?? DateTime.MinValue);
         }
     }
 
