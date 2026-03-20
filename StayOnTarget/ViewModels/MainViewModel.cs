@@ -880,7 +880,7 @@ public class MainViewModel : ViewModelBase {
 
     private void AddTransaction() {
         EditingTransactionClone = new Transaction
-            { Description = "New Transaction", Amount = 0, Date = DateTime.Today, PeriodDate = CurrentPeriodDate };
+            { Description = "", Amount = 0, Date = DateTime.Today, PeriodDate = CurrentPeriodDate };
         SelectedTransaction = null;
         IsEditingTransaction = true;
     }
