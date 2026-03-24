@@ -4,6 +4,7 @@ using StayOnTarget.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using StayOnTarget.Services.Projections;
 
 namespace StayOnTarget.Tests
 {
