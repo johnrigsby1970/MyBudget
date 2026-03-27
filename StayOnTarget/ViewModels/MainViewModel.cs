@@ -950,6 +950,7 @@ public class MainViewModel : ViewModelBase {
         target.AccountId = clone.AccountId;
         target.ToAccountId = clone.ToAccountId;
         target.BucketId = clone.BucketId;
+        target.BillId = clone.BillId;
         target.PeriodDate = clone.PeriodDate;
         target.IsPrincipalOnly = clone.IsPrincipalOnly;
         target.IsRebalance = clone.IsRebalance;
