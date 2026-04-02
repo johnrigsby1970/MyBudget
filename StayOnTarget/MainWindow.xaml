@@ -1377,6 +1377,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="2*" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="1*" />
                     </Grid.RowDefinitions>
                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Left">
@@ -1497,8 +1498,16 @@
 
                         </DataGrid.Columns>
                     </DataGrid>
-
-                    <local:ProjectionLiveChartControl Grid.Row="2" Projections="{Binding Projections}"
+                    <GridSplitter
+                        Grid.Row="2"
+                        ResizeDirection="Rows"
+                        Height="2"
+                        HorizontalAlignment="Stretch"
+                        Background="LightGray"
+                        VerticalAlignment="Stretch"
+                        ResizeBehavior="PreviousAndNext"
+                        ShowsPreview="True"/>
+                    <local:ProjectionLiveChartControl Grid.Row="3" Projections="{Binding Projections}"
                                                       Accounts="{Binding Accounts}" Margin="0,5,0,0" />
                 </Grid>
             </DockPanel>
