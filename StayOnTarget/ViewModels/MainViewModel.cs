@@ -16,6 +16,9 @@ public class MainViewModel : ViewModelBase {
     private ObservableCollection<ProjectionItem> _projections = new();
     private ObservableCollection<PeriodBill> _currentPeriodBills = new();
     private ObservableCollection<BudgetBucket> _buckets = new();
+    private ObservableCollection<BudgetBucket> _bucketsWithNone = new();
+    private ObservableCollection<Account> _accountsWithNone = new();
+    private ObservableCollection<Bill> _billsWithNone = new();
     private ObservableCollection<PeriodBucket> _currentPeriodBuckets = new();
     private ObservableCollection<Transaction> _currentPeriodTransactions = new();
     private Bill? _selectedBill;
@@ -92,6 +95,21 @@ public class MainViewModel : ViewModelBase {
     }
 
     public AccountType[] AccountTypes => (AccountType[])Enum.GetValues(typeof(AccountType));
+
+    public ObservableCollection<Account> AccountsWithNone {
+        get => _accountsWithNone;
+        set => SetProperty(ref _accountsWithNone, value);
+    }
+
+    public ObservableCollection<Bill> BillsWithNone {
+        get => _billsWithNone;
+        set => SetProperty(ref _billsWithNone, value);
+    }
+
+    public ObservableCollection<BudgetBucket> BucketsWithNone {
+        get => _bucketsWithNone;
+        set => SetProperty(ref _bucketsWithNone, value);
+    }
 
     public ObservableCollection<ProjectionItem> Projections {
         get => _projections;
@@ -553,6 +571,10 @@ public class MainViewModel : ViewModelBase {
 
     private void SaveBill() {
         if (EditingBillClone == null) return;
+
+        if (EditingBillClone.AccountId == 0) EditingBillClone.AccountId = null;
+        if (EditingBillClone.ToAccountId == 0) EditingBillClone.ToAccountId = null;
+
         if (SelectedBill != null) {
             UpdateBillFromClone(SelectedBill, EditingBillClone);
             _budgetService.UpsertBill(SelectedBill);
@@ -572,8 +594,8 @@ public class MainViewModel : ViewModelBase {
         target.ExpectedAmount = clone.ExpectedAmount;
         target.Frequency = clone.Frequency;
         target.DueDay = clone.DueDay;
-        target.AccountId = clone.AccountId;
-        target.ToAccountId = clone.ToAccountId;
+        target.AccountId = clone.AccountId == 0 ? null : clone.AccountId;
+        target.ToAccountId = clone.ToAccountId == 0 ? null : clone.ToAccountId;
         target.NextDueDate = clone.NextDueDate;
         target.Category = clone.Category;
         target.IsActive = clone.IsActive;
@@ -736,8 +758,10 @@ public class MainViewModel : ViewModelBase {
     }
 
     private void SaveBucket() {
-        //if (EditingBucketClone != null && SelectedBucket != null) {
         if (EditingBucketClone == null) return;
+
+        if (EditingBucketClone.AccountId == 0) EditingBucketClone.AccountId = null;
+
         if (SelectedBucket != null) {
             UpdateBucketFromClone(SelectedBucket, EditingBucketClone);
             _budgetService.UpsertBucket(SelectedBucket);
@@ -755,7 +779,7 @@ public class MainViewModel : ViewModelBase {
     private void UpdateBucketFromClone(BudgetBucket target, BudgetBucket clone) {
         target.Name = clone.Name;
         target.ExpectedAmount = clone.ExpectedAmount;
-        target.AccountId = clone.AccountId;
+        target.AccountId = clone.AccountId == 0 ? null : clone.AccountId;
         target.PaycheckId = clone.PaycheckId;
     }
 
@@ -928,6 +952,12 @@ public class MainViewModel : ViewModelBase {
 
     private void SaveTransaction() {
         if (EditingTransactionClone == null) return;
+        
+        if (EditingTransactionClone.AccountId == 0) EditingTransactionClone.AccountId = null;
+        if (EditingTransactionClone.ToAccountId == 0) EditingTransactionClone.ToAccountId = null;
+        if (EditingTransactionClone.BillId == 0) EditingTransactionClone.BillId = null;
+        if (EditingTransactionClone.BucketId == 0) EditingTransactionClone.BucketId = null;
+
         if (SelectedTransaction != null) {
             UpdateTransactionFromClone(SelectedTransaction, EditingTransactionClone);
             _budgetService.UpsertTransaction(SelectedTransaction);
@@ -947,10 +977,10 @@ public class MainViewModel : ViewModelBase {
         target.Description = clone.Description;
         target.Amount = clone.Amount;
         target.Date = clone.Date;
-        target.AccountId = clone.AccountId;
-        target.ToAccountId = clone.ToAccountId;
-        target.BucketId = clone.BucketId;
-        target.BillId = clone.BillId;
+        target.AccountId = clone.AccountId == 0 ? null : clone.AccountId;
+        target.ToAccountId = clone.ToAccountId == 0 ? null : clone.ToAccountId;
+        target.BucketId = clone.BucketId == 0 ? null : clone.BucketId;
+        target.BillId = clone.BillId == 0 ? null : clone.BillId;
         target.PeriodDate = clone.PeriodDate;
         target.IsPrincipalOnly = clone.IsPrincipalOnly;
         target.IsRebalance = clone.IsRebalance;
@@ -1311,15 +1341,18 @@ public class MainViewModel : ViewModelBase {
             var start = CurrentPeriodDate == DateTime.MinValue ? DateTime.Today : CurrentPeriodDate;
             var end = ProjectionEndDate;
             if(end < start) end = start.AddYears(1);
-            
+            // start = new DateTime(2026, 2, 19);
+            // end = new DateTime(2027, 2, 19);
             var allPaycheckTransactions = _budgetService.GetAllPaycheckTransactions();
             var allBillTransactions = _budgetService.GetBillTransactions();
             var allBucketTransactions = _budgetService.GetBucketTransactions();
+            var allTransactions = _budgetService.GetAllTransactions().ToList();
             
             var results = _projectionEngine.CalculateProjections(
                 allPaycheckTransactions.ToList(), 
                 allBillTransactions.ToList(), 
                 allBucketTransactions.ToList(),
+                allTransactions,
                 start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(), periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(), ShowReconciled, true);
 
             var resultList = results.ToList();
@@ -1474,11 +1507,19 @@ public class MainViewModel : ViewModelBase {
             accounts = accounts.OrderBy(b => b.Name).ToList();
             foreach (var a in accounts) a.PropertyChanged += Item_PropertyChanged;
             Accounts = new ObservableCollection<Account>(accounts);
+            
+            var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
+            accountsWithNone.AddRange(accounts);
+            AccountsWithNone = new ObservableCollection<Account>(accountsWithNone);
 
             var bills = _budgetService.GetAllBills();
             bills = bills.OrderBy(b => b.DueDay).ThenBy(b => b.Name).ToList();
             foreach (var b in bills) b.PropertyChanged += Item_PropertyChanged;
             Bills = new ObservableCollection<Bill>(bills);
+            
+            var billsWithNone = new List<Bill> { new Bill { Id = 0, Name = "(None)" } };
+            billsWithNone.AddRange(bills);
+            BillsWithNone = new ObservableCollection<Bill>(billsWithNone);
 
             var paychecks = _budgetService.GetAllPaychecks();
             paychecks = paychecks.OrderBy(b => b.Name).ToList();
@@ -1489,6 +1530,10 @@ public class MainViewModel : ViewModelBase {
             buckets = buckets.OrderBy(b => b.Name).ToList();
             foreach (var b in buckets) b.PropertyChanged += Item_PropertyChanged;
             Buckets = new ObservableCollection<BudgetBucket>(buckets);
+            
+            var bucketsWithNone = new List<BudgetBucket> { new BudgetBucket { Id = 0, Name = "(None)" } };
+            bucketsWithNone.AddRange(buckets);
+            BucketsWithNone = new ObservableCollection<BudgetBucket>(bucketsWithNone);
         }
         finally {
             _isLoadingData = false;

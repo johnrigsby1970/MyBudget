@@ -51,6 +51,7 @@ namespace StayOnTarget.Tests
                 new List<Transaction>(),
                 new List<Transaction>(),
                 new List<Transaction>(),
+                transactions,
                 startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), 
                 transactions, 
                 reconciliations).ToList();
@@ -106,6 +107,7 @@ namespace StayOnTarget.Tests
 
             // Act
             var results = _engine.CalculateProjections(
+                new List<Transaction>(),
                 new List<Transaction>(),
                 new List<Transaction>(),
                 new List<Transaction>(),

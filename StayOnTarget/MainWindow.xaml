@@ -557,7 +557,7 @@
 
                                                 <Label Grid.Column="2" Grid.Row="0" Content="Description:" />
                                                 <ComboBox Grid.Column="3" Grid.Row="0"
-                                                          ItemsSource="{Binding Source={StaticResource SortedBills}}"
+                                                          ItemsSource="{Binding BillsWithNone}"
                                                           DisplayMemberPath="Name"
                                                           SelectedValuePath="Id"
                                                           SelectedValue="{Binding EditingTransactionClone.BillId, UpdateSourceTrigger=PropertyChanged}"
@@ -572,24 +572,27 @@
                                                          Margin="5" />
 
                                                 <Label Grid.Column="2" Grid.Row="1" Content="From Account:" />
-                                                <ComboBox Grid.Column="3" Grid.Row="1" ItemsSource="{Binding Accounts}"
+                                                <ComboBox Grid.Column="3" Grid.Row="1" x:Name="FromAccountComboBox" ItemsSource="{Binding AccountsWithNone}"
                                                           SelectedValue="{Binding EditingTransactionClone.AccountId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                                 <Label Grid.Column="0" Grid.Row="2" Content="To Account:" />
                                                 <ComboBox Grid.Column="1" Grid.Row="2" x:Name="ToAccountComboBox"
-                                                          ItemsSource="{Binding Accounts}"
+                                                          ItemsSource="{Binding AccountsWithNone}"
                                                           SelectedValue="{Binding EditingTransactionClone.ToAccountId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                                 <Label Grid.Column="0" Grid.Row="3" Content="Bill:" />
                                                 <ComboBox Grid.Column="1" Grid.Row="3"
-                                                          ItemsSource="{Binding Source={StaticResource SortedBills}}"
+                                                          x:Name="BillComboBox" 
+                                                          ItemsSource="{Binding BillsWithNone}"
                                                           SelectedValue="{Binding EditingTransactionClone.BillId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                                 <Label Grid.Column="2" Grid.Row="3" Content="Bucket:" />
-                                                <ComboBox Grid.Column="3" Grid.Row="3" ItemsSource="{Binding Buckets}"
+                                                <ComboBox Grid.Column="3" Grid.Row="3" 
+                                                          x:Name="BucketComboBox" 
+                                                          ItemsSource="{Binding BucketsWithNone}"
                                                           SelectedValue="{Binding EditingTransactionClone.BucketId}"
                                                           SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
@@ -778,8 +781,8 @@
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
-                                    <Label Content="Account:" />
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding Accounts}"
+                                    <Label Content="From Account:" />
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding AccountsWithNone}"
                                               SelectedValue="{Binding EditingBucketClone.AccountId}"
                                               SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
@@ -910,12 +913,12 @@
                                              Margin="5" />
 
                                     <Label Grid.Column="2" Grid.Row="1" Content="From Account:" />
-                                    <ComboBox Grid.Column="3" Grid.Row="1" ItemsSource="{Binding Accounts}"
+                                    <ComboBox Grid.Column="3" Grid.Row="1" ItemsSource="{Binding AccountsWithNone}"
                                               SelectedValue="{Binding EditingBillClone.AccountId}"
                                               SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                     <Label Grid.Column="0" Grid.Row="2" Content="To Account:" />
-                                    <ComboBox Grid.Column="1" Grid.Row="2" ItemsSource="{Binding Accounts}"
+                                    <ComboBox Grid.Column="1" Grid.Row="2" ItemsSource="{Binding AccountsWithNone}"
                                               SelectedValue="{Binding EditingBillClone.ToAccountId}"
                                               SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
                                 </Grid>

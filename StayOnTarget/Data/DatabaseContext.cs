@@ -77,6 +77,12 @@ public class DatabaseContext
         InitializeDatabase();
     }
 
+    public DatabaseContext(string dbPath)
+    {
+        _connectionString = $"Data Source={dbPath}";
+        InitializeDatabase();
+    }
+
     public SqliteConnection GetConnection() => new SqliteConnection(_connectionString);
 
     private void InitializeDatabase()

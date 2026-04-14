@@ -18,7 +18,8 @@ public class ProjectionGridItem : ViewModelBase {
         bool isPrincipalOnly,
         bool isRebalance,
         bool isInterestAdjustment,
-        bool isReconciled
+        bool isReconciled,
+        int? transactionId = null
         ) {
         Date = date;
         Amount = amount;
@@ -33,6 +34,7 @@ public class ProjectionGridItem : ViewModelBase {
         IsRebalance = isRebalance;
         IsInterestAdjustment = isInterestAdjustment;
         IsReconciled = isReconciled;
+        TransactionId = transactionId;
     }
     private DateTime _date;
     public DateTime Date
@@ -202,6 +204,19 @@ public class ProjectionGridItem : ViewModelBase {
             if (_isReconciled != value) {
                 _isReconciled = value;
                 OnPropertyChanged("IsReconciled");
+            }
+        }
+    }
+
+    private int? _transactionId;
+    public int? TransactionId
+    {
+        get { return _transactionId; }
+        set
+        {
+            if (_transactionId != value) {
+                _transactionId = value;
+                OnPropertyChanged("TransactionId");
             }
         }
     }

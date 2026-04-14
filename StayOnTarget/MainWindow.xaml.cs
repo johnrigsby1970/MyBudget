@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using StayOnTarget.Models;
 using StayOnTarget.ViewModels;
 
 namespace StayOnTarget;
@@ -22,7 +23,7 @@ public partial class MainWindow : Window {
     {
         _viewModel.PropertyChanged += Vm_PropertyChanged;
         if (_viewModel.Accounts != null)
-            UpdateProjectionColumns(_viewModel.Accounts.Select(a => a.Name));
+            UpdateProjectionColumns(_viewModel.Accounts);
     }
 
     private void Vm_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -30,11 +31,11 @@ public partial class MainWindow : Window {
         if (e.PropertyName == nameof(MainViewModel.Accounts) && sender == DataContext)
         {
             if (DataContext is MainViewModel vm && vm.Accounts != null)
-                UpdateProjectionColumns(vm.Accounts.Select(a => a.Name));
+                UpdateProjectionColumns(vm.Accounts);
         }
     }
 
-    private void UpdateProjectionColumns(IEnumerable<string> accountNames)
+    private void UpdateProjectionColumns(IEnumerable<Account> accounts)
     {
         // Keep the first 5 columns (Date, Description, Amount, Total Balance, Period Net)
         while (ProjectionGrid.Columns.Count > 5)
@@ -42,8 +43,17 @@ public partial class MainWindow : Window {
             ProjectionGrid.Columns.RemoveAt(5);
         }
 
-        foreach (var accountName in accountNames)
+        var sortedAccounts = accounts.OrderBy(a => a.Type switch
         {
+            AccountType.Checking => 0,
+            AccountType.CreditCard => 1,
+            AccountType.Savings => 2,
+            _ => 3
+        }).ThenBy(a => a.Name);
+
+        foreach (var account in sortedAccounts)
+        {
+            var accountName = account.Name;
             var column = new DataGridTextColumn
             {
                 Header = accountName,

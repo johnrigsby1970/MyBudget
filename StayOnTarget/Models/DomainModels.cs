@@ -27,5 +27,7 @@ public enum AccountType
     Brokerage,
     Mortgage,
     PersonalLoan,
-    CreditCard
+    CreditCard,
+    RealEstate,
+    AppreciatingAsset
 }

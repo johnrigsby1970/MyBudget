@@ -12,7 +12,8 @@ public static class ProjectionEngineExtensions {
         Dictionary<int, decimal> accountBalances,
         Dictionary<int, DateTime> accountBalanceDates,
         Dictionary<int, decimal> accumulatedGrowth,
-        Dictionary<int,List<(DateTime Date, decimal Balance, decimal InterestAccruingBalance)>> ccDailyBalances,
+        Dictionary<int, bool> ccGraceActive,
+        Dictionary<int, List<(DateTime Date, decimal Balance, decimal InterestAccruingBalance)>> ccDailyBalances,
         HashSet<int> includedTotalAccounts) {
         
         var days = (e.Date - lastDate).Days;
@@ -44,7 +45,12 @@ public static class ProjectionEngineExtensions {
                 }
 
                 foreach (var acc in accounts.Where(a => a.Type == AccountType.CreditCard)) {
-                    ccDailyBalances[acc.Id].Add((dayDate, accountBalances[acc.Id], accountBalances[acc.Id]));
+                    decimal accruingBalance = accountBalances[acc.Id];
+                    if (ccGraceActive.ContainsKey(acc.Id) && ccGraceActive[acc.Id]) {
+                        accruingBalance = 0;
+                    }
+
+                    ccDailyBalances[acc.Id].Add((dayDate, accountBalances[acc.Id], accruingBalance));
                 }
             }
         }
@@ -96,6 +102,10 @@ public static class ProjectionEngineExtensions {
         Dictionary<int, decimal> accountBalances,
         Dictionary<int, DateTime> accountBalanceDates,
         Dictionary<int, bool> ccPreviousMonthPaidInFull,
+        Dictionary<int, bool> ccGraceActive,
+        Dictionary<int, decimal> ccUnpaidStatementBalance,
+        Dictionary<int, decimal> ccPaidThisCycle,
+        Dictionary<int, List<(DateTime Date, decimal Balance, decimal InterestAccruingBalance)>> ccDailyBalances,
         List<Account> accounts,
         List<AccountReconciliation> allValidReconciliations,
         List<ProjectionGridItem> sortedEvents,
@@ -126,7 +136,25 @@ public static class ProjectionEngineExtensions {
 
             accountBalances[acc.Id] = effectiveBalance;
             var priorEvents = sortedEvents.Where(e => e.Date >= effectiveBalanceDate && e.Date < current).ToList();
-            foreach (var e in priorEvents) {
+            
+            // For credit cards, we need to track daily balances even before the projection start
+            // if we are "rewinding" to catch missing transactions.
+            var lastTrackedDate = effectiveBalanceDate;
+
+            foreach (var e in priorEvents.Where(x=> x.Type!=ProjectionEngine.ProjectionEventType.Reconciliation)) {
+                if (acc.Type == AccountType.CreditCard && e.Date > lastTrackedDate) {
+                    var days = (e.Date - lastTrackedDate).Days;
+                    for (int i = 0; i < days; i++) {
+                        var dayDate = lastTrackedDate.AddDays(i);
+                        decimal accruingBalance = accountBalances[acc.Id];
+                        if (ccGraceActive.ContainsKey(acc.Id) && ccGraceActive[acc.Id]) {
+                            accruingBalance = 0;
+                        }
+                        ccDailyBalances[acc.Id].Add((dayDate, accountBalances[acc.Id], accruingBalance));
+                    }
+                    lastTrackedDate = e.Date;
+                }
+
                 var amountChange = Math.Abs(e.Amount);
                 if (e.FromAccountId == acc.Id) {
                     if (acc.Type is AccountType.Mortgage or AccountType.PersonalLoan or AccountType.CreditCard) {
@@ -173,10 +201,40 @@ public static class ProjectionEngineExtensions {
                     }
                     else if (isCreditCard) {
                         accountBalances[acc.Id] -= amountChange;
+                        ccPaidThisCycle[acc.Id] += amountChange;
                     }
                     else {
                         accountBalances[acc.Id] += amountChange;
                     }
+                }
+
+                if (acc.Type == AccountType.CreditCard && e.Type == ProjectionEngine.ProjectionEventType.Interest) {
+                    // Logic to update ccGraceActive, ccUnpaidStatementBalance, etc. 
+                    // This is similar to AddInterestProjection but for historical events.
+                    if (acc.CreditCardDetails != null) {
+                        if (acc.CreditCardDetails.PayPreviousMonthBalanceInFull) {
+                            ccGraceActive[acc.Id] = (ccPaidThisCycle[acc.Id] >= ccUnpaidStatementBalance[acc.Id] - 0.01m);
+                        }
+                        else {
+                            ccGraceActive[acc.Id] = false;
+                        }
+                        ccUnpaidStatementBalance[acc.Id] = accountBalances[acc.Id];
+                        ccPaidThisCycle[acc.Id] = 0;
+                        ccDailyBalances[acc.Id].Clear();
+                    }
+                }
+            }
+
+            // Fill in the remaining days until 'current'
+            if (acc.Type == AccountType.CreditCard) {
+                var days = (current - lastTrackedDate).Days;
+                for (int i = 0; i < days; i++) {
+                    var dayDate = lastTrackedDate.AddDays(i);
+                    decimal accruingBalance = accountBalances[acc.Id];
+                    if (ccGraceActive.ContainsKey(acc.Id) && ccGraceActive[acc.Id]) {
+                        accruingBalance = 0;
+                    }
+                    ccDailyBalances[acc.Id].Add((dayDate, accountBalances[acc.Id], accruingBalance));
                 }
             }
         }
@@ -233,7 +291,9 @@ public static class ProjectionEngineExtensions {
         List<Account> accounts,
         Dictionary<int, decimal> accountBalances,
         Dictionary<int, string> accountNames,
-        Dictionary<int, bool> ccPreviousMonthPaidInFull,
+        Dictionary<int, bool> ccGraceActive,
+        Dictionary<int, decimal> ccUnpaidStatementBalance,
+        Dictionary<int, decimal> ccPaidThisCycle,
         Dictionary<int, List<(DateTime Date, decimal Balance, decimal InterestAccruingBalance)>> ccDailyBalances,
         HashSet<int> includedTotalAccounts) {
         
@@ -257,32 +317,54 @@ public static class ProjectionEngineExtensions {
                 return false;
             }
 
-            if (acc is { Type: AccountType.CreditCard, CreditCardDetails: not null }) {
-                var dailyBalances = ccDailyBalances[acc.Id];
-                if (dailyBalances.Any()) {
-                    var aprHist = acc.AccountAprHistory?.SingleOrDefault(x => x.AsOfDate <= e.Date);
-                    if (aprHist == null) aprHist = new AccountAprHistory { AsOfDate = e.Date };
+                if (acc is { Type: AccountType.CreditCard, CreditCardDetails: not null }) {
+                    var dailyBalances = ccDailyBalances[acc.Id];
+                    var aprHist = acc.AccountAprHistory?.OrderByDescending(x => x.AsOfDate)
+                                      .FirstOrDefault(x => x.AsOfDate <= e.Date) 
+                                  ?? acc.AccountAprHistory?.FirstOrDefault()
+                                  ?? new AccountAprHistory { AnnualPercentageRate = 0 };
+                    
                     var dailyPeriodicRate = (aprHist.AnnualPercentageRate / 100m) / 365m;
                     decimal totalInterest = 0;
-                    var gracePeriodApplies = acc.CreditCardDetails.PayPreviousMonthBalanceInFull &&
-                                             ccPreviousMonthPaidInFull[acc.Id];
 
-                    if (!gracePeriodApplies) {
-                        var sumBalances = dailyBalances.Sum(db => db.Balance);
-                        var avgDailyBalance = sumBalances / dailyBalances.Count;
-                        totalInterest = Math.Round(avgDailyBalance * dailyPeriodicRate * dailyBalances.Count, 2);
+                    if (dailyBalances.Count > 0) {
+                        foreach (var db in dailyBalances) {
+                            totalInterest += db.InterestAccruingBalance * dailyPeriodicRate;
+                        }
                     }
+                    else {
+                        // Fallback if no daily balance entries recorded for this period
+                        decimal accruingBalance = accountBalances[acc.Id];
+                        if (ccGraceActive.ContainsKey(acc.Id) && ccGraceActive[acc.Id]) {
+                            accruingBalance = 0;
+                        }
+                        
+                        // Calculate days since last interest event (or start)
+                        // This handles cases where no events occurred in the month
+                        // For simplicity, we'll look for the last entry in the list for this account if possible,
+                        // but since we clear dailyBalances, we don't have it here.
+                        // However, we know it's a monthly event.
+                        totalInterest = accruingBalance * dailyPeriodicRate * 30;
+                    }
+                    totalInterest = Math.Round(totalInterest, 2);
 
-                    if (totalInterest > 0) {
+                    if (totalInterest >= 0) { 
                         accountBalances[acc.Id] += totalInterest;
                         if (includedTotalAccounts.Contains(acc.Id)) {
                             runningBalance -= totalInterest;
                         }
                     }
 
-                    if (totalInterest < 0) totalInterest = 0;
-                    // Check if the previous balance (before interest) was paid in full to determine the grace period for NEXT month
-                    ccPreviousMonthPaidInFull[acc.Id] = (accountBalances[acc.Id] - totalInterest) <= 0.01m;
+                    // Reset Grace Period check
+                    if (acc.CreditCardDetails.PayPreviousMonthBalanceInFull) {
+                        ccGraceActive[acc.Id] = (ccPaidThisCycle[acc.Id] >= ccUnpaidStatementBalance[acc.Id] - 0.01m);
+                    }
+                    else {
+                        ccGraceActive[acc.Id] = false;
+                    }
+                    
+                    ccUnpaidStatementBalance[acc.Id] = accountBalances[acc.Id];
+                    ccPaidThisCycle[acc.Id] = 0;
                     dailyBalances.Clear();
 
                     list.Add(new ProjectionItem {
@@ -292,9 +374,8 @@ public static class ProjectionEngineExtensions {
                         Balance = runningBalance,
                         AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value)
                     });
-                    return false;
+                    return false; // Return false to indicate the item has been handled and added to the list
                 }
-            }
         }
 
         return true;
@@ -322,8 +403,11 @@ public static class ProjectionEngineExtensions {
                 while (nextInterest < startDate) nextInterest = nextInterest.AddMonths(1);
 
                 while (nextInterest < endDate) {
-                    var hasInterestTransaction =
-                        transactions.Any(a => a.ToAccountId == acc.Id && a.Date.Date == nextInterest.Date);
+                    var periodStart = nextInterest.AddMonths(-1);
+                    var hasInterestTransaction = transactions.Any(t =>
+                        (t.AccountId == acc.Id || t.ToAccountId == acc.Id) &&
+                        t.Date > periodStart && t.Date <= nextInterest &&
+                        (t.IsInterestAdjustment || t.Description.Contains("Interest", StringComparison.OrdinalIgnoreCase)));
 
                     if (!hasInterestTransaction) {
                         events.Add(new ProjectionGridItem(nextInterest, 0, $"Interest: {acc.Name}", acc.Id, null, null,
@@ -340,11 +424,7 @@ public static class ProjectionEngineExtensions {
                     Math.Min(acc.CreditCardDetails.StatementDay,
                         DateTime.DaysInMonth(startDate.Year, startDate.Month)));
                 if (nextStatement <= startDate) nextStatement = nextStatement.AddMonths(1);
-                var nextDueDate = nextStatement.AddDays(acc.CreditCardDetails.DueDateOffset);
 
-                //what we need to know is if the nextDueDate has come, and then if there are any payments that bring the balance amount to 0 or what that balance amount would be 
-                //based on those payments, and then calculate the interest that would have been applied on the statement date. At present, we will assume the due date is not the same as the statement date.
-                //At a later time we will account for the possibility there is no a grace period which would change the <= on line 341 to a <.
                 while (nextStatement <= endDate) {
                     if (nextStatement.Day != acc.CreditCardDetails.StatementDay) {
                         nextStatement = new DateTime(nextStatement.Year, nextStatement.Month,
@@ -352,12 +432,11 @@ public static class ProjectionEngineExtensions {
                                 DateTime.DaysInMonth(nextStatement.Year, nextStatement.Month)));
                     }
 
-                    var statementMonthStart = new DateTime(nextStatement.Year, nextStatement.Month, 1);
-                    var statementMonthEnd = new DateTime(nextStatement.Year, nextStatement.Month,
-                        DateTime.DaysInMonth(nextStatement.Year, nextStatement.Month));
+                    var periodStart = nextStatement.AddMonths(-1);
                     var hasInterestAdjustment = transactions.Any(t =>
-                        t.AccountId == acc.Id && t.IsInterestAdjustment && t.Date >= statementMonthStart &&
-                        t.Date <= statementMonthEnd);
+                        (t.AccountId == acc.Id) &&
+                        t.Date > periodStart && t.Date <= nextStatement &&
+                        (t.IsInterestAdjustment || t.Description.Contains("Interest", StringComparison.OrdinalIgnoreCase)));
 
                     if (!hasInterestAdjustment) {
                         events.Add(new ProjectionGridItem(nextStatement, 0, $"Credit Card Interest: {acc.Name}", acc.Id,
@@ -415,7 +494,7 @@ public static class ProjectionEngineExtensions {
                     transaction.PaycheckId, transaction.PaycheckOccurrenceDate,
                     ProjectionEngine.ProjectionEventType.Transaction,
                     transaction.IsPrincipalOnly,
-                    transaction.IsRebalance, transaction.IsInterestAdjustment, false));
+                    transaction.IsRebalance, transaction.IsInterestAdjustment, false, transaction.Id));
             }
         }
     }
@@ -445,6 +524,7 @@ public static class ProjectionEngineExtensions {
                         //Buckets are projected entries. We won't project past entries. We simply didn't spend that money.
                         //Transactions that fit into that bucket matter, but not simply the bucket which represents future
                         //planned spending
+                       // if (payPeriodEndDate >= current && nextPay >= current &&
                         if (payPeriodEndDate >= today && nextPay >= current &&
                             (pay.EndDate == null || nextPay <= pay.EndDate)) {
                             var pb = periodBuckets.FirstOrDefault(p =>
@@ -486,7 +566,8 @@ public static class ProjectionEngineExtensions {
                         //Buckets are projected entries. We won't project past entries. We simply didn't spend that money.
                         //Transactions that fit into that bucket matter, but not simply the bucket which represents future
                         //planned spending
-                        if (payPeriodEndDate >= today) {
+                       // if (payPeriodEndDate >= current) {
+                            if (payPeriodEndDate >= today) {
                             occurrences.Add((nextPay, payPeriodEndDate));
                         }
 

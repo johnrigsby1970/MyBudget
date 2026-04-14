@@ -10,4 +10,9 @@ public partial class BudgetService
     {
         _db = new DatabaseContext();
     }
+
+    public BudgetService(string dbPath)
+    {
+        _db = new DatabaseContext(dbPath);
+    }
 }
