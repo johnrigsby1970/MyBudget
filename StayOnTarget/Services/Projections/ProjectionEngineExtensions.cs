@@ -685,10 +685,11 @@ public static class ProjectionEngineExtensions {
             while (nextPay < endDate) {
                 if (nextPay >= current && (pay.EndDate == null || nextPay <= pay.EndDate)) {
                     // Association mechanism: check if a transaction overrides this paycheck occurrence
+                    //account for possibility of a pay check coming early or late by a day or two.
                     var transactionOverride = allPaycheckTransactions.FirstOrDefault(a =>
                         a.PaycheckId == pay.Id &&
-                        a.PaycheckOccurrenceDate?.Date ==
-                        nextPay.Date); // && a.Date >= nextPay && a.Date < endPay); //&& a.PaycheckOccurrenceDate?.Date == nextPay.Date);
+                        (a.PaycheckOccurrenceDate?.Date ==
+                        nextPay.Date || (Math.Abs((nextPay - a.Date).TotalDays) <= 3))); // && a.Date >= nextPay && a.Date < endPay); //&& a.PaycheckOccurrenceDate?.Date == nextPay.Date);
 
                     if (transactionOverride == null) {
                         var toAccountId = pay.AccountId ?? cashAccount?.Id;
