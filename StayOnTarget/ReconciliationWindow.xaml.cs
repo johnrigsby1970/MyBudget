@@ -1,4 +1,6 @@
 ﻿using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
 using StayOnTarget.ViewModels;
@@ -39,5 +41,26 @@ public partial class ReconciliationWindow : Window {
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) {
         DialogResult = false;
+    }
+    
+    private void ReconciliationDataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            var grid = sender as DataGrid;
+            if (grid?.SelectedItem != null)
+            {
+                // Access your specific transaction class
+                var transaction = grid.SelectedItem as ReconciliationTransaction;
+                if (transaction != null)
+                {
+                    // Toggle the property
+                    transaction.IsReconciled = !transaction.IsReconciled;
+                
+                    // Mark event as handled so the grid doesn't scroll
+                    e.Handled = true; 
+                }
+            }
+        }
     }
 }

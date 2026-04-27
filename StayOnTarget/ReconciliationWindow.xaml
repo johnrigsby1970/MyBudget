@@ -33,7 +33,12 @@
                                     </StackPanel>
             <DataGrid Grid.Row="1"
                       ItemsSource="{Binding ReconciliationTransactions}"
-                      AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
+                      AutoGenerateColumns="False" 
+                      CanUserAddRows="False" 
+                      IsReadOnly="True"
+                      PreviewKeyDown="ReconciliationDataGrid_PreviewKeyDown" 
+                      SelectionMode="Single"
+                      >
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Date"
                                         Binding="{Binding Date, StringFormat=d}" Width="80" />
