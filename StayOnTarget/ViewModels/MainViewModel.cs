@@ -209,6 +209,9 @@ public class MainViewModel : ViewModelBase {
     public Bill? SelectedBill {
         get => _selectedBill;
         set {
+            if (_selectedBill != value && EditingBillClone != null) {
+                CancelBill();
+            }
             if (SetProperty(ref _selectedBill, value)) {
                 OnPropertyChanged(nameof(CanEditBill));
             }
@@ -218,6 +221,9 @@ public class MainViewModel : ViewModelBase {
     public PeriodBill? SelectedPeriodBill {
         get => _selectedPeriodBill;
         set {
+            if (_selectedPeriodBill != value && EditingPeriodBillClone != null) {
+                CancelPeriodBill();
+            }
             if (SetProperty(ref _selectedPeriodBill, value)) {
                 OnPropertyChanged(nameof(CanEditPeriodBill));
             }
@@ -227,6 +233,9 @@ public class MainViewModel : ViewModelBase {
     public BudgetBucket? SelectedBucket {
         get => _selectedBucket;
         set {
+            if (_selectedBucket != value && EditingBucketClone != null) {
+                CancelBucket();
+            }
             if (SetProperty(ref _selectedBucket, value)) {
                 OnPropertyChanged(nameof(CanEditBucket));
             }
@@ -236,6 +245,9 @@ public class MainViewModel : ViewModelBase {
     public PeriodBucket? SelectedPeriodBucket {
         get => _selectedPeriodBucket;
         set {
+            if (_selectedPeriodBucket != value && EditingPeriodBucketClone != null) {
+                CancelPeriodBucket();
+            }
             if (SetProperty(ref _selectedPeriodBucket, value)) {
                 OnPropertyChanged(nameof(CanEditPeriodBucket));
             }
@@ -246,6 +258,9 @@ public class MainViewModel : ViewModelBase {
     public Account? SelectedAccount {
         get => _selectedAccount;
         set {
+            if (_selectedAccount != value && EditingAccountClone != null) {
+                CancelAccount();
+            }
             if (SetProperty(ref _selectedAccount, value)) {
                 OnPropertyChanged(nameof(CanEditAccount));
             }
@@ -255,6 +270,9 @@ public class MainViewModel : ViewModelBase {
     public Transaction? SelectedTransaction {
         get => _selectedTransaction;
         set {
+            if (_selectedTransaction != value && EditingTransactionClone != null) {
+                CancelTransaction();
+            }
             if (SetProperty(ref _selectedTransaction, value)) {
                 OnPropertyChanged(nameof(CanEditTransaction));
             }
@@ -264,6 +282,9 @@ public class MainViewModel : ViewModelBase {
     public Paycheck? SelectedPaycheck {
         get => _selectedPaycheck;
         set {
+            if (_selectedPaycheck != value && EditingPaycheckClone != null) {
+                CancelPaycheck();
+            }
             if (SetProperty(ref _selectedPaycheck, value)) {
                 OnPropertyChanged(nameof(CanEditPaycheck));
             }
