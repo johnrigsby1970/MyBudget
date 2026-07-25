@@ -4,6 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:StayOnTarget"
+        xmlns:helpers="clr-namespace:StayOnTarget" 
         mc:Ignorable="d"
         Title="ReconciliationWindow" Height="450" Width="750">
     <Window.Resources>
@@ -149,9 +150,15 @@
                     <StackPanel Orientation="Horizontal"
                                 Visibility="{Binding Account.Type, ConverterParameter='RealEstate|AppreciatingAsset|Investment|Brokerage|Retirement401k|CD|CollegeFund', Converter={StaticResource AccountTypeToVisibilityConverter}}">
                         <Label Content="Current Value:" Margin="20,0,0,0" />
-                        <TextBox
-                            Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}"
-                            Width="80" Margin="0,0" VerticalContentAlignment="Center" />
+                        <!-- <TextBox -->
+                        <!--     Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" -->
+                        <!--     Width="80" Margin="0,0" VerticalContentAlignment="Center" /> -->
+                        <!-- -->
+                        <TextBox 
+                                 helpers:TextBoxBehavior.IsNumericOnly="True"
+                                 Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}"
+                                 Width="80" Margin="0,0" />
+                        
                         <Button Content="Adjust Balance" 
                                 Command="{Binding AdjustBalanceCommand}"
                                 Margin="10,0,0,0" Padding="10,0" />
@@ -192,8 +199,13 @@
                     
                     <Label Content="Reconciled balance:" Margin="0,0" />
 
-                    <TextBox
-                        Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}"
+                    <!-- <TextBox -->
+                    <!--     Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" -->
+                    <!--     Width="80" Margin="0,0" /> -->
+                    
+                    <TextBox 
+                        helpers:TextBoxBehavior.IsNumericOnly="True"
+                        Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}"
                         Width="80" Margin="0,0" />
                     <Label Content="Reconciled date:" Margin="0,0" />
                     <DatePicker Grid.Column="1" Grid.Row="0"

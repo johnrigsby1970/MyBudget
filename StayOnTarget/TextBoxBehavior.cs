@@ -88,7 +88,7 @@ public class TextBoxBehavior {
             string pattern = @"^-?[0-9]*\.?[0-9]*$";
             Regex regex = new Regex(pattern);
                 
-            if (regex.IsMatch(text))
+            if (!regex.IsMatch(text))
             {
                 e.CancelCommand(); // Cancels the paste action if it contains non-numbers
             }
