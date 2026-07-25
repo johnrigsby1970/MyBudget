@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Input;
 using Newtonsoft.Json;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
@@ -16,9 +17,19 @@ public class ReconciliationViewModel : ViewModelBase {
         _account = account;
         _budgetService = budgetService;
         _reconciliationService = new ReconciliationService(_budgetService);
+        CancelAdjustmentCommand = new RelayCommand(_ => {
+            CurrentAssetValue = EndingBalance;
+            AdjustmentTransactionAmount = null;
+            OnPropertyChanged(nameof(AdjustmentTransactionAmount));
+            AdjustmentTransactionMemo = "Balance adjustment transaction";
+            OnPropertyChanged(nameof(AdjustmentTransactionMemo));
+            IsBalanceAdjustmentVisible = false;
+            OnPropertyChanged(nameof(IsBalanceAdjustmentVisible));
+        });
+        ShowAdjustmentCommand = new RelayCommand(_ => IsBalanceAdjustmentVisible = true, _ => CanShowAdjustBalance);
         LoadData();
     }
-
+    
     private ObservableCollection<ReconciliationTransaction> _reconciliationTransactions = new();
 
     public ObservableCollection<ReconciliationTransaction> ReconciliationTransactions {
@@ -49,7 +60,10 @@ public class ReconciliationViewModel : ViewModelBase {
 
     public decimal CurrentAssetValue {
         get => _currentAssetValue;
-        set => SetProperty(ref _currentAssetValue, value);
+        set {
+            SetProperty(ref _currentAssetValue, value);
+            CalculateAdjustmentTransactionAmount();
+        }
     }
 
     private DateTime? _lastReconciledDate;
@@ -58,7 +72,7 @@ public class ReconciliationViewModel : ViewModelBase {
         get => _lastReconciledDate;
         set => SetProperty(ref _lastReconciledDate, value);
     }
-
+    
     private decimal? _newReconciledBalance = 0;
 
     public decimal? NewReconciledBalance {
@@ -66,13 +80,48 @@ public class ReconciliationViewModel : ViewModelBase {
         set => SetProperty(ref _newReconciledBalance, value);
     }
 
+    private decimal? _adjustmentTransactionAmount = 0;
+
+    public decimal? AdjustmentTransactionAmount {
+        get => _adjustmentTransactionAmount;
+        set {
+            SetProperty(ref _adjustmentTransactionAmount, value);
+            OnPropertyChanged(nameof(AdjustmentTransactionDescription));
+        }
+    }
+
+    private string? _adjustmentTransactionMemo = "Balance adjustment transaction";
+
+    public string? AdjustmentTransactionMemo {
+        get => _adjustmentTransactionMemo;
+        set => SetProperty(ref _adjustmentTransactionMemo, value);
+    }
+
+    public string? AdjustmentTransactionDescription => AdjustmentTransactionAmount.HasValue ?  AdjustmentTransactionAmount.Value > 0 ? "[Value Increase]" : "[Value Decrease]" : "";
+
     private DateTime? _newReconciledDate;
 
     public DateTime? NewReconciledDate {
         get => _newReconciledDate;
         set => SetProperty(ref _newReconciledDate, value);
     }
+    
+    
+    private bool _isBalanceAdjustmentVisible;
 
+    public bool IsBalanceAdjustmentVisible {
+        get => _isBalanceAdjustmentVisible;
+        set => SetProperty(ref _isBalanceAdjustmentVisible, value);
+    }
+
+    
+    public bool CanExecuteAdjustBalance => AdjustmentTransactionAmount != null;
+    public bool CanShowAdjustBalance => IsBalanceAdjustmentVisible == false;
+    public ICommand AdjustBalanceCommand => new RelayCommand(_ => AdjustBalance(), _ => CanExecuteAdjustBalance);
+    
+    public ICommand CancelAdjustmentCommand { get; private set; }
+    public ICommand ShowAdjustmentCommand { get; private set; }
+    
     public void ImportAccount() {
         var window = new ImportReconciliationWindow(_account, _budgetService) {
             Owner = Application.Current.MainWindow
@@ -80,10 +129,7 @@ public class ReconciliationViewModel : ViewModelBase {
         window.ShowDialog();
         LoadData();
     }
-
-    private RelayCommand? _adjustBalanceCommand;
-    public RelayCommand AdjustBalanceCommand => _adjustBalanceCommand ??= new RelayCommand(_ => AdjustBalance());
-
+    
     private async void AdjustBalance() {
         decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
         decimal delta = CurrentAssetValue - currentRunningBalance;
@@ -95,12 +141,33 @@ public class ReconciliationViewModel : ViewModelBase {
             ToAccountId = delta > 0 ? _account.Id : null,
             TransactionDate = DateTime.Today,
             Description = delta > 0 ? "Value Increase" : "Value Decrease",
+            Memo = AdjustmentTransactionMemo,
             Amount = Math.Abs(delta)
         };
 
         await _budgetService.UpsertTransactionAsync(adjustmentTransaction);
         CurrentAssetValue = 0; // Reset so it gets recalculated in LoadData
+        IsBalanceAdjustmentVisible = false;
+        OnPropertyChanged(nameof(CanExecuteAdjustBalance));
         LoadData();
+    }
+    
+    private void CalculateAdjustmentTransactionAmount() {
+        decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
+        decimal delta = CurrentAssetValue - currentRunningBalance;
+        
+        if (delta == 0) {
+            AdjustmentTransactionAmount = null;
+        }
+        else {
+            AdjustmentTransactionAmount = delta;
+        }
+
+        OnPropertyChanged(nameof(AdjustmentTransactionAmount));
+        OnPropertyChanged(nameof(CanExecuteAdjustBalance));
+        
+        // Force WPF to evaluate CanExecute immediately
+        CommandManager.InvalidateRequerySuggested();
     }
 
     private void LoadData() {

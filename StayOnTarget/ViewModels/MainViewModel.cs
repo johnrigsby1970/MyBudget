@@ -850,6 +850,7 @@ public class MainViewModel : ViewModelBase {
             }
 
             LoadData();
+            LoadPeriodData();
             IsEditingBill = false;
             EditingBillClone = null;
             CalculateProjections();
@@ -1011,6 +1012,7 @@ public class MainViewModel : ViewModelBase {
                 IsEditingBill = false;
                 EditingBillClone = null;
                 LoadData();
+                LoadPeriodData();
                 CalculateProjections();
             }
             catch (Exception ex) {
@@ -1069,6 +1071,7 @@ public class MainViewModel : ViewModelBase {
             }
             
             LoadData();
+            LoadPeriodData();
             IsEditingBucket = false;
             EditingBucketClone = null;
             CalculateProjections();
@@ -1113,6 +1116,7 @@ public class MainViewModel : ViewModelBase {
                 IsEditingBucket = false;
                 EditingBucketClone = null;
                 LoadData();
+                LoadPeriodData();
                 CalculateProjections();
             }
             catch (Exception ex) {
@@ -1402,6 +1406,7 @@ public class MainViewModel : ViewModelBase {
             EditingPaycheckClone = null;
 
             LoadData();
+            LoadPeriodData();
             RefreshPaychecks();
             LoadPaychecks();
             CalculateProjections();
@@ -1449,6 +1454,7 @@ public class MainViewModel : ViewModelBase {
                 IsEditingPaycheck = false;
                 EditingPaycheckClone = null;
                 LoadData();
+                LoadPeriodData();
                 RefreshPaychecks();
                 CalculateProjections();
             }
@@ -1593,6 +1599,7 @@ public class MainViewModel : ViewModelBase {
                 }
 
                 LoadData();
+                LoadPeriodData();
                 IsEditingAccount = false;
                 EditingAccountClone = null;
                 CalculateProjections();
@@ -1664,6 +1671,7 @@ public class MainViewModel : ViewModelBase {
                 IsEditingAccount = false;
                 EditingAccountClone = null;
                 LoadData();
+                LoadPeriodData();
                 CalculateProjections();
             }
             catch (Exception ex) {
@@ -2054,7 +2062,12 @@ public class MainViewModel : ViewModelBase {
             var nextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
             var transactions = _budgetService.GetTransactions(CurrentPeriodDate, nextPeriodDate).ToList();
             transactions = transactions.OrderBy(pb => pb.TransactionDate).ToList();
-            CurrentPeriodTransactions = new ObservableCollection<Transaction>(transactions);
+            CurrentPeriodTransactions.Clear();
+            foreach (var tx in transactions)
+            {
+                CurrentPeriodTransactions.Add(tx);
+            }
+            //CurrentPeriodTransactions = new ObservableCollection<Transaction>(transactions);
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period transactions.");
@@ -2128,6 +2141,7 @@ public class MainViewModel : ViewModelBase {
             };
             window.ShowDialog();
             LoadData();
+            LoadPeriodData();
             CalculateProjections();
         }
         catch (Exception ex) {
@@ -2143,6 +2157,7 @@ public class MainViewModel : ViewModelBase {
             };
             window.ShowDialog();
             LoadData();
+            LoadPeriodData();
             CalculateProjections();
         }
         catch (Exception ex) {
