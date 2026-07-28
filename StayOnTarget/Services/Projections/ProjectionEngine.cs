@@ -56,6 +56,8 @@ public class ProjectionEngine : IProjectionEngine {
         bool showReconciled = false,
         bool removeZeroBalanceEntries = false, 
         bool useAutoSweep = false) {
+
+        var thresholdPct = .5m;
         
         var list = new List<ProjectionItem>();
         var current = startDate;
@@ -246,6 +248,7 @@ public class ProjectionEngine : IProjectionEngine {
         var nextPaycheckIndex = 0;
         var nextPaycheckDate = paycheckDates.Count > 0 ? paycheckDates[0] : DateTime.MaxValue;
 
+        
         foreach (var e in futureEvents) {
             if (useAutoSweep) {
                 // Check if we've passed into a new period
@@ -256,10 +259,12 @@ public class ProjectionEngine : IProjectionEngine {
                             var balance = accountBalances[ccId];
                             if (balance < 0 && primaryChecking.HasValue) {
                                 var sweepAmount = -balance;
-
-                                decimal threshold = 0m;
+        
+                                decimal threshold = thresholdPct * accountBalances[primaryChecking.Value];
+                                
+                                if (threshold < 0) threshold = 0;
+                                
                                 decimal checkingBalance = accountBalances[primaryChecking.Value];
-
                                 // Calculate available surplus above the threshold
                                 decimal availableToSweep = checkingBalance - threshold;
 
@@ -464,7 +469,10 @@ public class ProjectionEngine : IProjectionEngine {
                             var sweepAmount = -balance;
 
 
-                            decimal threshold = 0m;
+                            decimal threshold = thresholdPct * accountBalances[primaryChecking.Value];
+                                
+                            if (threshold < 0) threshold = 0;
+                            
                             decimal checkingBalance = accountBalances[primaryChecking.Value];
 
                             // Calculate available surplus above the threshold
@@ -540,7 +548,10 @@ public class ProjectionEngine : IProjectionEngine {
                 if (balance < 0 && primaryChecking.HasValue) {
                     var sweepAmount = -balance;
                     
-                    decimal threshold = 0m;
+                    decimal threshold = thresholdPct * accountBalances[primaryChecking.Value];
+                                
+                    if (threshold < 0) threshold = 0;
+                    
                     decimal checkingBalance = accountBalances[primaryChecking.Value];
 
                     // Calculate available surplus above the threshold
