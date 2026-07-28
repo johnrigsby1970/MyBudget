@@ -196,13 +196,7 @@ public class ProjectionEngine : IProjectionEngine {
 
         current = startDate;
 
-        var runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => {
-            var bal = accountBalances[a.Id];
-            return (a.Type == AccountType.Mortgage || a.Type == AccountType.PersonalLoan ||
-                    a.Type == AccountType.CreditCard)
-                ? bal //now signed as a debt already in the database, negative
-                : bal;
-        });
+        var runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
 
         var lastDate = current;
         var futureEvents = sortedEvents.Where(e => e.Date >= current).ToList();

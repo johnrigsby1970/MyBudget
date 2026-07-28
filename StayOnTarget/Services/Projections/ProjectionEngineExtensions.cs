@@ -187,9 +187,7 @@ public static class ProjectionEngineExtensions {
                                         acc.MortgageDetails.MortgageInsurance;
                             if (principal < 0) principal = 0;
                         }
-if(Math.Abs(principal)==500) {
-    var s = "";
-}
+
                         accountBalances[acc.Id] -= principal;
                     }
                     else if (isPersonalLoan &&

@@ -17,7 +17,7 @@ public class AutoSweepTests
     public void TestAutoSweep_ClearsCreditCardBalanceAtEndOfPeriod()
     {
         // Arrange
-        var checking = new Account { Id = 1, Name = "Checking", Balance = 5000m, Type = AccountType.Checking, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1) };
+        var checking = new Account { Id = 1, Name = "Checking", Balance = 5000m, Type = AccountType.Checking, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1), IsPrimary = true };
         var creditCard = new Account { Id = 2, Name = "CreditCard", Balance = 0m, Type = AccountType.CreditCard, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1) };
         var accounts = new List<Account> { checking, creditCard };
 
@@ -64,7 +64,7 @@ public class AutoSweepTests
     public void TestAutoSweep_HandlesMultiplePeriods()
     {
         // Arrange
-        var checking = new Account { Id = 1, Name = "Checking", Balance = 5000m, Type = AccountType.Checking, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1) };
+        var checking = new Account { Id = 1, Name = "Checking", Balance = 5000m, Type = AccountType.Checking, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1), IsPrimary = true };
         var creditCard = new Account { Id = 2, Name = "CreditCard", Balance = 0m, Type = AccountType.CreditCard, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1) };
         var accounts = new List<Account> { checking, creditCard };
 
@@ -113,7 +113,7 @@ public class AutoSweepTests
         // Arrange
         // Current date is 2026-07-28
         var today = new DateTime(2026, 7, 28);
-        var checking = new Account { Id = 1, Name = "Checking", Balance = 5000m, Type = AccountType.Checking, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 7, 1) };
+        var checking = new Account { Id = 1, Name = "Checking", Balance = 5000m, Type = AccountType.Checking, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 7, 1), IsPrimary = true };
         var creditCard = new Account { Id = 2, Name = "CreditCard", Balance = 0m, Type = AccountType.CreditCard, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 7, 1) };
         var accounts = new List<Account> { checking, creditCard };
 
