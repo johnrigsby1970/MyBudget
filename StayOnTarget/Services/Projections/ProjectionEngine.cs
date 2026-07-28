@@ -433,10 +433,7 @@ public class ProjectionEngine : IProjectionEngine {
             // Recalculate running balance from all included accounts
             runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => {
                 var bal = accountBalances[a.Id];
-                return (a.Type == AccountType.Mortgage || a.Type == AccountType.PersonalLoan ||
-                        a.Type == AccountType.CreditCard)
-                    ? bal //now properly signed in the database as a debt, negative already
-                    : bal;
+                return bal;
             });
 
             var item = new ProjectionItem {
@@ -583,22 +580,6 @@ public class ProjectionEngine : IProjectionEngine {
 
                         list.Add(sweepItem);
                     }
-                    
-                    // accountBalances[primaryChecking.Value] -= sweepAmount;
-                    // accountBalances[ccId] += sweepAmount;
-                    // runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
-                    //
-                    // list.Add(new ProjectionItem {
-                    //     TransactionDate = endDate,
-                    //     Description = $"Auto-Sweep: {accountNames[ccId]}",
-                    //     FromAccountId = primaryChecking,
-                    //     ToAccountId = ccId,
-                    //     Amount = -sweepAmount,
-                    //     Balance = runningBalance,
-                    //     IsSynthetic = true,
-                    //     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
-                    //     InOrOutOfMoneyAccount = true
-                    // });
                 }
             }
         }
