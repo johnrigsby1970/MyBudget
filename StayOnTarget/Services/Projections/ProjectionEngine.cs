@@ -137,12 +137,10 @@ public class ProjectionEngine : IProjectionEngine {
 
         // 3. Create events for Buckets
         events.AddBucketEvents(accounts, paychecks, buckets, periodBuckets, current, endDate);
-        var test = events.Where(x => x.Amount == -500).ToList();
         // 4. Create events for Transactions
         // We always use uniqueTransactions to build the events list for simulation.
         // This ensures consistent balance reconstruction between ShowReconciled modes.
         events.AddTransactionEvents(uniqueTransactions, showReconciled);
-        var test8 = events.Where(x => x.Amount == -500).ToList();
         // 5. Create events or Interest & Growth Setup
         // Use all transactions for interest calculation to correctly identify manual adjustments
         events.AddInterestEvents(accounts, uniqueTransactions, startDate, endDate);
@@ -291,28 +289,6 @@ public class ProjectionEngine : IProjectionEngine {
 
                                     list.Add(sweepItem);
                                 }
-                                // var threshold = 0;
-                                //
-                                // if (accountBalances[primaryChecking.Value] - sweepAmount > threshold) {
-                                //     accountBalances[primaryChecking.Value] -= sweepAmount;
-                                //     accountBalances[ccId] += sweepAmount;
-                                //     runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
-                                //         .Sum(a => accountBalances[a.Id]);
-                                //
-                                //     var sweepItem = new ProjectionItem {
-                                //         TransactionDate = sweepDate,
-                                //         Description = $"Auto-Sweep: {accountNames[ccId]}",
-                                //         FromAccountId = primaryChecking,
-                                //         ToAccountId = ccId,
-                                //         Amount = -sweepAmount,
-                                //         Balance = runningBalance,
-                                //         IsSynthetic = true,
-                                //         AccountBalances =
-                                //             accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
-                                //         InOrOutOfMoneyAccount = true
-                                //     };
-                                //     list.Add(sweepItem);
-                                // }
                             }
                         }
                     }
@@ -350,7 +326,8 @@ public class ProjectionEngine : IProjectionEngine {
                     ccUnpaidStatementBalance,
                     ccPaidThisCycle,
                     ccDailyBalances,
-                    includedTotalAccounts)) continue;
+                    includedTotalAccounts,
+                    startDate)) continue;
 
             // Apply Reconciliation, be sure to get the latest reconciliation balance as each event is handled
             //Don't add reconciliation events to final projection. We want to make sure balances account for out-of-band changes
@@ -419,9 +396,10 @@ public class ProjectionEngine : IProjectionEngine {
                     accountBalances[e.ToAccountId.Value] += amountChange;
                 }
                 else if (toAcc?.Type == AccountType.CreditCard) {
-                    accountBalances[e.ToAccountId.Value] += e.FromAccountId==null ? currentEventAmount : -currentEventAmount;
+                    var delta = e.FromAccountId == null ? currentEventAmount : -currentEventAmount;
+                    accountBalances[e.ToAccountId.Value] += delta;
                     if (ccPaidThisCycle.ContainsKey(e.ToAccountId.Value)) {
-                        ccPaidThisCycle[e.ToAccountId.Value] += amountChange;
+                        ccPaidThisCycle[e.ToAccountId.Value] += delta;
                     }
                 }
                 else if (isDebt) {
@@ -476,37 +454,73 @@ public class ProjectionEngine : IProjectionEngine {
         }
 
         // Process any remaining periods that didn't have events
-        while (nextPaycheckDate != DateTime.MaxValue && nextPaycheckDate <= endDate)
-        {
-            var sweepDate = nextPaycheckDate.AddDays(-1);
-            if (sweepDate >= DateTime.Today) {
-                foreach (var ccId in creditCardAccountIds)
-                {
-                    var balance = accountBalances[ccId];
-                    if (balance < 0 && primaryChecking.HasValue)
-                    {
-                        var sweepAmount = -balance;
-                        accountBalances[primaryChecking.Value] -= sweepAmount;
-                        accountBalances[ccId] += sweepAmount;
-                        runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
+        if (useAutoSweep) {
+            while (nextPaycheckDate != DateTime.MaxValue && nextPaycheckDate <= endDate) {
+                var sweepDate = nextPaycheckDate.AddDays(-1);
+                if (sweepDate >= DateTime.Today) {
+                    foreach (var ccId in creditCardAccountIds) {
+                        var balance = accountBalances[ccId];
+                        if (balance < 0 && primaryChecking.HasValue) {
+                            var sweepAmount = -balance;
 
-                        list.Add(new ProjectionItem
-                        {
-                            TransactionDate = sweepDate,
-                            Description = $"Auto-Sweep: {accountNames[ccId]}",
-                            FromAccountId = primaryChecking,
-                            ToAccountId = ccId,
-                            Amount = -sweepAmount,
-                            Balance = runningBalance,
-                            IsSynthetic = true,
-                            AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
-                            InOrOutOfMoneyAccount = true
-                        });
+
+                            decimal threshold = 0m;
+                            decimal checkingBalance = accountBalances[primaryChecking.Value];
+
+                            // Calculate available surplus above the threshold
+                            decimal availableToSweep = checkingBalance - threshold;
+
+                            // Cap the sweep to either the full debt amount or what's available above threshold
+                            decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
+
+                            if (actualSweepAmount > 0) {
+                                accountBalances[primaryChecking.Value] -= actualSweepAmount;
+                                accountBalances[ccId] += actualSweepAmount;
+
+                                runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
+                                    .Sum(a => accountBalances[a.Id]);
+
+                                var sweepItem = new ProjectionItem {
+                                    TransactionDate = sweepDate,
+                                    Description = $"Auto-Sweep: {accountNames[ccId]}",
+                                    FromAccountId = primaryChecking,
+                                    ToAccountId = ccId,
+                                    Amount = -actualSweepAmount,
+                                    Balance = runningBalance,
+                                    IsSynthetic = true,
+                                    AccountBalances =
+                                        accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                                    InOrOutOfMoneyAccount = true
+                                };
+
+                                list.Add(sweepItem);
+                            }
+
+                            // accountBalances[primaryChecking.Value] -= sweepAmount;
+                            // accountBalances[ccId] += sweepAmount;
+                            // runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
+                            //
+                            // list.Add(new ProjectionItem
+                            // {
+                            //     TransactionDate = sweepDate,
+                            //     Description = $"Auto-Sweep: {accountNames[ccId]}",
+                            //     FromAccountId = primaryChecking,
+                            //     ToAccountId = ccId,
+                            //     Amount = -sweepAmount,
+                            //     Balance = runningBalance,
+                            //     IsSynthetic = true,
+                            //     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                            //     InOrOutOfMoneyAccount = true
+                            // });
+                        }
                     }
                 }
+
+                nextPaycheckIndex++;
+                nextPaycheckDate = nextPaycheckIndex < paycheckDates.Count
+                    ? paycheckDates[nextPaycheckIndex]
+                    : DateTime.MaxValue;
             }
-            nextPaycheckIndex++;
-            nextPaycheckDate = nextPaycheckIndex < paycheckDates.Count ? paycheckDates[nextPaycheckIndex] : DateTime.MaxValue;
         }
 
         //Calculate the net income for this period. Not counting investment accounts unrealized gains/losses.
@@ -520,26 +534,60 @@ public class ProjectionEngine : IProjectionEngine {
         }
 
         // Final Auto-Sweep at the end of the last period
-        if (endDate >= DateTime.Today) {
+        if (useAutoSweep && endDate >= DateTime.Today) {
             foreach (var ccId in creditCardAccountIds) {
                 var balance = accountBalances[ccId];
                 if (balance < 0 && primaryChecking.HasValue) {
                     var sweepAmount = -balance;
-                    accountBalances[primaryChecking.Value] -= sweepAmount;
-                    accountBalances[ccId] += sweepAmount;
-                    runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
+                    
+                    decimal threshold = 0m;
+                    decimal checkingBalance = accountBalances[primaryChecking.Value];
 
-                    list.Add(new ProjectionItem {
-                        TransactionDate = endDate,
-                        Description = $"Auto-Sweep: {accountNames[ccId]}",
-                        FromAccountId = primaryChecking,
-                        ToAccountId = ccId,
-                        Amount = -sweepAmount,
-                        Balance = runningBalance,
-                        IsSynthetic = true,
-                        AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
-                        InOrOutOfMoneyAccount = true
-                    });
+                    // Calculate available surplus above the threshold
+                    decimal availableToSweep = checkingBalance - threshold;
+
+                    // Cap the sweep to either the full debt amount or what's available above threshold
+                    decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
+
+                    if (actualSweepAmount > 0) 
+                    {
+                        accountBalances[primaryChecking.Value] -= actualSweepAmount;
+                        accountBalances[ccId] += actualSweepAmount;
+
+                        runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
+                            .Sum(a => accountBalances[a.Id]);
+
+                        var sweepItem = new ProjectionItem 
+                        {
+                            TransactionDate = endDate,
+                            Description = $"Auto-Sweep: {accountNames[ccId]}",
+                            FromAccountId = primaryChecking,
+                            ToAccountId = ccId,
+                            Amount = -actualSweepAmount,
+                            Balance = runningBalance,
+                            IsSynthetic = true,
+                            AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                            InOrOutOfMoneyAccount = true
+                        };
+
+                        list.Add(sweepItem);
+                    }
+                    
+                    // accountBalances[primaryChecking.Value] -= sweepAmount;
+                    // accountBalances[ccId] += sweepAmount;
+                    // runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
+                    //
+                    // list.Add(new ProjectionItem {
+                    //     TransactionDate = endDate,
+                    //     Description = $"Auto-Sweep: {accountNames[ccId]}",
+                    //     FromAccountId = primaryChecking,
+                    //     ToAccountId = ccId,
+                    //     Amount = -sweepAmount,
+                    //     Balance = runningBalance,
+                    //     IsSynthetic = true,
+                    //     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                    //     InOrOutOfMoneyAccount = true
+                    // });
                 }
             }
         }

@@ -210,22 +210,16 @@ public static class ProjectionEngineExtensions {
                     }
                 }
 
-                if (acc.Type == AccountType.CreditCard && e.Type == ProjectionEngine.ProjectionEventType.Interest) {
+                if (e.Type == ProjectionEngine.ProjectionEventType.Interest) {
                     // Logic to update ccGraceActive, ccUnpaidStatementBalance, etc. 
                     // This is similar to AddInterestProjection but for historical events.
-                    if (acc.CreditCardDetails != null) {
-                        if (acc.CreditCardDetails.PayPreviousMonthBalanceInFull) {
-                            ccGraceActive[acc.Id] =
-                                (ccPaidThisCycle[acc.Id] >= ccUnpaidStatementBalance[acc.Id] - 0.01m);
-                        }
-                        else {
-                            ccGraceActive[acc.Id] = false;
-                        }
-
-                        ccUnpaidStatementBalance[acc.Id] = accountBalances[acc.Id];
-                        ccPaidThisCycle[acc.Id] = 0;
-                        ccDailyBalances[acc.Id].Clear();
-                    }
+                    var dummyList = new List<ProjectionItem>();
+                    var dummyNames = accounts.ToDictionary(a => a.Id, a => a.Name);
+                    var includedSet = accounts.Where(a => a.IncludeInTotal).Select(a => a.Id).ToHashSet();
+                    var dummyRunningBalance = 0m;
+                    AddInterestProjection(dummyList, ref dummyRunningBalance, e, accounts, accountBalances,
+                        dummyNames, ccGraceActive, ccUnpaidStatementBalance, ccPaidThisCycle, ccDailyBalances,
+                        includedSet, new DateTime(1900, 1, 1));
                 }
             }
 
@@ -300,7 +294,8 @@ public static class ProjectionEngineExtensions {
         Dictionary<int, decimal> ccUnpaidStatementBalance,
         Dictionary<int, decimal> ccPaidThisCycle,
         Dictionary<int, List<(DateTime Date, decimal Balance, decimal InterestAccruingBalance)>> ccDailyBalances,
-        HashSet<int> includedTotalAccounts) {
+        HashSet<int> includedTotalAccounts,
+        DateTime startDate) {
         var moneyAccountIds = accounts.Where(x => x.Type == AccountType.Checking || x.Type == AccountType.Savings)
             .Select(x => x.Id).ToList();
 
@@ -359,12 +354,7 @@ public static class ProjectionEngineExtensions {
                         accruingBalance = 0;
                     }
 
-                    // Calculate days since last interest event (or start)
-                    // This handles cases where no events occurred in the month
-                    // For simplicity, we'll look for the last entry in the list for this account if possible,
-                    // but since we clear dailyBalances, we don't have it here.
-                    // However, we know it's a monthly event.
-                    totalInterest = accruingBalance * dailyPeriodicRate * 30;
+                    totalInterest = 0;
                 }
 
                 totalInterest = Math.Round(totalInterest, 2);
@@ -376,13 +366,60 @@ public static class ProjectionEngineExtensions {
                     }
                 }
 
-                // Reset Grace Period check
                 if (acc.CreditCardDetails.PayPreviousMonthBalanceInFull) {
                     //Did they pay their balance this period? If so, they keep their grade period.
-                    ccGraceActive[acc.Id] = (ccPaidThisCycle[acc.Id] >= Math.Abs(ccUnpaidStatementBalance[acc.Id]) );
+                    ccGraceActive[acc.Id] = (ccPaidThisCycle[acc.Id] >= Math.Abs(ccUnpaidStatementBalance[acc.Id]) - 0.01m );
                 }
                 else {
                     ccGraceActive[acc.Id] = false;
+                }
+
+                // If grace was active but is now LOST, we should clear the daily balances that were only kept
+                // for retroactive purposes, BUT we want to keep them if they are needed for the current statement.
+                // Actually, the engine seems to prefer keeping them until a full payment is made.
+
+                var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
+                if (primaryChecking.HasValue && e.Date >= startDate) {
+                    var currentCcBalance = accountBalances[acc.Id];
+                    var minPaymentAmount = acc.CreditCardDetails.MinPayFloor;
+                    var amountPaidSoFar = ccPaidThisCycle[acc.Id];
+
+                    // Only sweep if there's debt and a minimum payment requirement
+                    if (currentCcBalance < 0 && minPaymentAmount > 0 && amountPaidSoFar < minPaymentAmount) {
+                        var remainingMinPayment = Math.Min(-currentCcBalance, minPaymentAmount - amountPaidSoFar);
+
+                        if (remainingMinPayment > 0) {
+                            var checkingBalance = accountBalances[primaryChecking.Value];
+                            var actualSweepAmount = Math.Min(remainingMinPayment, checkingBalance);
+
+                            if (actualSweepAmount > 0) {
+                                accountBalances[primaryChecking.Value] -= actualSweepAmount;
+                                accountBalances[acc.Id] += actualSweepAmount;
+                                ccPaidThisCycle[acc.Id] += actualSweepAmount;
+
+                                if (includedTotalAccounts.Contains(acc.Id)) {
+                                    // runningBalance is updated because both accounts are in includedTotalAccounts usually
+                                    // but we should recalculate to be safe if checking isn't included or something
+                                    runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
+                                        .Sum(a => accountBalances[a.Id]);
+                                }
+
+                                var sweepItem = new ProjectionItem {
+                                    TransactionDate = e.Date,
+                                    Description = $"Min-Pay Sweep: {acc.Name}",
+                                    FromAccountId = primaryChecking,
+                                    ToAccountId = acc.Id,
+                                    Amount = -actualSweepAmount,
+                                    Balance = runningBalance,
+                                    IsSynthetic = true,
+                                    AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                                    InOrOutOfMoneyAccount = true
+                                };
+
+                                list.Add(sweepItem);
+                            }
+                        }
+                    }
                 }
 
                 ccUnpaidStatementBalance[acc.Id] = accountBalances[acc.Id];
