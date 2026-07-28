@@ -107,8 +107,8 @@ public partial class BudgetService
 
         if (account.Id == 0)
         {
-            account.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Accounts (Name, BankName,  BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor) 
-                           VALUES (@Name, @BankName, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type, @HexColor);
+            account.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Accounts (Name, BankName, Balance,  BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor) 
+                           VALUES (@Name, @BankName, 0, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type, @HexColor);
                            SELECT last_insert_rowid();", accountParam);
             
         }
