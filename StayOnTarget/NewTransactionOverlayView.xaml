@@ -4,13 +4,14 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:StayOnTarget"
+             xmlns:converters="clr-namespace:StayOnTarget.Converters"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="600">
     <UserControl.Resources>
-        <local:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
-        <local:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
+        <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
+        <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <local:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" />
+        <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" />
     </UserControl.Resources>
     <Grid Background="#80000000">
             <Border Background="White" Width="600" VerticalAlignment="Center" Padding="20" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">

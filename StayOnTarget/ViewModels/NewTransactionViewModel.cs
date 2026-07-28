@@ -1,7 +1,10 @@
 ﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Windows;
 using StayOnTarget.Models;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
+using Serilog;
 using StayOnTarget.Services;
 
 namespace StayOnTarget.ViewModels;
@@ -19,28 +22,48 @@ public class NewTransactionViewModel : ViewModelBase {
     }
 
     public NewTransactionViewModel(Account account, BudgetService budgetService,
-        ImportedTransactionViewModel SelectedImported, Action<NewTransactionViewModel, bool> closeCallback) {
+        ImportedTransactionViewModel selectedImported, Action<NewTransactionViewModel, bool> closeCallback) {
+
+        
         _account = account;
         _budgetService = budgetService;
         _closeCallback = closeCallback;
-
-        CancelNewTransactionCommand = new RelayCommand(param => OnCancel());
+        
+        CancelNewTransactionCommand = new RelayCommand(OnCancel);
         SaveNewTransactionCommand =
-            new RelayCommand(param => _ = OnSave(), param => EditingTransactionClone != null);
+            new AsyncRelayCommand(OnSave, () => EditingTransactionClone != null);
+        
+        // 1. Validate data state
+        bool isValid = 
+                       !string.IsNullOrWhiteSpace(selectedImported.Payee) && 
+                       selectedImported.Date != null && 
+                       !string.IsNullOrWhiteSpace(selectedImported.BankId);
 
+        if (!isValid)
+        {
+            // Queue the message box and close action onto the WPF Dispatcher AFTER constructor & render finishes
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() => 
+            {
+                MessageBox.Show("The transaction lacks required fields of payee, transaction date, and a bank transaction id.");
+                _closeCallback?.Invoke(this, false); // Safely close the window!
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
+
+            return; // Abort remaining initialization
+        }
+        
         EditingTransactionClone = new Transaction {
-            Description = SelectedImported.Payee,
+            Description = selectedImported.Payee??"",
             Memo = "",
-            Amount = Math.Abs(SelectedImported.Amount),
-            TransactionDate = SelectedImported.Date.Value,
-            FitId = SelectedImported.BankId,
-            AccountId = SelectedImported.Amount > 0 ? null : _account.Id,
-            AccountName = SelectedImported.Amount > 0 ? null : _account.Name,
-            ToAccountId = SelectedImported.Amount > 0 ? _account.Id : null,
-            ToAccountName = SelectedImported.Amount > 0 ? _account.Name : null
+            Amount = Math.Abs(selectedImported.Amount),
+            TransactionDate = selectedImported.Date!.Value,
+            FitId = selectedImported.BankId??"",
+            AccountId = selectedImported.Amount > 0 ? null : _account.Id,
+            AccountName = selectedImported.Amount > 0 ? null : _account.Name,
+            ToAccountId = selectedImported.Amount > 0 ? _account.Id : null,
+            ToAccountName = selectedImported.Amount > 0 ? _account.Name : null
         };
 
-        LoadPaychecks();
+        _ =  LoadPaychecksAsync();
 
         Loaded = true;
     }
@@ -52,12 +75,14 @@ public class NewTransactionViewModel : ViewModelBase {
         set => SetProperty(ref _loaded, value);
     }
 
-    public ICommand CancelNewTransactionCommand { get; }
-    public ICommand SaveNewTransactionCommand { get; }
+    public IRelayCommand CancelNewTransactionCommand { get; }
+    public IAsyncRelayCommand SaveNewTransactionCommand { get; }
 
     private ObservableCollection<Account> _accounts = new();
 
     private ObservableCollection<Paycheck> _paychecks = new();
+    
+    private ObservableCollection<Paycheck> _periodPayChecks = new();
 
     private ObservableCollection<BudgetBucket> _buckets = new();
     private DateTime _currentPeriodDate = DateTime.MinValue;
@@ -94,7 +119,11 @@ public class NewTransactionViewModel : ViewModelBase {
 
     public Transaction? EditingTransactionClone {
         get => _editingTransactionClone;
-        set => SetProperty(ref _editingTransactionClone, value);
+        set {
+            if (SetProperty(ref _editingTransactionClone, value)) {
+                SaveNewTransactionCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     private ObservableCollection<PeriodBill> _currentPeriodBills = new();
@@ -115,11 +144,23 @@ public class NewTransactionViewModel : ViewModelBase {
         get => _currentPeriodDate;
         set {
             if (SetProperty(ref _currentPeriodDate, value)) {
-                LoadPeriodData();
+                OnCurrentPeriodDateChanged();
             }
         }
     }
 
+    private async void OnCurrentPeriodDateChanged()
+    {
+        try 
+        {
+            await LoadPeriodDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load period data for date {Date}", _currentPeriodDate);
+        }
+    }
+    
     private ObservableCollection<Transaction> _currentPeriodTransactions = new();
 
     public ObservableCollection<Transaction> CurrentPeriodTransactions {
@@ -134,9 +175,9 @@ public class NewTransactionViewModel : ViewModelBase {
         set => SetProperty(ref _paychecksWithNone, value);
     }
 
-    private void LoadPeriodData() {
+    private async Task LoadPeriodDataAsync() {
         try {
-            var accounts = _budgetService.GetAllAccounts().ToList();
+            var accounts = (await _budgetService.GetAllAccountsAsync()).ToList();
             if (accounts.All(a => a.Name != "Household Cash" && a.Type != AccountType.Cash)) {
                 var cashAccount = new Account {
                     Name = "Household Cash",
@@ -144,8 +185,8 @@ public class NewTransactionViewModel : ViewModelBase {
                     Balance = 0,
                     IncludeInTotal = true
                 };
-                _budgetService.UpsertAccount(cashAccount);
-                accounts = _budgetService.GetAllAccounts().ToList();
+                await _budgetService.UpsertAccountAsync(cashAccount);
+                accounts = (await _budgetService.GetAllAccountsAsync()).ToList();
             }
 
             accounts = accounts.OrderBy(b => b.Name).ToList();
@@ -154,21 +195,21 @@ public class NewTransactionViewModel : ViewModelBase {
             accountsWithNone.AddRange(accounts);
             AccountsWithNone = new ObservableCollection<Account>(accountsWithNone);
 
-            var bills = _budgetService.GetAllBills();
+            var bills = await _budgetService.GetAllBillsAsync();
             bills = bills.OrderBy(b => b.DueDay).ThenBy(b => b.Name).ToList();
 
             var billsWithNone = new List<Bill> { new Bill { Id = 0, Name = "(None)" } };
             billsWithNone.AddRange(bills);
             BillsWithNone = new ObservableCollection<Bill>(billsWithNone);
 
-            var paychecks = _budgetService.GetAllPaychecks();
+            var paychecks = await _budgetService.GetAllPaychecksAsync();
             paychecks = paychecks.OrderBy(b => b.Name).ToList();
 
             var paychecksWithNone = new List<Paycheck> { new Paycheck { Id = 0, Name = "(None)" } };
             paychecksWithNone.AddRange(paychecks);
             PaychecksWithNone = new ObservableCollection<Paycheck>(paychecksWithNone);
 
-            var buckets = _budgetService.GetAllBuckets();
+            var buckets = await _budgetService.GetAllBucketsAsync();
             buckets = buckets.OrderBy(b => b.Name).ToList();
 
             var bucketsWithNone = new List<BudgetBucket> { new BudgetBucket { Id = 0, Name = "(None)" } };
@@ -179,23 +220,27 @@ public class NewTransactionViewModel : ViewModelBase {
             Debug.WriteLine("Failure while loading data: " + ex.Message);
         }
 
-        LoadPeriodBills();
-        LoadPeriodBuckets();
-        LoadPeriodTransactions();
+        await LoadPeriodBillsAsync();
+        await LoadPeriodBucketsAsync();
+        await LoadPeriodTransactionsAsync();
     }
 
-    private void LoadPeriodBills() {
-        var pBills = _budgetService.GetPeriodBills(CurrentPeriodDate).ToList();
+    private async Task LoadPeriodBillsAsync() {
+        var pBills = (await _budgetService.GetPeriodBillsAsync(CurrentPeriodDate)).ToList();
         pBills = pBills.OrderBy(pb => pb.DueDate).ToList();
 
         CurrentPeriodBills = new ObservableCollection<PeriodBill>(pBills);
         OnPropertyChanged(nameof(CurrentPeriodBills));
+        
+        
     }
 
-    private void LoadPeriodBuckets() {
-        var pBuckets = _budgetService.GetPeriodBucketsIncludingMonthly(CurrentPeriodDate).ToList();
+    private async Task LoadPeriodBucketsAsync() {
+        var pBuckets = (await _budgetService.GetPeriodBucketsIncludingMonthlyAsync(CurrentPeriodDate)).ToList();
         CurrentPeriodBuckets = new ObservableCollection<PeriodBucket>(pBuckets);
         OnPropertyChanged(nameof(CurrentPeriodBuckets));
+        
+        
     }
 
     private DateTime GetNextPeriodDate(DateTime currentPeriodStart) {
@@ -220,24 +265,29 @@ public class NewTransactionViewModel : ViewModelBase {
         return nextDate == DateTime.MinValue ? currentPeriodStart.AddDays(14) : nextDate;
     }
 
-    private void LoadPeriodTransactions() {
+    private async Task LoadPeriodTransactionsAsync() {
         var nextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
-        var transactions = _budgetService.GetTransactions(CurrentPeriodDate, nextPeriodDate).ToList();
+        var transactions = (await _budgetService.GetTransactionsAsync(CurrentPeriodDate, nextPeriodDate)).ToList();
         transactions = transactions.OrderBy(pb => pb.TransactionDate).ToList();
         CurrentPeriodTransactions = new ObservableCollection<Transaction>(transactions);
         OnPropertyChanged(nameof(CurrentPeriodTransactions));
+        
+        
     }
 
-
-    private ObservableCollection<Paycheck> PeriodPaychecks { get; set; }
-
+    
+    public ObservableCollection<Paycheck> PeriodPaychecks {
+        get => _periodPayChecks;
+        set => SetProperty(ref _periodPayChecks, value);
+    }
+    
     public ObservableCollection<Paycheck> Paychecks {
         get => _paychecks;
         set => SetProperty(ref _paychecks, value);
     }
 
-    private void LoadPaychecks() {
-        var paychecks = _budgetService.GetAllPaychecks();
+    private async Task LoadPaychecksAsync() {
+        var paychecks = await _budgetService.GetAllPaychecksAsync();
         paychecks = paychecks.OrderBy(b => b.Name).ToList();
         Paychecks = new ObservableCollection<Paycheck>(paychecks);
 
@@ -318,12 +368,9 @@ public class NewTransactionViewModel : ViewModelBase {
         if (EditingTransactionClone.PaycheckId == 0) EditingTransactionClone.PaycheckId = null;
 
         await _budgetService.UpsertTransactionAsync(EditingTransactionClone);
-        //if(SelectedImported!=null && SelectedImported.BankId==EditingTransactionClone.FitId) {
-        // SelectedImported.IsReconciled = false;//for purposes of this screen. 
-        //SelectedImported.Status = "Created";
-        //ImportedTransactions.Remove(SelectedImported);
+
         _closeCallback?.Invoke(this, true);
-        //}
+  
         EditingTransactionClone = null;
     }
 

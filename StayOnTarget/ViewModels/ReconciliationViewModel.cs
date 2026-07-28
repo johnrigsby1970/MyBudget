@@ -1,7 +1,9 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
+using Serilog;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
 using StayOnTarget.Views;
@@ -17,7 +19,7 @@ public class ReconciliationViewModel : ViewModelBase {
         _account = account;
         _budgetService = budgetService;
         _reconciliationService = new ReconciliationService(_budgetService);
-        CancelAdjustmentCommand = new RelayCommand(_ => {
+        CancelAdjustmentCommand = new RelayCommand(() => {
             CurrentAssetValue = EndingBalance;
             AdjustmentTransactionAmount = null;
             OnPropertyChanged(nameof(AdjustmentTransactionAmount));
@@ -25,10 +27,17 @@ public class ReconciliationViewModel : ViewModelBase {
             OnPropertyChanged(nameof(AdjustmentTransactionMemo));
             IsBalanceAdjustmentVisible = false;
             OnPropertyChanged(nameof(IsBalanceAdjustmentVisible));
+            
+            
         });
-        ShowAdjustmentCommand = new RelayCommand(_ => IsBalanceAdjustmentVisible = true, _ => CanShowAdjustBalance);
-        LoadData();
+        ShowAdjustmentCommand = new RelayCommand(() => IsBalanceAdjustmentVisible = true, () => CanShowAdjustBalance);
+
+        AdjustBalanceCommand = new AsyncRelayCommand(AdjustBalanceAsync, () => CanExecuteAdjustBalance);
+        
+        InitializeDataCommand  = new AsyncRelayCommand( LoadDataAsync); 
     }
+    
+    public IAsyncRelayCommand InitializeDataCommand { get; }
     
     private ObservableCollection<ReconciliationTransaction> _reconciliationTransactions = new();
 
@@ -85,8 +94,11 @@ public class ReconciliationViewModel : ViewModelBase {
     public decimal? AdjustmentTransactionAmount {
         get => _adjustmentTransactionAmount;
         set {
-            SetProperty(ref _adjustmentTransactionAmount, value);
-            OnPropertyChanged(nameof(AdjustmentTransactionDescription));
+            if (SetProperty(ref _adjustmentTransactionAmount, value)) {
+                OnPropertyChanged(nameof(AdjustmentTransactionDescription));
+                OnPropertyChanged(nameof(CanExecuteAdjustBalance));
+                AdjustBalanceCommand.NotifyCanExecuteChanged();
+            }
         }
     }
 
@@ -97,7 +109,7 @@ public class ReconciliationViewModel : ViewModelBase {
         set => SetProperty(ref _adjustmentTransactionMemo, value);
     }
 
-    public string? AdjustmentTransactionDescription => AdjustmentTransactionAmount.HasValue ?  AdjustmentTransactionAmount.Value > 0 ? "[Value Increase]" : "[Value Decrease]" : "";
+    public string AdjustmentTransactionDescription => AdjustmentTransactionAmount.HasValue ?  AdjustmentTransactionAmount.Value > 0 ? "[Value Increase]" : "[Value Decrease]" : "";
 
     private DateTime? _newReconciledDate;
 
@@ -111,26 +123,31 @@ public class ReconciliationViewModel : ViewModelBase {
 
     public bool IsBalanceAdjustmentVisible {
         get => _isBalanceAdjustmentVisible;
-        set => SetProperty(ref _isBalanceAdjustmentVisible, value);
+        set {
+            if (SetProperty(ref _isBalanceAdjustmentVisible, value)) {
+                OnPropertyChanged(nameof(CanShowAdjustBalance));
+                ShowAdjustmentCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     
     public bool CanExecuteAdjustBalance => AdjustmentTransactionAmount != null;
     public bool CanShowAdjustBalance => IsBalanceAdjustmentVisible == false;
-    public ICommand AdjustBalanceCommand => new RelayCommand(_ => AdjustBalance(), _ => CanExecuteAdjustBalance);
+    public IAsyncRelayCommand AdjustBalanceCommand { get; }
+
+    public IRelayCommand CancelAdjustmentCommand { get; private set; }
+    public IRelayCommand ShowAdjustmentCommand { get; private set; }
     
-    public ICommand CancelAdjustmentCommand { get; private set; }
-    public ICommand ShowAdjustmentCommand { get; private set; }
-    
-    public void ImportAccount() {
+    public  async Task ImportAccount() {
         var window = new ImportReconciliationWindow(_account, _budgetService) {
             Owner = Application.Current.MainWindow
         };
         window.ShowDialog();
-        LoadData();
+        await LoadDataAsync();
     }
     
-    private async void AdjustBalance() {
+    private async Task AdjustBalanceAsync() {
         decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
         decimal delta = CurrentAssetValue - currentRunningBalance;
 
@@ -149,7 +166,9 @@ public class ReconciliationViewModel : ViewModelBase {
         CurrentAssetValue = 0; // Reset so it gets recalculated in LoadData
         IsBalanceAdjustmentVisible = false;
         OnPropertyChanged(nameof(CanExecuteAdjustBalance));
-        LoadData();
+        
+        
+        await LoadDataAsync();
     }
     
     private void CalculateAdjustmentTransactionAmount() {
@@ -170,25 +189,23 @@ public class ReconciliationViewModel : ViewModelBase {
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void LoadData() {
-        //decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
-        //if (CurrentAssetValue == 0) CurrentAssetValue = currentRunningBalance;
+    private async Task LoadDataAsync() {
+        try{
 
         decimal beginningBalance = _account.Balance;
         DateTime? lastReconciledDate = _account.BalanceAsOf;
-        var accountReconciliation = _budgetService.GetLatestValidReconciliation(_account.Id);
+        var accountReconciliation = await _budgetService.GetLatestValidReconciliationAsync(_account.Id);
 
         if (accountReconciliation != null) {
             beginningBalance = accountReconciliation.ReconciledBalance;
             lastReconciledDate = accountReconciliation.ReconciledAsOfDate;
         }
 
-        var transactions = _budgetService.GetAllUnreconciledTransactionsSinceLastReconciliation(_account.Id);
+        var transactions = await _budgetService.GetAllUnreconciledTransactionsSinceLastReconciliationAsync(_account.Id);
         transactions = transactions.OrderBy(b => b.TransactionDate).ToList();
         string json = JsonConvert.SerializeObject(transactions.ToList());
         var reconciliationTransactions = JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
-        EndingBalance = _reconciliationService.CalculateRunningBalance(_account.Id, reconciliationTransactions!,
-            out lastReconciledDate, out beginningBalance);
+        (EndingBalance, lastReconciledDate, beginningBalance)  = await _reconciliationService.CalculateRunningBalanceAsync(_account.Id, reconciliationTransactions!);
         BeginningBalance = beginningBalance;
         LastReconciledDate = lastReconciledDate ?? DateTime.MinValue;
         if (CurrentAssetValue == 0) CurrentAssetValue = EndingBalance;
@@ -215,9 +232,19 @@ public class ReconciliationViewModel : ViewModelBase {
         NewReconciledBalance = newReconciledBalance;
         NewReconciledDate = newReconciledDate;
         ReconciliationTransactions = new ObservableCollection<ReconciliationTransaction>(reconciliationTransactions!);
+        }
+        catch (Exception ex)
+        {
+            // Must catch exceptions locally to prevent app crash!
+            Log.Error("ReconciliationViewModel failed to load data: " + ex.Message);
+        }
+        // finally
+        // {
+        //     IsLoading = false;
+        // }
     }
 
-    public void UpdateReconciliationTransactions() {
+    public async Task UpdateReconciliationTransactionsAsync() {
         decimal? newReconciledBalance = null;
         DateTime? newReconciledDate = null;
         bool hasNewReconciled = false;
@@ -249,10 +276,14 @@ public class ReconciliationViewModel : ViewModelBase {
             }
         }
 
-        if (changed) OnPropertyChanged(nameof(ReconciliationTransactions));
+        if (changed) {
+            OnPropertyChanged(nameof(ReconciliationTransactions));
+            
+            
+        }
 
         if ((NewReconciledBalance.HasValue || newReconciledBalance.HasValue) && (NewReconciledDate.HasValue || newReconciledDate.HasValue)) {
-            _reconciliationService.ReconcileAccount(
+            await _reconciliationService.ReconcileAccountAsync(
                 _account.Id,
                 ReconciliationTransactions,
                 NewReconciledBalance ?? newReconciledBalance ?? 0,

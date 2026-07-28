@@ -293,9 +293,7 @@ public class ProjectionEngine : IProjectionEngine {
                     currentEventAmount = -Math.Max(0, projectedAmount - spent);
                 }
             }
-            if ((e.FromAccountId != null && e.FromAccountId.Value == 1) || (e.ToAccountId != null && e.ToAccountId.Value == 1)) {
-                var s = "";
-            }
+
             // Handle ToAccountId balance update
             if (e.ToAccountId.HasValue && accountBalances.ContainsKey(e.ToAccountId.Value)) {
                 var toAcc = accounts.FirstOrDefault(a => a.Id == e.ToAccountId.Value);
@@ -337,12 +335,6 @@ public class ProjectionEngine : IProjectionEngine {
                 else {
                     accountBalances[e.ToAccountId.Value] += amountChange;
                 }
-                if (e.ToAccountId.Value == 1) {
-                    var s = "";
-                }
-                if ((e.FromAccountId != null && e.FromAccountId.Value == 1) || (e.ToAccountId != null && e.ToAccountId.Value == 1)) {
-                    var s = amountChange;
-                }
             }
 
             // Handle FromAccountId balance update
@@ -351,18 +343,12 @@ public class ProjectionEngine : IProjectionEngine {
                 var fromAcc = accounts.FirstOrDefault(a => a.Id == effectiveFromAccountId.Value);
                 var amountChange = currentEventAmount;//Math.Abs(currentEventAmount);
                 var isDebt = fromAcc != null && (fromAcc.Type == AccountType.Mortgage || fromAcc.Type == AccountType.PersonalLoan || fromAcc.Type == AccountType.CreditCard);
-                if (e.FromAccountId == 7) {
-                    var s = "";
-                }
+
                 if (isDebt) {
                     accountBalances[effectiveFromAccountId.Value] += amountChange;
                 }
                 else {
                     accountBalances[effectiveFromAccountId.Value] += amountChange;
-                }
-                
-                if ((e.FromAccountId != null && e.FromAccountId.Value == 1) || (e.ToAccountId != null && e.ToAccountId.Value == 1)) {
-                    var s = amountChange;
                 }
             }
 

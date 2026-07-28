@@ -7,7 +7,7 @@ namespace StayOnTarget.Tests;
 [TestClass]
 public class CreditCardProjectionTests
 {
-    private ProjectionEngine _engine;
+    private ProjectionEngine _engine = new ProjectionEngine();
 
     [TestInitialize]
     public void Setup()

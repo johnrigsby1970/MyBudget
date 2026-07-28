@@ -33,6 +33,8 @@ public class PeriodBucket : ViewModelBase
             {
                 OnPropertyChanged(nameof(HasActualAmount));
                 OnPropertyChanged(nameof(BudgetExceeded));
+                
+                
             }
         }
     }
@@ -46,6 +48,8 @@ public class PeriodBucket : ViewModelBase
             {
                 OnPropertyChanged(nameof(HasActualAmount));
                 OnPropertyChanged(nameof(BudgetExceeded));
+                
+                
             }
         }
     }

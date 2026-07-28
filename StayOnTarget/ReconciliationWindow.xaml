@@ -4,9 +4,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:StayOnTarget"
+        xmlns:converters="clr-namespace:StayOnTarget.Converters"
         xmlns:helpers="clr-namespace:StayOnTarget" 
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
         mc:Ignorable="d"
         Title="ReconciliationWindow" Height="450" Width="750">
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding InitializeDataCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
     <Window.Resources>
         <Style TargetType="{x:Type DataGrid}">
             <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0" />
@@ -48,11 +55,11 @@
     
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
-        <local:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
+        <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <local:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
-        <local:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
-        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
+        <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
     </Window.Resources>
     <Grid Margin="10">
         <DockPanel>
@@ -192,7 +199,7 @@
                             Margin="0,0,10,0"
                             Click="HandleImportAccount_Click">
                     </Button>
-                    <Button Content="OK" Width="80" Margin="0,0,10,0" 
+                    <Button Content="Reconcile" Width="80" Margin="0,0,10,0" 
                             Click="OkButton_Click" IsDefault="True"
                             Background="CornflowerBlue" 
                             Foreground="White"/>

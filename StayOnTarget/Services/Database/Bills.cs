@@ -5,15 +5,15 @@ namespace StayOnTarget.Services;
 
 public partial class BudgetService
 {
-    public IEnumerable<Bill> GetAllBills()
+    public async Task<IEnumerable<Bill>> GetAllBillsAsync()
     {
-        using var conn = _db.GetConnection();
-        return conn.Query<Bill>("SELECT * FROM Bills WHERE IsActive = 1");
+        await using var conn = _db.GetConnection();
+        return await conn.QueryAsync<Bill>("SELECT * FROM Bills WHERE IsActive = 1");
     }
 
-    public void UpsertBill(Bill bill)
+    public async Task UpsertBillAsync(Bill bill)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         var param = new
         {
             bill.Id,
@@ -29,21 +29,21 @@ public partial class BudgetService
         };
         if (bill.Id == 0)
         {
-            conn.Execute(@"INSERT INTO Bills (Name, ExpectedAmount, Frequency, DueDay, AccountId, ToAccountId, NextDueDate, Category, IsActive) 
+            await conn.ExecuteAsync(@"INSERT INTO Bills (Name, ExpectedAmount, Frequency, DueDay, AccountId, ToAccountId, NextDueDate, Category, IsActive) 
                            VALUES (@Name, @ExpectedAmount, @Frequency, @DueDay, @AccountId, @ToAccountId, @NextDueDate, @Category, @IsActive)", param);
         }
         else
         {
-            conn.Execute(@"UPDATE Bills SET Name=@Name, ExpectedAmount=@ExpectedAmount, Frequency=@Frequency, 
+            await conn.ExecuteAsync(@"UPDATE Bills SET Name=@Name, ExpectedAmount=@ExpectedAmount, Frequency=@Frequency, 
                            DueDay=@DueDay, AccountId=@AccountId, ToAccountId=@ToAccountId, NextDueDate=@NextDueDate, Category=@Category, IsActive=@IsActive WHERE Id=@Id", param);
         }
     }   
     
-    public void DeleteBill(int id)
+    public async Task DeleteBillAsync(int id)
     {
-        using var conn = _db.GetConnection();
-        conn.Execute("UPDATE Transactions SET BillId=null WHERE BillId = @id", new { id }); //Disassociate the transaction from the bill
-        conn.Execute("DELETE FROM PeriodBills WHERE BillId = @id", new { id });
-        conn.Execute("UPDATE Bills SET IsActive = 0 WHERE Id = @id", new { id });
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync("UPDATE Transactions SET BillId=null WHERE BillId = @id", new { id }); //Disassociate the transaction from the bill
+        await conn.ExecuteAsync("DELETE FROM PeriodBills WHERE BillId = @id", new { id });
+        await conn.ExecuteAsync("UPDATE Bills SET IsActive = 0 WHERE Id = @id", new { id });
     }
 }

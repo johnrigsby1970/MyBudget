@@ -5,42 +5,42 @@ namespace StayOnTarget.Services;
 
 public partial class BudgetService
 {
-    public IEnumerable<Account> GetAllAccounts()
+    public async Task< IEnumerable<Account>> GetAllAccountsAsync()
     {
-        using var conn = _db.GetConnection();
-        var accounts = conn.Query<Account>("SELECT * FROM Accounts").ToList();
+        await using var conn = _db.GetConnection();
+        var accounts = (await conn.QueryAsync<Account>("SELECT * FROM Accounts")).ToList();
         foreach (var acc in accounts)
         {
             if (acc.Type == AccountType.Mortgage)
             {
-                acc.MortgageDetails = conn.QueryFirstOrDefault<MortgageDetails>("SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id });
+                acc.MortgageDetails = await conn.QueryFirstOrDefaultAsync<MortgageDetails>("SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id });
             }
             if (acc.Type == AccountType.CreditCard)
             {
-                acc.CreditCardDetails = conn.QueryFirstOrDefault<CreditCardDetails>("SELECT * FROM CreditCardDetails WHERE AccountId = @Id", new { acc.Id });
-                acc.AccountAprHistory = conn.Query<AccountAprHistory>(
-                    "SELECT * FROM AccountAprHistory WHERE AccountId = @Id", new { acc.Id }).ToList();
+                acc.CreditCardDetails = await conn.QueryFirstOrDefaultAsync<CreditCardDetails>("SELECT * FROM CreditCardDetails WHERE AccountId = @Id", new { acc.Id });
+                acc.AccountAprHistory = (await conn.QueryAsync<AccountAprHistory>(
+                    "SELECT * FROM AccountAprHistory WHERE AccountId = @Id", new { acc.Id })).ToList();
             }
         }
         accounts.ForEach(x => { x.Balance = 0;});
         return accounts;
     }
     
-    public IEnumerable<Account> GetAllAccountsAsOf(DateTime asOfDate)
+    public async Task<IEnumerable<Account>> GetAllAccountsAsOfAsync(DateTime asOfDate)
     {
-        using var conn = _db.GetConnection();
-        var accounts = conn.Query<Account>("SELECT * FROM Accounts").ToList();
+        await using var conn = _db.GetConnection();
+        var accounts = (await conn.QueryAsync<Account>("SELECT * FROM Accounts")).ToList();
         foreach (var acc in accounts)
         {
             if (acc.Type == AccountType.Mortgage)
             {
-                acc.MortgageDetails = conn.QueryFirstOrDefault<MortgageDetails>("SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id });
+                acc.MortgageDetails = await conn.QueryFirstOrDefaultAsync<MortgageDetails>("SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id });
             }
             if (acc.Type == AccountType.CreditCard)
             {
-                acc.CreditCardDetails = conn.QueryFirstOrDefault<CreditCardDetails>("SELECT * FROM CreditCardDetails WHERE AccountId = @Id", new { acc.Id });
-                acc.AccountAprHistory = conn.Query<AccountAprHistory>(
-                    "SELECT * FROM AccountAprHistory WHERE AccountId = @Id", new { acc.Id }).ToList();
+                acc.CreditCardDetails = await  conn.QueryFirstOrDefaultAsync<CreditCardDetails>("SELECT * FROM CreditCardDetails WHERE AccountId = @Id", new { acc.Id });
+                acc.AccountAprHistory = (await conn.QueryAsync<AccountAprHistory>(
+                    "SELECT * FROM AccountAprHistory WHERE AccountId = @Id", new { acc.Id })).ToList();
             }
         }
         
@@ -76,15 +76,12 @@ public partial class BudgetService
                        GROUP BY t.AccountId;
                        """;
         
-        var accountBalances = conn.Query<Account>(query, new { asOfDate = asOfDate.ToString("yyyy-MM-dd") }).ToList();
+        var accountBalances = (await conn.QueryAsync<Account>(query, new { asOfDate = asOfDate.ToString("yyyy-MM-dd") })).ToList();
 
         accounts.ForEach(x => { x.Balance = 0;});
         foreach (var account in accounts) {
             if (accountBalances.Any(x => x.Id == account.Id)) {
-                account.Balance = accountBalances.FirstOrDefault(x => x.Id == account.Id).Balance;
-                // if (account.MortgageDetails != null) {
-                //     account.Balance = account.Balance - account.MortgageDetails.Escrow;
-                // }
+                account.Balance = accountBalances.FirstOrDefault(x => x.Id == account.Id)!.Balance;
                 account.BalanceAsOf = asOfDate;
             }
         }
@@ -92,9 +89,9 @@ public partial class BudgetService
         return accounts;
     }
 
-    public int UpsertAccount(Account account)
+    public async Task<int> UpsertAccountAsync(Account account)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         var accountParam = new
         {
             account.Id,
@@ -110,14 +107,14 @@ public partial class BudgetService
 
         if (account.Id == 0)
         {
-            account.Id = conn.ExecuteScalar<int>(@"INSERT INTO Accounts (Name, BankName,  BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor) 
+            account.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Accounts (Name, BankName,  BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor) 
                            VALUES (@Name, @BankName, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type, @HexColor);
                            SELECT last_insert_rowid();", accountParam);
             
         }
         else
         {
-            conn.Execute(@"UPDATE Accounts SET Name=@Name, BankName=@BankName, BalanceAsOf=@BalanceAsOf,
+            await conn.ExecuteAsync(@"UPDATE Accounts SET Name=@Name, BankName=@BankName, BalanceAsOf=@BalanceAsOf,
                            AnnualGrowthRate=@AnnualGrowthRate, IncludeInTotal=@IncludeInTotal, Type=@Type, HexColor=@HexColor WHERE Id=@Id", accountParam);
         }
 
@@ -137,12 +134,12 @@ public partial class BudgetService
             };
             if (account.MortgageDetails.Id == 0)
             {
-                conn.Execute(@"INSERT INTO MortgageDetails (AccountId, InterestRate, Escrow, MortgageInsurance, LoanPayment, PaymentDate, StatementDay) 
+                await conn.ExecuteAsync(@"INSERT INTO MortgageDetails (AccountId, InterestRate, Escrow, MortgageInsurance, LoanPayment, PaymentDate, StatementDay) 
                            VALUES (@AccountId, @InterestRate, @Escrow, @MortgageInsurance, @LoanPayment, @PaymentDate, @StatementDay)", mdParam);
             }
             else
             {
-                conn.Execute(@"UPDATE MortgageDetails SET InterestRate=@InterestRate, Escrow=@Escrow,
+                await conn.ExecuteAsync(@"UPDATE MortgageDetails SET InterestRate=@InterestRate, Escrow=@Escrow,
                            MortgageInsurance=@MortgageInsurance, LoanPayment=@LoanPayment, PaymentDate=@PaymentDate, StatementDay=@StatementDay WHERE Id=@Id", mdParam);
             }
         }
@@ -162,18 +159,18 @@ public partial class BudgetService
             };
             if (account.CreditCardDetails.Id == 0)
             {
-                conn.Execute(@"INSERT INTO CreditCardDetails (AccountId, StatementDay, DueDateOffset, GraceActive, MinPayFloor, PayPreviousMonthBalanceInFull) 
+                await conn.ExecuteAsync(@"INSERT INTO CreditCardDetails (AccountId, StatementDay, DueDateOffset, GraceActive, MinPayFloor, PayPreviousMonthBalanceInFull) 
                                VALUES (@AccountId, @StatementDay, @DueDateOffset, @GraceActive, @MinPayFloor, @PayPreviousMonthBalanceInFull)", ccdParam);
             }
             else
             {
-                conn.Execute(@"UPDATE CreditCardDetails SET StatementDay=@StatementDay, DueDateOffset=@DueDateOffset, GraceActive=@GraceActive, MinPayFloor=@MinPayFloor,
+                await conn.ExecuteAsync(@"UPDATE CreditCardDetails SET StatementDay=@StatementDay, DueDateOffset=@DueDateOffset, GraceActive=@GraceActive, MinPayFloor=@MinPayFloor,
                                PayPreviousMonthBalanceInFull=@PayPreviousMonthBalanceInFull WHERE Id=@Id", ccdParam);
             }
 
             if (account.AccountAprHistory != null) {
                 foreach (var aah in account.AccountAprHistory) {
-                    UpsertAccountAprHistory(aah);
+                    await UpsertAccountAprHistoryAsync(aah);
                 }
             }
 
@@ -182,32 +179,32 @@ public partial class BudgetService
         return account.Id;
     }
     
-    public void DeleteAccount(int id)
+    public async Task DeleteAccountAsync(int id)
     {
-        using var conn = _db.GetConnection();
-        conn.Execute("DELETE FROM MortgageDetails WHERE AccountId = @id", new { id });
-        conn.Execute("DELETE FROM CreditCardDetails WHERE AccountId = @id", new { id });
-        conn.Execute("DELETE FROM Accounts WHERE Id = @id", new { id });
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync("DELETE FROM MortgageDetails WHERE AccountId = @id", new { id });
+        await conn.ExecuteAsync("DELETE FROM CreditCardDetails WHERE AccountId = @id", new { id });
+        await conn.ExecuteAsync("DELETE FROM Accounts WHERE Id = @id", new { id });
     }
 
-    public bool IsAccountInUse(int accountId)
+    public async Task<bool> IsAccountInUseAsync(int accountId)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         
         // Check Bills (AccountId or ToAccountId)
-        var billCount = conn.ExecuteScalar<int>(
+        var billCount = await conn.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM Bills WHERE AccountId = @accountId OR ToAccountId = @accountId", 
             new { accountId });
         if (billCount > 0) return true;
 
         // Check Buckets (AccountId)
-        var bucketCount = conn.ExecuteScalar<int>(
+        var bucketCount = await conn.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM Buckets WHERE AccountId = @accountId", 
             new { accountId });
         if (bucketCount > 0) return true;
 
         // Check Transactions (AccountId or ToAccountId)
-        var transactionCount = conn.ExecuteScalar<int>(
+        var transactionCount = await conn.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM Transactions WHERE AccountId = @accountId OR ToAccountId = @accountId", 
             new { accountId });
         if (transactionCount > 0) return true;

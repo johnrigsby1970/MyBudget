@@ -5,7 +5,7 @@ namespace StayOnTarget.Models;
 public class Transaction : ViewModelBase
 {
     private string _description = string.Empty;
-    private string _memo = string.Empty;
+    private string? _memo = string.Empty;
     private decimal _amount;
     private DateTime _transactionDate = DateTime.Today;
     private int? _accountId;
@@ -17,7 +17,7 @@ public class Transaction : ViewModelBase
     private DateTime _periodDate;
     private bool _isPrincipalOnly;
     private bool _isRebalance;
-    private bool _isReconciled;
+   // private bool _isReconciled;
     private bool _isCashAdvance;
     private bool _isBalanceTransfer;
     private bool _isInterestOnly;

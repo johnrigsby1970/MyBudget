@@ -21,6 +21,8 @@ public class CsvImportMappingViewModel : ViewModelBase {
             if (SetProperty(ref _dateHeader, value)) {
                 RefreshPreview();
                 OnPropertyChanged(nameof(CanImport));
+                
+                
             }
         }
     }
@@ -32,6 +34,8 @@ public class CsvImportMappingViewModel : ViewModelBase {
             if (SetProperty(ref _amountHeader, value)) {
                 RefreshPreview();
                 OnPropertyChanged(nameof(CanImport));
+                
+                
             }
         }
     }
@@ -43,6 +47,8 @@ public class CsvImportMappingViewModel : ViewModelBase {
             if (SetProperty(ref _payeeHeader, value)) {
                 RefreshPreview();
                 OnPropertyChanged(nameof(CanImport));
+                
+                
             }
         }
     }
@@ -54,6 +60,8 @@ public class CsvImportMappingViewModel : ViewModelBase {
             if (SetProperty(ref _bankIdHeader, value)) {
                 RefreshPreview();
                 OnPropertyChanged(nameof(CanImport));
+                
+                
             }
         }
     }

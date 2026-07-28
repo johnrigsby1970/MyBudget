@@ -15,8 +15,8 @@ public partial class AccountAprHistoryWindow : Window {
         DataContext = _viewModel;
     }
     
-    private void OkButton_Click(object sender, RoutedEventArgs e) {
-        _viewModel.UpdateAccountAprHistories();
+    private async void OkButton_Click(object sender, RoutedEventArgs e) {
+        await _viewModel.UpdateAccountAprHistoriesAsync();
         DialogResult = true;
     }
     

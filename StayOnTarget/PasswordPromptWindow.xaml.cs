@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 using Microsoft.Data.Sqlite;
+using Serilog;
 using StayOnTarget.Data;
 
 namespace StayOnTarget;
@@ -33,41 +34,61 @@ public partial class PasswordPromptWindow : Window {
 
     // Using 'async void' is perfectly safe here because it's an event handler
     private async void PasswordPromptWindow_Loaded(object sender, RoutedEventArgs e) {
-        // Now you can safely await your helper!
-        _isWindowsHello = await Helpers.IsWindowsHelloFullySetup();
+        try {
+            // Now you can safely await your helper!
+            _isWindowsHello = await Helpers.IsWindowsHelloFullySetup();
 
-        // Dynamically adjust your UI visibility based on the result
-        if (_isWindowsHello) {
-            // E.g., change button states or visibility flags if Windows Hello is an option
-            UseWindowsHelloCheckBox.Visibility = Visibility.Visible;
+            // Dynamically adjust your UI visibility based on the result
+            if (_isWindowsHello) {
+                // E.g., change button states or visibility flags if Windows Hello is an option
+                UseWindowsHelloCheckBox.Visibility = Visibility.Visible;
 
-            // If it's a new database, default it to checked for convenience
-            if (_isNewDatabase) {
-                UseWindowsHelloCheckBox.IsChecked = true;
+                // If it's a new database, default it to checked for convenience
+                if (_isNewDatabase) {
+                    UseWindowsHelloCheckBox.IsChecked = true;
+                }
+                else {
+                    // If they are logging in manually, match whatever their current JSON preference is
+                    UseWindowsHelloCheckBox.IsChecked = StayOnTarget.Properties.Settings.Default.UseWindowsHello;
+                }
             }
             else {
-                // If they are logging in manually, match whatever their current JSON preference is
-                UseWindowsHelloCheckBox.IsChecked = StayOnTarget.Properties.Settings.Default.UseWindowsHello;
+                // No hardware? Hide the checkbox entirely.
+                UseWindowsHelloCheckBox.Visibility = Visibility.Collapsed;
             }
         }
-        else {
-            // No hardware? Hide the checkbox entirely.
-            UseWindowsHelloCheckBox.Visibility = Visibility.Collapsed;
+        catch (Exception ex) {
+            Log.Error(ex, "Error PasswordPromptWindow_Loaded OkButton_Click.");
         }
     }
 
     private void OkButton_Click(object sender, RoutedEventArgs e) {
-        ProcessInput();
+        try {
+            ProcessInput();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error during OkButton_Click.");
+        }
     }
 
     private void CancelButton_Click(object sender, RoutedEventArgs e) {
-        DialogResult = false;
-        Close();
+        try {
+            DialogResult = false;
+            Close();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error during CancelButton_Click.");
+        }
     }
 
     private void PasswordInput_KeyDown(object sender, KeyEventArgs e) {
-        if (e.Key == Key.Enter) {
-            ProcessInput();
+        try {
+            if (e.Key == Key.Enter) {
+                ProcessInput();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error during PasswordInput_KeyDown.");
         }
     }
 

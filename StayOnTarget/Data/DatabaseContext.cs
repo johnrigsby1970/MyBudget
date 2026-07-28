@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Serilog;
 using System;
 using System.IO;
+using System.Windows;
 
 namespace StayOnTarget.Data;
 
@@ -93,7 +94,11 @@ public class DatabaseContext {
         var userProfileFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var dbFolder = Path.Combine(userProfileFolder, ProgramFolderName);
         var oldPath = Path.Combine(dbFolder, DatabaseName);
-        string directory = Path.GetDirectoryName(oldPath);
+        if(string.IsNullOrWhiteSpace(oldPath)) {
+            MessageBox.Show("No file found to backup.");
+            return string.Empty;
+        }
+        string directory = Path.GetDirectoryName(oldPath)!;
         string filenameWithoutExt = Path.GetFileNameWithoutExtension(oldPath);
         string extension = Path.GetExtension(oldPath);
 

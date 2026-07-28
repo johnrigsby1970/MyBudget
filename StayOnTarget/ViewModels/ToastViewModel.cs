@@ -1,23 +1,36 @@
-using System.Windows.Input;
+using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Input;
 
 namespace StayOnTarget.ViewModels;
 
 public class ToastViewModel : ViewModelBase
 {
-    private string _message = string.Empty;
-    private bool _isVisible = true;
+    private readonly DispatcherTimer _autoCloseTimer;
 
-    public string Message { get => _message; set => SetProperty(ref _message, value); }
-    public bool IsVisible { get => _isVisible; set => SetProperty(ref _isVisible, value); }
+    public string Message { get; }
 
-    public ICommand CloseCommand { get; }
+    public IRelayCommand CloseCommand { get; }
 
     public ToastViewModel(string message, Action<ToastViewModel> onClose)
     {
         Message = message;
-        CloseCommand = new RelayCommand(_ => onClose(this));
-        
-        // Auto-close after 5 seconds
-        Task.Delay(5000).ContinueWith(_ => onClose(this));
+
+        CloseCommand = new RelayCommand(() => 
+        {
+            _autoCloseTimer?.Stop(); // Stop timer if manually closed
+            onClose(this);
+        });
+
+        // Set up auto-close timer on the UI thread
+        _autoCloseTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(5)
+        };
+        _autoCloseTimer.Tick += (s, e) =>
+        {
+            _autoCloseTimer.Stop();
+            onClose(this);
+        };
+        _autoCloseTimer.Start();
     }
 }

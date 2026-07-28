@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using StayOnTarget.Models;
+using StayOnTarget.ViewModels;
 
 namespace StayOnTarget
 {
@@ -24,6 +25,7 @@ namespace StayOnTarget
             DateTime paymentDate = account.MortgageDetails.PaymentDate;
 
             int month = 1;
+            balance = Math.Abs(balance);
             while (balance > 0 && month <= 600) // Limit to 50 years to prevent infinite loop
             {
                 decimal interest = balance * monthlyInterestRate;
@@ -57,17 +59,6 @@ namespace StayOnTarget
             }
 
             ScheduleGrid.ItemsSource = schedule;
-        }
-
-        public class AmortizationItem
-        {
-            public int Month { get; set; }
-            public DateTime Date { get; set; }
-            public decimal Payment { get; set; }
-            public decimal Principal { get; set; }
-            public decimal Interest { get; set; }
-            public decimal EscrowInsurance { get; set; }
-            public decimal Balance { get; set; }
         }
     }
 }

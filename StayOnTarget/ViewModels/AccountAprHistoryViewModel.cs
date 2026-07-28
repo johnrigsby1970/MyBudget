@@ -1,6 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using CommunityToolkit.Mvvm.Input;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
 
@@ -13,8 +14,20 @@ public class AccountAprHistoryViewModel: ViewModelBase {
     public AccountAprHistoryViewModel(Account account, BudgetService budgetService) {
         _account = account;
         _budgetService = budgetService;
-        LoadData();
+    AddCommand = new RelayCommand(Add);
+    RemoveCommand = new AsyncRelayCommand<AccountAprHistory>(RemoveAsync);
+        
+        InitializeDataCommand = new AsyncRelayCommand(LoadDataAsync);
     }   
+    
+    public IAsyncRelayCommand InitializeDataCommand { get; }
+    
+    private bool _isLoading;
+
+    public bool IsLoading {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
+    }
     
     private AccountAprHistory? _selectedItem;
     public AccountAprHistory? SelectedItem {
@@ -30,8 +43,8 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         set => SetProperty(ref _accountAprHistories, value);
     }
     
-    public ICommand AddCommand => new RelayCommand(_ => Add());
-    public ICommand RemoveCommand => new RelayCommand(aah => Remove(aah as AccountAprHistory));
+    public IRelayCommand AddCommand { get; }
+    public IAsyncRelayCommand RemoveCommand { get; }
     
     private void Add()
     {
@@ -47,7 +60,7 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         OnPropertyChanged(nameof(AccountAprHistories));
     }
     
-    private void Remove(AccountAprHistory? aah)
+    private async Task RemoveAsync(AccountAprHistory? aah)
     {
         if (aah is { Id: > 0 }) {
             MessageBoxResult messageBoxResult = MessageBox.Show(
@@ -60,7 +73,7 @@ public class AccountAprHistoryViewModel: ViewModelBase {
             // Check the user's response
             if (messageBoxResult == MessageBoxResult.Yes) {
                 // User confirmed deletion, proceed with your delete logic here
-                _budgetService.DeleteAccountAprHistory(aah.Id);
+                await _budgetService.DeleteAccountAprHistoryAsync(aah.Id);
             }
         }
         
@@ -74,21 +87,30 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         }
     }
     
-    private void LoadData() {
-        var histories = _budgetService.GetAccountAprHistories(_account.Id);
-        histories = histories.OrderBy(b => b.AsOfDate).ToList();
+    private async Task LoadDataAsync() {
+        // Force the dispatcher to render the empty screen/loading state first
+        IsLoading = true;
+        await Task.Yield();
+
+        try {
+            var histories = await _budgetService.GetAccountAprHistoriesAsync(_account.Id);
+            histories = histories.OrderBy(b => b.AsOfDate).ToList();
        
-        AccountAprHistories = new ObservableCollection<AccountAprHistory>(histories);
+            AccountAprHistories = new ObservableCollection<AccountAprHistory>(histories);
+        }
+        finally {
+            IsLoading = false;
+        }
     }
     
-    public void UpdateAccountAprHistories() {
+    public async Task UpdateAccountAprHistoriesAsync() {
         if (_account.Id > 0) {
             foreach (var aah in AccountAprHistories) {
                 if(aah.AccountId==0) aah.AccountId = _account.Id;
-                _budgetService.UpsertAccountAprHistory(aah);
+                await _budgetService.UpsertAccountAprHistoryAsync(aah);
             }
             
-            var histories = _budgetService.GetAccountAprHistories(_account.Id);
+            var histories = await _budgetService.GetAccountAprHistoriesAsync(_account.Id);
             histories = histories.OrderBy(b => b.AsOfDate).ToList();
             _account.AccountAprHistory = histories.ToList();
             AccountAprHistories = new ObservableCollection<AccountAprHistory>(histories);

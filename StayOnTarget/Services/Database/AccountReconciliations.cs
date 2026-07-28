@@ -4,20 +4,16 @@ using StayOnTarget.Models;
 
 namespace StayOnTarget.Services;
 
-public partial class BudgetService
-{
-    public IEnumerable<AccountReconciliation> GetAllAccountReconciliations()
-    {
-        using var conn = _db.GetConnection();
-        var reconciliations = conn.Query<AccountReconciliation>("SELECT * FROM AccountReconciliations").ToList();
+public partial class BudgetService {
+    public async Task<IEnumerable<AccountReconciliation>> GetAllAccountReconciliationsAsync() {
+        await using var conn = _db.GetConnection();
+        var reconciliations = (await conn.QueryAsync<AccountReconciliation>("SELECT * FROM AccountReconciliations")).ToList();
 
         // Populate account names for UI
-        var accounts = GetAllAccounts().ToDictionary(a => a.Id, a => a.Name);
+        var accounts = (await GetAllAccountsAsync()).ToDictionary(a => a.Id, a => a.Name);
 
-        foreach (var recon in reconciliations)
-        {
-            if (accounts.TryGetValue(recon.AccountId, out var accountName))
-            {
+        foreach (var recon in reconciliations) {
+            if (accounts.TryGetValue(recon.AccountId, out var accountName)) {
                 recon.AccountName = accountName;
             }
         }
@@ -25,10 +21,9 @@ public partial class BudgetService
         return reconciliations;
     }
 
-    public AccountReconciliation? GetLatestValidReconciliation(int accountId)
-    {
-        using var conn = _db.GetConnection();
-        return conn.QueryFirstOrDefault<AccountReconciliation>(
+    public async Task<AccountReconciliation?> GetLatestValidReconciliationAsync(int accountId) {
+        await using var conn = _db.GetConnection();
+        return await conn.QueryFirstOrDefaultAsync<AccountReconciliation>(
             @"SELECT * FROM AccountReconciliations
               WHERE AccountId = @accountId AND IsInvalidated = 0
               ORDER BY ReconciledAsOfDate DESC
@@ -36,11 +31,9 @@ public partial class BudgetService
             new { accountId });
     }
 
-    public void UpsertAccountReconciliation(AccountReconciliation reconciliation)
-    {
-        using var conn = _db.GetConnection();
-        var param = new
-        {
+    public async Task UpsertAccountReconciliationAsync(AccountReconciliation reconciliation) {
+        await using var conn = _db.GetConnection();
+        var param = new {
             reconciliation.Id,
             reconciliation.AccountId,
             ReconciledAsOfDate = reconciliation.ReconciledAsOfDate.ToString("yyyy-MM-dd"),
@@ -49,16 +42,14 @@ public partial class BudgetService
             IsInvalidated = reconciliation.IsInvalidated ? 1 : 0
         };
 
-        if (reconciliation.Id == 0)
-        {
-            reconciliation.Id = conn.ExecuteScalar<int>(@"
+        if (reconciliation.Id == 0) {
+            reconciliation.Id = await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO AccountReconciliations (AccountId, ReconciledAsOfDate, ReconciledBalance, ReconciledOnDate, IsInvalidated)
                 VALUES (@AccountId, @ReconciledAsOfDate, @ReconciledBalance, @ReconciledOnDate, @IsInvalidated);
                 SELECT last_insert_rowid();", param);
         }
-        else
-        {
-            conn.Execute(@"
+        else {
+            await conn.ExecuteAsync(@"
                 UPDATE AccountReconciliations
                 SET AccountId=@AccountId, ReconciledAsOfDate=@ReconciledAsOfDate,
                     ReconciledBalance=@ReconciledBalance, ReconciledOnDate=@ReconciledOnDate,
@@ -67,27 +58,19 @@ public partial class BudgetService
         }
     }
 
-    public async Task InvalidateReconciliationsAfterDate(int accountId, DateTime date, IDbTransaction? tx = null)
-    {
-        // using var conn = _db.GetConnection();
-        // conn.Execute(@"
-        //     UPDATE AccountReconciliations
-        //     SET IsInvalidated = 1
-        //     WHERE AccountId = @accountId AND ReconciledAsOfDate >= @date",
-        //     new { accountId, date = date.ToString("yyyy-MM-dd") });
-        
-        foreach (var r in GetInvalidateReconciliationsAfterDate(accountId, date, tx)) {
+    private async Task InvalidateReconciliationsAfterDateAsync(int accountId, DateTime date, IDbTransaction? tx = null) {
+        foreach (var r in await GetInvalidateReconciliationsAfterDateAsync(accountId, date, tx)) {
             await DeleteAccountReconciliationAsync(r, tx);
         }
     }
 
-    public bool WillInvalidateReconciliationsAfterDate(int accountId, DateTime date, List<int> reconciliationsToIgnore = null)
-    {
+    private async Task<bool> WillInvalidateReconciliationsAfterDateAsync(int accountId, DateTime date,
+        List<int>? reconciliationsToIgnore = null) {
         // Ensure we have at least an empty list to avoid Dapper mapping errors
         reconciliationsToIgnore ??= new List<int>();
 
-        using var conn = _db.GetConnection();
-    
+        await using var conn = _db.GetConnection();
+
         // Use a conditional or a dummy value if the list is empty
         string sql = @"
         SELECT Count(*) From AccountReconciliations
@@ -95,24 +78,23 @@ public partial class BudgetService
         AND ReconciledAsOfDate >= @date";
 
         // Only add the NOT IN clause if there are items to ignore
-        if (reconciliationsToIgnore.Any())
-        {
+        if (reconciliationsToIgnore.Any()) {
             sql += " AND Id NOT IN @reconciliationsToIgnore";
         }
 
-        var recordsImpacted = conn.ExecuteScalar<int>(sql, 
+        var recordsImpacted = await conn.ExecuteScalarAsync<int>(sql,
             new { accountId, date = date.ToString("yyyy-MM-dd"), reconciliationsToIgnore });
 
         return recordsImpacted > 0;
     }
-    
-    public List<int> GetInvalidateReconciliationsAfterDate(int accountId, DateTime date, IDbTransaction? tx = null, List<int> reconciliationsToIgnore = null)
-    {
+
+    private async Task<List<int>> GetInvalidateReconciliationsAfterDateAsync(int accountId, DateTime date, IDbTransaction? tx = null,
+        List<int>? reconciliationsToIgnore = null) {
         // Ensure we have at least an empty list to avoid Dapper mapping errors
         reconciliationsToIgnore ??= new List<int>();
-        
+
         var conn = tx?.Connection ?? _db.GetConnection();
-        
+
         // Use a conditional or a dummy value if the list is empty
         string sql = @"
         SELECT Id From AccountReconciliations
@@ -120,21 +102,18 @@ public partial class BudgetService
         AND ReconciledAsOfDate >= @date";
 
         // Only add the NOT IN clause if there are items to ignore
-        if (reconciliationsToIgnore.Any())
-        {
+        if (reconciliationsToIgnore.Any()) {
             sql += " AND Id NOT IN @reconciliationsToIgnore";
         }
-        
-        var reconciliations = conn.Query<int>(
+
+        var reconciliations = (await conn.QueryAsync<int>(
             sql,
-            new { accountId, date = date.ToString("yyyy-MM-dd"), reconciliationsToIgnore }, tx).ToList();
-        
+            new { accountId, date = date.ToString("yyyy-MM-dd"), reconciliationsToIgnore }, tx)).ToList();
+
         return reconciliations;
     }
-    
-    public async Task DeleteAccountReconciliationAsync(int id, IDbTransaction? tx = null)
-    {
-        
+
+    private async Task DeleteAccountReconciliationAsync(int id, IDbTransaction? tx = null) {
         var conn = tx?.Connection ?? _db.GetConnection();
 
         // First, clear any transaction references to this reconciliation
@@ -143,12 +122,7 @@ public partial class BudgetService
             SET ReconciliationId = NULL
             WHERE ReconciliationId = @id", new { id }, tx);
         
-        try {
-            // Then delete the reconciliation
-            await conn.ExecuteAsync("DELETE FROM AccountReconciliations WHERE Id = @id", new { id }, tx);
-        }
-        catch (Exception ex) {
-            throw;
-        }
+        // Then delete the reconciliation
+        await conn.ExecuteAsync("DELETE FROM AccountReconciliations WHERE Id = @id", new { id }, tx);
     }
 }

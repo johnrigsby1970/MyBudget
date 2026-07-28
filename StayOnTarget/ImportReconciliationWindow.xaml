@@ -6,10 +6,16 @@
            xmlns:local="clr-namespace:StayOnTarget.ViewModels"
            xmlns:av="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
            xmlns:stayOnTarget="clr-namespace:StayOnTarget"
+           xmlns:converters="clr-namespace:StayOnTarget.Converters"
+           xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
            mc:Ignorable="d"
            Title="Import &amp; Reconcile QFX Transactions" Height="650" Width="900"
            WindowStartupLocation="CenterScreen">
-
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Loaded">
+            <i:InvokeCommandAction Command="{Binding InitializeDataCommand}" />
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
     <av:Window.Resources>
         <Style TargetType="{x:Type DataGrid}">
             <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0" />
@@ -54,10 +60,10 @@
     
             <Setter Property="HorizontalContentAlignment" Value="Right" />
         </Style>
-        <stayOnTarget:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
-        <stayOnTarget:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
+        <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
+        <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-        <stayOnTarget:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" />
+        <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" />
         <DataTemplate DataType="{x:Type local:NewTransactionViewModel}">
             <stayOnTarget:NewTransactionOverlayView />
         </DataTemplate>

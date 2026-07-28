@@ -5,39 +5,39 @@ namespace StayOnTarget.Services;
 
 public partial class BudgetService
 {
-    public IEnumerable<PeriodBucket> GetPeriodBuckets(DateTime periodDate)
+    public async Task<IEnumerable<PeriodBucket>> GetPeriodBucketsAsync(DateTime periodDate)
     {
-        using var conn = _db.GetConnection();
-        return conn.Query<PeriodBucket>(@"
+        await using var conn = _db.GetConnection();
+        return await conn.QueryAsync<PeriodBucket>(@"
             SELECT pb.*, b.Name as BucketName 
             FROM PeriodBuckets pb 
             JOIN Buckets b ON pb.BucketId = b.Id 
             WHERE pb.PeriodDate = @periodDate", new { periodDate = periodDate.ToString("yyyy-MM-dd") });
     }
     
-    public IEnumerable<PeriodBucket> GetPeriodBucketsIncludingMonthly(DateTime periodDate)
+    public async Task<IEnumerable<PeriodBucket>> GetPeriodBucketsIncludingMonthlyAsync(DateTime periodDate)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         var month = new DateTime(periodDate.Year, periodDate.Month, 1);
-        return conn.Query<PeriodBucket>(@"
+        return await conn.QueryAsync<PeriodBucket>(@"
             SELECT pb.*, b.Name as BucketName 
             FROM PeriodBuckets pb 
             JOIN Buckets b ON pb.BucketId = b.Id 
             WHERE pb.PeriodDate = @periodDate OR pb.PeriodDate = @month", new { periodDate = periodDate.ToString("yyyy-MM-dd"), month = month.ToString("yyyy-MM-dd") });
     }
 
-    public IEnumerable<PeriodBucket> GetAllPeriodBuckets()
+    public async Task<IEnumerable<PeriodBucket>> GetAllPeriodBucketsAsync()
     {
-        using var conn = _db.GetConnection();
-        return conn.Query<PeriodBucket>(@"
+        await using var conn = _db.GetConnection();
+        return await conn.QueryAsync<PeriodBucket>(@"
             SELECT pb.*, b.Name as BucketName 
             FROM PeriodBuckets pb 
             JOIN Buckets b ON pb.BucketId = b.Id");
     }
 
-    public void UpsertPeriodBucket(PeriodBucket pb)
+    public async Task UpsertPeriodBucketAsync(PeriodBucket pb)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         var param = new
         {
             pb.Id,
@@ -49,19 +49,19 @@ public partial class BudgetService
         };
         if (pb.Id == 0)
         {
-            conn.Execute(@"INSERT INTO PeriodBuckets (BucketId, PeriodDate, ActualAmount, IsPaid, FitId) 
+            await conn.ExecuteAsync(@"INSERT INTO PeriodBuckets (BucketId, PeriodDate, ActualAmount, IsPaid, FitId) 
                            VALUES (@BucketId, @PeriodDate, @ActualAmount, @IsPaid, @FitId)", param);
         }
         else
         {
-            conn.Execute(@"UPDATE PeriodBuckets SET BucketId=@BucketId, PeriodDate=@PeriodDate, 
+            await conn.ExecuteAsync(@"UPDATE PeriodBuckets SET BucketId=@BucketId, PeriodDate=@PeriodDate, 
                            ActualAmount=@ActualAmount, IsPaid=@IsPaid WHERE Id=@Id", param);
         }
     }
 
-    public void DeletePeriodBucket(int id)
+    public async Task DeletePeriodBucketAsync(int id)
     {
-        using var conn = _db.GetConnection();
-        conn.Execute("DELETE FROM PeriodBuckets WHERE Id = @id AND IsPaid = 0", new { id });
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync("DELETE FROM PeriodBuckets WHERE Id = @id AND IsPaid = 0", new { id });
     }
 }

@@ -5,15 +5,15 @@ namespace StayOnTarget.Services;
 
 public partial class BudgetService
 {
-    public IEnumerable<Paycheck> GetAllPaychecks()
+    public async Task<IEnumerable<Paycheck>> GetAllPaychecksAsync()
     {
-        using var conn = _db.GetConnection();
-        return conn.Query<Paycheck>("SELECT * FROM Paychecks");
+        await using var conn = _db.GetConnection();
+        return await conn.QueryAsync<Paycheck>("SELECT * FROM Paychecks");
     }
     
-    public void UpsertPaycheck(Paycheck paycheck)
+    public  async Task UpsertPaycheckAsync(Paycheck paycheck)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         var param = new
         {
             paycheck.Id,
@@ -27,20 +27,20 @@ public partial class BudgetService
         };
         if (paycheck.Id == 0)
         {
-            conn.Execute(@"INSERT INTO Paychecks (Name, ExpectedAmount, Frequency, StartDate, EndDate, AccountId, IsBalanced) 
+            await conn.ExecuteAsync(@"INSERT INTO Paychecks (Name, ExpectedAmount, Frequency, StartDate, EndDate, AccountId, IsBalanced) 
                            VALUES (@Name, @ExpectedAmount, @Frequency, @StartDate, @EndDate, @AccountId, @IsBalanced)", param);
         }
         else
         {
-            conn.Execute(@"UPDATE Paychecks SET Name=@Name, ExpectedAmount=@ExpectedAmount, Frequency=@Frequency, 
+            await conn.ExecuteAsync(@"UPDATE Paychecks SET Name=@Name, ExpectedAmount=@ExpectedAmount, Frequency=@Frequency, 
                            StartDate=@StartDate, EndDate=@EndDate, AccountId=@AccountId, IsBalanced=@IsBalanced WHERE Id=@Id", param);
         }
     }  
     
-    public void DeletePaycheck(int id)
+    public async Task DeletePaycheckAsync(int id)
     {
-        using var conn = _db.GetConnection();
-        conn.Execute("UPDATE Transactions SET PaycheckId=null WHERE PaycheckId = @id", new { id }); //Disassociate the transaction from the paycheck
-        conn.Execute("DELETE FROM Paychecks WHERE Id = @id", new { id });
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync("UPDATE Transactions SET PaycheckId=null WHERE PaycheckId = @id", new { id }); //Disassociate the transaction from the paycheck
+        await conn.ExecuteAsync("DELETE FROM Paychecks WHERE Id = @id", new { id });
     }
 }

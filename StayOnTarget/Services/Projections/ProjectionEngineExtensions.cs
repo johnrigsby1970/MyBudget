@@ -515,20 +515,7 @@ public static class ProjectionEngineExtensions {
                 //with regard to this transaction since the bank has not posted it yet.
                 var accountId = transaction.AccountId;
                 var toAcountId = transaction.ToAccountId;
-                // if (!showReconciled) {
-                //     if (transaction.AccountId.HasValue && transaction.FromAccountReconciledId.HasValue) {
-                //         accountId = null;
-                //     }
-                //
-                //     if (transaction.ToAccountId.HasValue && transaction.ToAccountReconciledId.HasValue) {
-                //         toAcountId = null;
-                //     }
-                // }
-
-                if (Math.Abs(transaction.Amount) == 500) {
-                    var s = "";
-                }
-
+               
                 events.Add(new ProjectionGridItem(transaction.TransactionDate, transaction.Amount,
                     transaction.Description,
                     accountId, toAcountId, transaction.BucketId,
