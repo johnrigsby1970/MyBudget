@@ -20,7 +20,8 @@ public interface IProjectionEngine {
         List<Transaction> transactions,
         List<AccountReconciliation>? reconciliations = null,
         bool showReconciled = false,
-        bool removeZeroBalanceEntries = false);
+        bool removeZeroBalanceEntries = false,
+        bool useAutoSweep = false);
 }
 
 public class ProjectionEngine : IProjectionEngine {
@@ -33,6 +34,7 @@ public class ProjectionEngine : IProjectionEngine {
         Interest,
         Growth,
         Reconciliation,
+        Sweep,
         Final
     }
 
@@ -50,8 +52,11 @@ public class ProjectionEngine : IProjectionEngine {
         List<PeriodBill> periodBills,
         List<PeriodBucket> periodBuckets,
         List<Transaction> transactions,
-        List<AccountReconciliation>? reconciliations = null, bool showReconciled = false,
-        bool removeZeroBalanceEntries = false) {
+        List<AccountReconciliation>? reconciliations = null, 
+        bool showReconciled = false,
+        bool removeZeroBalanceEntries = false, 
+        bool useAutoSweep = false) {
+        
         var list = new List<ProjectionItem>();
         var current = startDate;
 
@@ -201,11 +206,27 @@ public class ProjectionEngine : IProjectionEngine {
 
         var lastDate = current;
         var futureEvents = sortedEvents.Where(e => e.Date >= current).ToList();
-        var paycheckDates = futureEvents
-            .Where(e => e.Type == ProjectionEventType.Paycheck ||
-                        (e.Type == ProjectionEventType.Transaction && e.PaycheckId.HasValue)).Select(e => e.Date)
-            .Distinct()
-            .OrderBy(d => d).ToList();
+        
+        // Ensure paycheckDates includes ALL boundary dates for auto-sweep, even if no events exist on those dates
+        var paycheckDates = new List<DateTime>();
+        foreach (var pay in paychecks)
+        {
+            var nextPay = pay.StartDate;
+            while (nextPay <= endDate)
+            {
+                if (!paycheckDates.Contains(nextPay.Date))
+                    paycheckDates.Add(nextPay.Date);
+                
+                nextPay = pay.Frequency switch
+                {
+                    Frequency.Weekly => nextPay.AddDays(7),
+                    Frequency.BiWeekly => nextPay.AddDays(14),
+                    Frequency.Monthly => nextPay.AddMonths(1),
+                    _ => nextPay.AddYears(100)
+                };
+            }
+        }
+        paycheckDates = paycheckDates.Distinct().OrderBy(d => d).ToList();
 
         if (!paycheckDates.Any() || paycheckDates[0] > current) {
             paycheckDates.Insert(0, current);
@@ -225,9 +246,89 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking)?.Id;
+        var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary )?.Id;
+        var creditCardAccountIds = accounts.Where(a => a.Type == AccountType.CreditCard).Select(a => a.Id).ToList();
+
         futureEvents = futureEvents.OrderBy(e => e.Date).ToList();
+        
+        var nextPaycheckIndex = 0;
+        var nextPaycheckDate = paycheckDates.Count > 0 ? paycheckDates[0] : DateTime.MaxValue;
+
         foreach (var e in futureEvents) {
+            if (useAutoSweep) {
+                // Check if we've passed into a new period
+                while (e.Date >= nextPaycheckDate && nextPaycheckDate != DateTime.MaxValue) {
+                    var sweepDate = nextPaycheckDate.AddDays(-1);
+                    if (sweepDate >= DateTime.Today) {
+                        foreach (var ccId in creditCardAccountIds) {
+                            var balance = accountBalances[ccId];
+                            if (balance < 0 && primaryChecking.HasValue) {
+                                var sweepAmount = -balance;
+
+                                decimal threshold = 0m;
+                                decimal checkingBalance = accountBalances[primaryChecking.Value];
+
+                                // Calculate available surplus above the threshold
+                                decimal availableToSweep = checkingBalance - threshold;
+
+                                // Cap the sweep to either the full debt amount or what's available above threshold
+                                decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
+
+                                if (actualSweepAmount > 0) 
+                                {
+                                    accountBalances[primaryChecking.Value] -= actualSweepAmount;
+                                    accountBalances[ccId] += actualSweepAmount;
+
+                                    runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
+                                        .Sum(a => accountBalances[a.Id]);
+
+                                    var sweepItem = new ProjectionItem 
+                                    {
+                                        TransactionDate = sweepDate,
+                                        Description = $"Auto-Sweep: {accountNames[ccId]}",
+                                        FromAccountId = primaryChecking,
+                                        ToAccountId = ccId,
+                                        Amount = -actualSweepAmount,
+                                        Balance = runningBalance,
+                                        IsSynthetic = true,
+                                        AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                                        InOrOutOfMoneyAccount = true
+                                    };
+
+                                    list.Add(sweepItem);
+                                }
+                                // var threshold = 0;
+                                //
+                                // if (accountBalances[primaryChecking.Value] - sweepAmount > threshold) {
+                                //     accountBalances[primaryChecking.Value] -= sweepAmount;
+                                //     accountBalances[ccId] += sweepAmount;
+                                //     runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
+                                //         .Sum(a => accountBalances[a.Id]);
+                                //
+                                //     var sweepItem = new ProjectionItem {
+                                //         TransactionDate = sweepDate,
+                                //         Description = $"Auto-Sweep: {accountNames[ccId]}",
+                                //         FromAccountId = primaryChecking,
+                                //         ToAccountId = ccId,
+                                //         Amount = -sweepAmount,
+                                //         Balance = runningBalance,
+                                //         IsSynthetic = true,
+                                //         AccountBalances =
+                                //             accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                                //         InOrOutOfMoneyAccount = true
+                                //     };
+                                //     list.Add(sweepItem);
+                                // }
+                            }
+                        }
+                    }
+
+                    nextPaycheckIndex++;
+                    nextPaycheckDate = nextPaycheckIndex < paycheckDates.Count
+                        ? paycheckDates[nextPaycheckIndex]
+                        : DateTime.MaxValue;
+                }
+            }
 
             ProjectionEngineExtensions.AccountForGrowthInAccountsDuringProjectedEvents(
                 lastDate,
@@ -380,6 +481,40 @@ public class ProjectionEngine : IProjectionEngine {
             list.Add(item);
         }
 
+        // Process any remaining periods that didn't have events
+        while (nextPaycheckDate != DateTime.MaxValue && nextPaycheckDate <= endDate)
+        {
+            var sweepDate = nextPaycheckDate.AddDays(-1);
+            if (sweepDate >= DateTime.Today) {
+                foreach (var ccId in creditCardAccountIds)
+                {
+                    var balance = accountBalances[ccId];
+                    if (balance < 0 && primaryChecking.HasValue)
+                    {
+                        var sweepAmount = -balance;
+                        accountBalances[primaryChecking.Value] -= sweepAmount;
+                        accountBalances[ccId] += sweepAmount;
+                        runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
+
+                        list.Add(new ProjectionItem
+                        {
+                            TransactionDate = sweepDate,
+                            Description = $"Auto-Sweep: {accountNames[ccId]}",
+                            FromAccountId = primaryChecking,
+                            ToAccountId = ccId,
+                            Amount = -sweepAmount,
+                            Balance = runningBalance,
+                            IsSynthetic = true,
+                            AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                            InOrOutOfMoneyAccount = true
+                        });
+                    }
+                }
+            }
+            nextPaycheckIndex++;
+            nextPaycheckDate = nextPaycheckIndex < paycheckDates.Count ? paycheckDates[nextPaycheckIndex] : DateTime.MaxValue;
+        }
+
         //Calculate the net income for this period. Not counting investment accounts unrealized gains/losses.
         for (var i = 0; i < paycheckDates.Count; i++) {
             var start = paycheckDates[i];
@@ -387,6 +522,31 @@ public class ProjectionEngine : IProjectionEngine {
             var periodItems = list.Where(item => item.TransactionDate >= start && item.TransactionDate < next && item.InOrOutOfMoneyAccount).ToList();
             if (periodItems.Count != 0) {
                 periodItems.First().PeriodNet = periodItems.Sum(item => item.Amount);
+            }
+        }
+
+        // Final Auto-Sweep at the end of the last period
+        if (endDate >= DateTime.Today) {
+            foreach (var ccId in creditCardAccountIds) {
+                var balance = accountBalances[ccId];
+                if (balance < 0 && primaryChecking.HasValue) {
+                    var sweepAmount = -balance;
+                    accountBalances[primaryChecking.Value] -= sweepAmount;
+                    accountBalances[ccId] += sweepAmount;
+                    runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
+
+                    list.Add(new ProjectionItem {
+                        TransactionDate = endDate,
+                        Description = $"Auto-Sweep: {accountNames[ccId]}",
+                        FromAccountId = primaryChecking,
+                        ToAccountId = ccId,
+                        Amount = -sweepAmount,
+                        Balance = runningBalance,
+                        IsSynthetic = true,
+                        AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                        InOrOutOfMoneyAccount = true
+                    });
+                }
             }
         }
 

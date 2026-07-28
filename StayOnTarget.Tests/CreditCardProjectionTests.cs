@@ -1,5 +1,4 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using StayOnTarget.Models;
+﻿using StayOnTarget.Models;
 using StayOnTarget.Services.Projections;
 
 namespace StayOnTarget.Tests;
@@ -48,7 +47,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), new()
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), new(), null, false, false, false
         ).ToList();
 
         // Assert
@@ -102,7 +101,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -150,7 +149,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -203,7 +202,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), new()
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), new(), null, false, false, false
         ).ToList();
 
         // Assert
@@ -266,7 +265,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions
+            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -338,7 +337,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions
+            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -395,7 +394,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -455,7 +454,7 @@ public class CreditCardProjectionTests
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions
+            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert

@@ -13,6 +13,7 @@ public class Bill : ViewModelBase
     private DateTime? _nextDueDate;
     private string _category = string.Empty;
     private bool _isActive = true;
+    private bool _isPrincipalOnly = false;
 
     public int Id { get; set; }
 
@@ -68,5 +69,11 @@ public class Bill : ViewModelBase
     {
         get => _isActive;
         set => SetProperty(ref _isActive, value);
+    }
+    
+    public bool IsPrincipalOnly
+    {
+        get => _isPrincipalOnly;
+        set => SetProperty(ref _isPrincipalOnly, value);
     }
 }

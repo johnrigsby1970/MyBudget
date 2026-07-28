@@ -167,7 +167,8 @@ public class DatabaseContext {
                 AnnualGrowthRate DECIMAL DEFAULT 0,
                 IncludeInTotal INTEGER DEFAULT 1,
                 Type INTEGER NOT NULL,
-                HexColor TEXT DEFAULT '#FF0000FF'
+                HexColor TEXT DEFAULT '#FF0000FF',
+                IsPrimary INTEGER DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS MortgageDetails (
@@ -203,6 +204,7 @@ public class DatabaseContext {
                 ToAccountId INTEGER,
                 NextDueDate TEXT,
                 Category TEXT,
+                IsPrincipalOnly INTEGER DEFAULT 0,
                 IsActive INTEGER DEFAULT 1,
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
                 FOREIGN KEY(ToAccountId) REFERENCES Accounts(Id)
@@ -302,6 +304,34 @@ public class DatabaseContext {
 
                 if (tableExists > 0) {
                     connection.Execute("ALTER TABLE Transactions ADD COLUMN IsInterestOnly INTEGER DEFAULT 0");
+                }
+            }
+            
+            columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='IsPrincipalOnly'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Bills'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Bills ADD COLUMN IsPrincipalOnly INTEGER DEFAULT 0");
+                }
+            }
+
+            columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='IsPrimary'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Accounts'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Accounts ADD COLUMN IsPrimary INTEGER DEFAULT 0");
                 }
             }
 

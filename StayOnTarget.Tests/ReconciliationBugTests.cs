@@ -50,7 +50,7 @@ namespace StayOnTarget.Tests
                 transactions,
                 startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), 
                 transactions, 
-                reconciliations).ToList();
+                reconciliations,  false, false, false).ToList();
 
             // Assert
             // Find a date after Feb 15
@@ -109,7 +109,7 @@ namespace StayOnTarget.Tests
                 new List<Transaction>(),
                 startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), 
                 new List<Transaction>(), 
-                reconciliations).ToList();
+                reconciliations,  false, false, false).ToList();
 
             // Assert
             var afterJan15 = results.FirstOrDefault(r => r.TransactionDate >= new DateTime(2026, 1, 15));

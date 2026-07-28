@@ -115,5 +115,8 @@ public class AccountAprHistoryViewModel: ViewModelBase {
             _account.AccountAprHistory = histories.ToList();
             AccountAprHistories = new ObservableCollection<AccountAprHistory>(histories);
         }
+        else {
+            _account.AccountAprHistory = AccountAprHistories.ToList();
+        }
     }
 }

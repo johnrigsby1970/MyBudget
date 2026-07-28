@@ -226,6 +226,22 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
+    private bool _useAutoSweep;
+
+    public bool UseAutoSweep {
+        get => _useAutoSweep;
+        set {
+            if (SetProperty(ref _useAutoSweep, value)) {
+                // 1. Immediately toggle the flag on the UI thread
+                IsProjecting = true; 
+            
+                // 2. Schedule the calculation for the next UI tick
+                OnCalculateProjections();
+            }
+        }
+    }
+
+    
     private bool _isGatheringData;
 
     public bool IsGatheringData {
@@ -1085,7 +1101,7 @@ public class MainViewModel : ViewModelBase {
             EditingBillClone = new Bill {
                 Id = SelectedBill.Id, Name = SelectedBill.Name, ExpectedAmount = SelectedBill.ExpectedAmount,
                 Frequency = SelectedBill.Frequency, DueDay = SelectedBill.DueDay, AccountId = SelectedBill.AccountId,
-                ToAccountId = SelectedBill.ToAccountId, NextDueDate = SelectedBill.NextDueDate,
+                ToAccountId = SelectedBill.ToAccountId, NextDueDate = SelectedBill.NextDueDate, IsPrincipalOnly = SelectedBill.IsPrincipalOnly,
                 Category = SelectedBill.Category, IsActive = SelectedBill.IsActive
             };
             IsEditingBill = true;
@@ -1152,6 +1168,7 @@ public class MainViewModel : ViewModelBase {
         target.NextDueDate = clone.NextDueDate;
         target.Category = clone.Category;
         target.IsActive = clone.IsActive;
+        target.IsPrincipalOnly = clone.IsPrincipalOnly;
     }
 
     private void CancelBill() {
@@ -1774,7 +1791,8 @@ public class MainViewModel : ViewModelBase {
                 AnnualGrowthRate = SelectedAccount.AnnualGrowthRate,
                 IncludeInTotal = SelectedAccount.IncludeInTotal,
                 Type = SelectedAccount.Type,
-                HexColor = SelectedAccount.HexColor
+                HexColor = SelectedAccount.HexColor,
+                IsPrimary = SelectedAccount.IsPrimary
             };
             if (SelectedAccount.MortgageDetails != null) {
                 EditingAccountClone.MortgageDetails = new MortgageDetails {
@@ -1816,7 +1834,7 @@ public class MainViewModel : ViewModelBase {
     private async Task SaveAccountAsync() {
         if (EditingAccountClone != null) {
             try {
-                if (EditingAccountClone.Type == AccountType.Checking &&
+                if (EditingAccountClone.Type == AccountType.CreditCard &&
                     (EditingAccountClone.AccountAprHistory == null ||
                      EditingAccountClone.AccountAprHistory.Count ==
                      0)) {
@@ -1895,6 +1913,7 @@ public class MainViewModel : ViewModelBase {
         target.IncludeInTotal = clone.IncludeInTotal;
         target.Type = clone.Type;
         target.HexColor = clone.HexColor;
+        target.IsPrimary = clone.IsPrimary;
 
         if (clone is { Type: AccountType.Mortgage, MortgageDetails: not null }) {
             target.MortgageDetails ??= new MortgageDetails();
@@ -2128,7 +2147,7 @@ public async Task CalculateProjectionsAsync() {
                 allTransactions,
                 start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(),
                 periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
-                showReconciled, true);
+                showReconciled, true, UseAutoSweep);
 
             var list = results.ToList();
 
@@ -2317,6 +2336,11 @@ public async Task CalculateProjectionsAsync() {
             var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
             accountsWithNone.AddRange(accounts);
             AccountsWithNone = new ObservableCollection<Account>(accountsWithNone);
+
+            if (Accounts.Any(x => x.Type == AccountType.Checking && x.IsPrimary) && Accounts.Any(x => x.Type == AccountType.CreditCard)) {
+                UseAutoSweep = true;
+                OnPropertyChanged(nameof(UseAutoSweep));
+            }
             Log.Information("Account data loaded successfully. Accounts: {AccountCount}",
                 Accounts.Count);
         }

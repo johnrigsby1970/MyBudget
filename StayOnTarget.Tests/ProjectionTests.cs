@@ -55,7 +55,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             // We expect one paycheck entry on 2/20. Since we have an transaction override, the "Pay: Salary" should be missing and replaced by "Actual Salary".
@@ -101,7 +101,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, paychecks, new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             // Since the heuristic is removed, we expect BOTH the projected "Pay: Salary" and the transactioon "Pay: Salary".
@@ -135,7 +135,7 @@ namespace StayOnTarget.Tests
                 new List<Transaction>(),
                 new List<Transaction>(),
                 new List<Transaction>(),
-                new List<Transaction>(),startDate, endDate, accounts, new List<Paycheck>(), bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
+                new List<Transaction>(),startDate, endDate, accounts, new List<Paycheck>(), bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>(), null, false, false, false).ToList();
 
             //Its going to start this bill on 2/5 (relative to today's next months), and there will end up being one of them
             // Assert
@@ -176,7 +176,7 @@ namespace StayOnTarget.Tests
             var endDate = startOfMonth.AddDays(40); // Should trigger one interest event
 
             // Act
-            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
+            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>(), null, false, false, false).ToList();
 
             // Assert
             var interestEntry = results.FirstOrDefault(r => r.Description.Contains("Interest: Mortgage"));
@@ -211,7 +211,7 @@ namespace StayOnTarget.Tests
             var endDate = new DateTime(2026, 2, 11); // 10 days of growth
 
             // Act
-            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
+            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>(), null, false, false, false).ToList();
 
             // Assert
             // After 10 days, 10,000 * 0.0001 * 10 = 10
@@ -263,7 +263,7 @@ namespace StayOnTarget.Tests
             var endDate = new DateTime(2026, 2, 16);
 
             // Act
-            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
+            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>(), null, false, false, false).ToList();
 
             // Assert
             var interestEntry = results.FirstOrDefault(r => r.Description.Contains("Credit Card Interest"));
@@ -347,7 +347,7 @@ namespace StayOnTarget.Tests
                 new List<Bill>(), 
                 new List<BudgetBucket>(), 
                 new List<PeriodBill>(), 
-                new List<PeriodBucket>(), transactions).ToList();
+                new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             // startOfMonth statement: balance 0. PaidInFull = true.
@@ -434,7 +434,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             var interestEntry = results.FirstOrDefault(r => r.Description.Contains("Credit Card Interest"));
@@ -491,7 +491,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             var interestEntry = results.FirstOrDefault(r => r.Description.Contains("Credit Card Interest"));
@@ -555,7 +555,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             var projectedInterest = results.FirstOrDefault(r => r.Description.Contains("Credit Card Interest"));
@@ -591,7 +591,7 @@ namespace StayOnTarget.Tests
             var endDate = startOfMonth.AddMonths(1);
 
             // Act
-            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, paychecks, bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>()).ToList();
+            var results = _engine.CalculateProjections(new List<Transaction>(),new List<Transaction>(),new List<Transaction>(), new List<Transaction>(), startDate, endDate, accounts, paychecks, bills, new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), new List<Transaction>(), null, false, false, false).ToList();
 
             // Assert
             // Period 1: startOfMonth to startOfMonth + 13. Events: Pay1 (2000). Net = 2000.
@@ -658,7 +658,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             // We expect "Actual Interest" to exist and "Interest: Mortgage" to be missing.
@@ -719,7 +719,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             var manualInterest = results.FirstOrDefault(r => r.Description == "Manual Interest");
@@ -771,7 +771,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
         
             // Assert
             // Bucket Groceries should be reduced by 200. Original 500 - 200 = 300.
@@ -826,7 +826,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
         
             // Assert
             // Bucket Groceries should be reduced to 0 because spending (600) >= projected (500).
@@ -873,7 +873,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, paychecks, new List<Bill>(), buckets, new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             // Paycheck on 2/19. Next on 3/5.
@@ -943,7 +943,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             var paymentEntry = results.FirstOrDefault(r => r.Description == "Mortgage Payment");
@@ -1006,7 +1006,7 @@ namespace StayOnTarget.Tests
                 transactions.Where(x=>x.BillId.HasValue).ToList(),
                 transactions.Where(x=>x.BucketId.HasValue).ToList(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions).ToList();
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false).ToList();
 
             // Assert
             var rebalanceEntry = results.FirstOrDefault(r => r.Description == "Mortgage Rebalance");

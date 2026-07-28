@@ -12,6 +12,7 @@ public class ProjectionItem : ViewModelBase
     private int? _toAccountId;
     private int? _fromAccountId;
     private Dictionary<string, decimal> _accountBalances = new();
+    private bool _isSynthetic;
 
     public DateTime TransactionDate { get => _transactionDate; set => SetProperty(ref _transactionDate, value); }
     public string Description { get => _description; set => SetProperty(ref _description, value); }
@@ -75,6 +76,8 @@ public class ProjectionItem : ViewModelBase
         get => _accountBalances;
         set => SetProperty(ref _accountBalances, value);
     }
+
+    public bool IsSynthetic { get => _isSynthetic; set => SetProperty(ref _isSynthetic, value); }
 
     public decimal GetAccountBalance(string accountName)
     {

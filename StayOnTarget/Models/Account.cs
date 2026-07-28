@@ -14,6 +14,7 @@ public class Account : ViewModelBase
     private string _hexColor = "#FF0000FF"; // Default to Blue
     private MortgageDetails? _mortgageDetails;
     private CreditCardDetails? _creditCardDetails;
+    private bool _isPrimary;
 
     public int Id { get; set; }
 
@@ -75,6 +76,12 @@ public class Account : ViewModelBase
     {
         get => _creditCardDetails;
         set => SetProperty(ref _creditCardDetails, value);
+    }
+    
+    public bool IsPrimary
+    {
+        get => _isPrimary;
+        set => SetProperty(ref _isPrimary, value);
     }
     
     public List<AccountAprHistory>? AccountAprHistory { get; set; } 

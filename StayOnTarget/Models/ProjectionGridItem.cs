@@ -19,7 +19,8 @@ public class ProjectionGridItem : ViewModelBase {
         bool isRebalance,
         bool isInterestAdjustment,
         bool isReconciled,
-        int? transactionId = null
+        int? transactionId = null,
+        bool isSynthetic = false
         ) {
         Date = transactionDate;
         Amount = amount;
@@ -35,6 +36,7 @@ public class ProjectionGridItem : ViewModelBase {
         IsInterestAdjustment = isInterestAdjustment;
         IsReconciled = isReconciled;
         TransactionId = transactionId;
+        IsSynthetic = isSynthetic;
     }
     private DateTime _date;
     public DateTime Date
@@ -217,6 +219,19 @@ public class ProjectionGridItem : ViewModelBase {
             if (_transactionId != value) {
                 _transactionId = value;
                 OnPropertyChanged("TransactionId");
+            }
+        }
+    }
+
+    private bool _isSynthetic;
+    public bool IsSynthetic
+    {
+        get { return _isSynthetic; }
+        set
+        {
+            if (_isSynthetic != value) {
+                _isSynthetic = value;
+                OnPropertyChanged("IsSynthetic");
             }
         }
     }

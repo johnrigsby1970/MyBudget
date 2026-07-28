@@ -187,7 +187,9 @@ public static class ProjectionEngineExtensions {
                                         acc.MortgageDetails.MortgageInsurance;
                             if (principal < 0) principal = 0;
                         }
-
+if(Math.Abs(principal)==500) {
+    var s = "";
+}
                         accountBalances[acc.Id] -= principal;
                     }
                     else if (isPersonalLoan &&
@@ -535,7 +537,7 @@ public static class ProjectionEngineExtensions {
         DateTime current,
         DateTime endDate) {
         var today = DateTime.Today;
-        var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking)?.Id;
+        var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
         foreach (var bucket in buckets) {
             if (bucket.PaycheckId.HasValue) {
                 // If the bucket is associated with a specific paycheck, project it for each occurrence of THAT paycheck.
@@ -636,7 +638,7 @@ public static class ProjectionEngineExtensions {
         List<PeriodBill> periodBills,
         DateTime current,
         DateTime endDate) {
-        var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking)?.Id;
+        var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
 
         //bills are just like envelopes, except there is only one. We don't want to account for bills from
         //the past in a project, or bills that have been paid.
@@ -683,14 +685,14 @@ public static class ProjectionEngineExtensions {
                                     $"Transfer: {bill.Name}{paidSuffix}", fromAccId,
                                     bill.ToAccountId.Value, null, null, null,
                                     ProjectionEngine.ProjectionEventType.Transfer,
-                                    false, false,
+                                    bill.IsPrincipalOnly, false,
                                     false, false));
                             }
                             else {
                                 events.Add(new ProjectionGridItem(dueDate, -amountToUse,
                                     $"Bill: {bill.Name}{paidSuffix}",
                                     fromAccId, null, null, null,
-                                    null, ProjectionEngine.ProjectionEventType.Bill, false, false, false, false));
+                                    null, ProjectionEngine.ProjectionEventType.Bill, bill.IsPrincipalOnly, false, false, false));
                             }
                         }
                     }

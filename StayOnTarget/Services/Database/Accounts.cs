@@ -102,20 +102,21 @@ public partial class BudgetService
             account.AnnualGrowthRate,
             account.IncludeInTotal,
             account.Type,
-            account.HexColor
+            account.HexColor,
+            account.IsPrimary
         };
 
         if (account.Id == 0)
         {
-            account.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Accounts (Name, BankName, Balance,  BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor) 
-                           VALUES (@Name, @BankName, 0, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type, @HexColor);
+            account.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Accounts (Name, BankName, Balance,  BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor, IsPrimary) 
+                           VALUES (@Name, @BankName, 0, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type, @HexColor, @IsPrimary);
                            SELECT last_insert_rowid();", accountParam);
             
         }
         else
         {
             await conn.ExecuteAsync(@"UPDATE Accounts SET Name=@Name, BankName=@BankName, BalanceAsOf=@BalanceAsOf,
-                           AnnualGrowthRate=@AnnualGrowthRate, IncludeInTotal=@IncludeInTotal, Type=@Type, HexColor=@HexColor WHERE Id=@Id", accountParam);
+                           AnnualGrowthRate=@AnnualGrowthRate, IncludeInTotal=@IncludeInTotal, Type=@Type, HexColor=@HexColor, IsPrimary=@IsPrimary WHERE Id=@Id", accountParam);
         }
 
         if (account.Type == AccountType.Mortgage && account.MortgageDetails != null)
@@ -170,6 +171,7 @@ public partial class BudgetService
 
             if (account.AccountAprHistory != null) {
                 foreach (var aah in account.AccountAprHistory) {
+                    aah.AccountId = account.Id;
                     await UpsertAccountAprHistoryAsync(aah);
                 }
             }
