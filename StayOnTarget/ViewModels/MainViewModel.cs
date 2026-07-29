@@ -215,16 +215,14 @@ public class MainViewModel : ViewModelBase {
         await Task.Yield();
 
         try {
-            // Simplified syntax: Task.Run accepts the Task directly
-            //await Task.Run(LoadDataAsync);
             await LoadDataAsync();
+            
             await Task.Yield();
 
             InitializePeriod();
 
             await Task.Yield();
-
-            //await Task.Run(LoadPeriodDataAsync);
+            
             await LoadPeriodDataAsync();
             
             await Task.Yield();
@@ -257,6 +255,12 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
+    private int _yearsProjecting = 1;
+
+    public int YearsProjecting {
+        get => _yearsProjecting;
+        set => SetProperty(ref _yearsProjecting, value);
+    }
     
     private bool _isGatheringData;
 
@@ -977,6 +981,7 @@ public class MainViewModel : ViewModelBase {
     public IRelayCommand ToggleBillDescriptionCommand { get; }
 
     private void SetProjectionEndDate(int years) {
+        YearsProjecting = years;
         ProjectionEndDate = DateTime.Now.AddYears(years);
     }
 
