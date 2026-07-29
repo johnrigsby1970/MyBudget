@@ -125,6 +125,7 @@
                             <DataTemplate>
                                 <CheckBox
                                     IsChecked="{Binding IsReconciled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                    IsEnabled="{Binding IsEnabled}"
                                     Checked="HandleCheck" Unchecked="HandleUnchecked" 
                                     HorizontalAlignment="Center"
                                     VerticalAlignment="Center" />
@@ -267,7 +268,7 @@
                                MaxWidth="400" />
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-                        <Button Content="Post" Width="80" 
+                        <Button Content="Update" Width="80" 
                                 Command="{Binding AdjustBalanceCommand}"
                                 Margin="0,0,10,0" Padding="10,0" />
                         

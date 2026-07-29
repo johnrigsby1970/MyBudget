@@ -68,8 +68,21 @@ public class MainViewModel : ViewModelBase {
     private DateTime? _projectionStartDate;
     private int _selectedOuterTabIndex;
     private int _selectedInnerTabIndex;
+    private int _selectedProjectionTabIndex;
+    private SnowballStrategyOptions _snowballOptions = new();
+    private ObservableCollection<ProjectionItem> _snowballProjections = new();
 
     #region Properties
+
+    public SnowballStrategyOptions SnowballOptions {
+        get => _snowballOptions;
+        set => SetProperty(ref _snowballOptions, value);
+    }
+
+    public ObservableCollection<ProjectionItem> SnowballProjections {
+        get => _snowballProjections;
+        set => SetProperty(ref _snowballProjections, value);
+    }
 
     public bool IsCalculatingProjections => _isCalculatingProjections;
 
@@ -92,6 +105,9 @@ public class MainViewModel : ViewModelBase {
         _budgetService = budgetService;
         _reconciliationService = reconciliationService;
         _projectionEngine = new ProjectionEngine();
+        _snowballOptions.PropertyChanged += (s, e) => {
+            _ = CalculateProjectionsAsync();
+        };
 
         ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => IsEditingAccount);
         ReconcileAccountCommand =
@@ -263,6 +279,13 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _isProjecting, value);
     }
 
+    private bool _isSnowballProjecting;
+
+    public bool IsSnowballProjecting {
+        get => _isSnowballProjecting;
+        set => SetProperty(ref _isSnowballProjecting, value);
+    }
+    
     public ObservableCollection<Bill> Bills {
         get => _bills;
         set => SetProperty(ref _bills, value);
@@ -304,7 +327,7 @@ public class MainViewModel : ViewModelBase {
         get => _projections;
         set => SetProperty(ref _projections, value);
     }
-
+    
     public ObservableCollection<PeriodBill> CurrentPeriodBills {
         get => _currentPeriodBills;
         set {
@@ -555,6 +578,11 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _selectedInnerTabIndex, value);
     }
 
+    public int SelectedProjectionTabIndex {
+        get => _selectedProjectionTabIndex;
+        set => SetProperty(ref _selectedProjectionTabIndex, value);
+    }
+    
     public DateTime CurrentPeriodDate {
         get => _currentPeriodDate;
         set {
@@ -2086,7 +2114,8 @@ public async Task CalculateProjectionsAsync() {
     _isCalculatingProjections = true;
     try {
         IsProjecting = true;
-
+        IsSnowballProjecting = true;
+        
         // Force WPF to draw the spinner on screen BEFORE background processing starts
         await Task.Yield();
 
@@ -2097,7 +2126,7 @@ public async Task CalculateProjectionsAsync() {
         var projectionEndDate = ProjectionEndDate;
 
         // 1. ALL HEAVY I/O, DATA MASSAGING, AND CALCULATIONS ON BACKGROUND THREAD
-        var (resultList, negativeAccounts) = await Task.Run(async () => {
+        var (resultList, snowballList, negativeAccounts) = await Task.Run(async () => {
             var paychecks = await _budgetService.GetAllPaychecksAsync();
             var bills = await _budgetService.GetAllBillsAsync();
             var buckets = await _budgetService.GetAllBucketsAsync();
@@ -2139,7 +2168,7 @@ public async Task CalculateProjectionsAsync() {
             });
             #endregion
 
-            // Run Projection Engine
+            // Run Projection Engine (Standard)
             var results = _projectionEngine.CalculateProjections(
                 paycheckTransactions,
                 allBillTransactions.ToList(),
@@ -2147,9 +2176,22 @@ public async Task CalculateProjectionsAsync() {
                 allTransactions,
                 start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(),
                 periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
-                showReconciled, true, UseAutoSweep);
+                showReconciled, true, UseAutoSweep, null);
 
             var list = results.ToList();
+
+            // Run Projection Engine (Snowball)
+            var snowballOptions = SnowballOptions;
+            var snowballResults = _projectionEngine.CalculateProjections(
+                paycheckTransactions,
+                allBillTransactions.ToList(),
+                allBucketTransactions.ToList(),
+                allTransactions,
+                start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(),
+                periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
+                showReconciled, true, UseAutoSweep, snowballOptions);
+
+            var snowballList = snowballResults.ToList();
 
             // Check for negative checking/savings accounts
             var negAccounts = new HashSet<string>();
@@ -2162,11 +2204,12 @@ public async Task CalculateProjectionsAsync() {
                 }
             }
 
-            return (list, negAccounts);
+            return (list, snowballList, negAccounts);
         });
 
         // 2. BACK ON UI THREAD: Safely update bound collections and show toasts!
         Projections = new ObservableCollection<ProjectionItem>(resultList);
+        SnowballProjections = new ObservableCollection<ProjectionItem>(snowballList);
 
         if (negativeAccounts.Any()) {
             string message = $"Warning: The following accounts go negative in the projection: {string.Join(", ", negativeAccounts)}";
@@ -2180,6 +2223,7 @@ public async Task CalculateProjectionsAsync() {
     finally {
         _isCalculatingProjections = false;
         IsProjecting = false;
+        IsSnowballProjecting = false;
     }
 }
 

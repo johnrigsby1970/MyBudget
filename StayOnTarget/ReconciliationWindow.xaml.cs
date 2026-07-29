@@ -50,6 +50,7 @@ public partial class ReconciliationWindow : Window {
     public void HandleCheck(object sender, RoutedEventArgs e) {
         try {
             _viewModel.Reconcile();
+            _viewModel.UpdateTransactionEnabledState();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during HandleCheck.");
@@ -59,6 +60,7 @@ public partial class ReconciliationWindow : Window {
     public void HandleUnchecked(object sender, RoutedEventArgs e) {
         try {
             _viewModel.Reconcile();
+            _viewModel.UpdateTransactionEnabledState();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during HandleUnchecked.");
@@ -82,8 +84,12 @@ public partial class ReconciliationWindow : Window {
                     // Access your specific transaction class
                     var transaction = grid.SelectedItem as ReconciliationTransaction;
                     if (transaction != null) {
-                        // Toggle the property
-                        transaction.IsReconciled = !transaction.IsReconciled;
+                        if (transaction.IsEnabled) {
+                            // Toggle the property
+                            transaction.IsReconciled = !transaction.IsReconciled;
+                            _viewModel.Reconcile();
+                            _viewModel.UpdateTransactionEnabledState();
+                        }
 
                         // Mark event as handled so the grid doesn't scroll
                         e.Handled = true;

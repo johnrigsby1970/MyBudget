@@ -232,6 +232,7 @@ public class ReconciliationViewModel : ViewModelBase {
         NewReconciledBalance = newReconciledBalance;
         NewReconciledDate = newReconciledDate;
         ReconciliationTransactions = new ObservableCollection<ReconciliationTransaction>(reconciliationTransactions!);
+        UpdateTransactionEnabledState();
         }
         catch (Exception ex)
         {
@@ -245,41 +246,16 @@ public class ReconciliationViewModel : ViewModelBase {
     }
 
     public async Task UpdateReconciliationTransactionsAsync() {
+        UpdateTransactionEnabledState();
+
         decimal? newReconciledBalance = null;
         DateTime? newReconciledDate = null;
-        bool hasNewReconciled = false;
-        bool notReconciledAfterLastReconciled = false;
-        bool changed = false;
-        foreach (var t in ReconciliationTransactions.OrderBy(b => b.TransactionDate)) {
-            if (t.IsReconciled) {
-                if (!notReconciledAfterLastReconciled) {
-                    hasNewReconciled = true;
-                }
-                else {
-                    if (t.IsReconciled) {
-                        t.IsReconciled = false;
-                        changed = true;
-                    }
-                }
-            }
-            else {
-                if (hasNewReconciled) {
-                    notReconciledAfterLastReconciled = true;
-                }
-            }
-        }
-
+        
         foreach (var t in ReconciliationTransactions.OrderBy(b => b.TransactionDate)) {
             if (t.IsReconciled) {
                 newReconciledBalance = t.RunningBalance;
                 newReconciledDate = t.TransactionDate;
             }
-        }
-
-        if (changed) {
-            OnPropertyChanged(nameof(ReconciliationTransactions));
-            
-            
         }
 
         if ((NewReconciledBalance.HasValue || newReconciledBalance.HasValue) && (NewReconciledDate.HasValue || newReconciledDate.HasValue)) {
@@ -288,6 +264,16 @@ public class ReconciliationViewModel : ViewModelBase {
                 ReconciliationTransactions,
                 NewReconciledBalance ?? newReconciledBalance ?? 0,
                 NewReconciledDate ?? newReconciledDate ?? DateTime.MinValue);
+        }
+    }
+
+    public void UpdateTransactionEnabledState() {
+        bool previousRowChecked = true;
+        foreach (var t in ReconciliationTransactions.OrderBy(b => b.TransactionDate)) {
+            t.IsEnabled = previousRowChecked;
+            if (!t.IsReconciled) {
+                previousRowChecked = false;
+            }
         }
     }
 

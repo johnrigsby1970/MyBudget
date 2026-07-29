@@ -21,7 +21,9 @@ public interface IProjectionEngine {
         List<AccountReconciliation>? reconciliations = null,
         bool showReconciled = false,
         bool removeZeroBalanceEntries = false,
-        bool useAutoSweep = false);
+        bool useAutoSweep = false,
+        SnowballStrategyOptions? snowballOptions = null,
+        DateTime? referenceDate = null);
 }
 
 public class ProjectionEngine : IProjectionEngine {
@@ -55,9 +57,15 @@ public class ProjectionEngine : IProjectionEngine {
         List<AccountReconciliation>? reconciliations = null, 
         bool showReconciled = false,
         bool removeZeroBalanceEntries = false, 
-        bool useAutoSweep = false) {
+        bool useAutoSweep = false,
+        SnowballStrategyOptions? snowballOptions = null,
+        DateTime? referenceDate = null) {
 
-        var thresholdPct = .5m;
+        var today = referenceDate ?? DateTime.Today;
+
+        var effectiveSnowballOptions = snowballOptions ?? new SnowballStrategyOptions();
+        var rothContributionsByYear = new Dictionary<int, decimal>(effectiveSnowballOptions.CurrentYearRothContributions);
+        var thresholdPct = effectiveSnowballOptions.CheckingSafetyThresholdPct;
         
         var list = new List<ProjectionItem>();
         var current = startDate;
@@ -206,6 +214,21 @@ public class ProjectionEngine : IProjectionEngine {
         foreach (var pay in paychecks)
         {
             var nextPay = pay.StartDate;
+            // Go back in time to find the start of the current period if necessary
+            if (nextPay > startDate)
+            {
+                while (nextPay > startDate)
+                {
+                    nextPay = pay.Frequency switch
+                    {
+                        Frequency.Weekly => nextPay.AddDays(-7),
+                        Frequency.BiWeekly => nextPay.AddDays(-14),
+                        Frequency.Monthly => nextPay.AddMonths(-1),
+                        _ => nextPay
+                    };
+                }
+            }
+            
             while (nextPay <= endDate)
             {
                 if (!paycheckDates.Contains(nextPay.Date))
@@ -243,8 +266,20 @@ public class ProjectionEngine : IProjectionEngine {
         var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary )?.Id;
         var creditCardAccountIds = accounts.Where(a => a.Type == AccountType.CreditCard).Select(a => a.Id).ToList();
 
+        // Final Sweep at the very end of the projection range
+        if (useAutoSweep)
+        {
+            var finalDate = endDate.Date;
+            if (!paycheckDates.Contains(finalDate))
+            {
+                paycheckDates.Add(finalDate);
+                paycheckDates = paycheckDates.OrderBy(d => d).ToList();
+            }
+            futureEvents.Add(new ProjectionGridItem(finalDate.AddSeconds(1), 0, "Final Period Close", null, null, null, null, null, ProjectionEventType.Sweep, false, false, false, false, null, true));
+        }
+
         futureEvents = futureEvents.OrderBy(e => e.Date).ToList();
-        
+
         var nextPaycheckIndex = 0;
         var nextPaycheckDate = paycheckDates.Count > 0 ? paycheckDates[0] : DateTime.MaxValue;
 
@@ -254,45 +289,64 @@ public class ProjectionEngine : IProjectionEngine {
                 // Check if we've passed into a new period
                 while (e.Date >= nextPaycheckDate && nextPaycheckDate != DateTime.MaxValue) {
                     var sweepDate = nextPaycheckDate.AddDays(-1);
-                    if (sweepDate >= DateTime.Today) {
-                        foreach (var ccId in creditCardAccountIds) {
-                            var balance = accountBalances[ccId];
-                            if (balance < 0 && primaryChecking.HasValue) {
-                                var sweepAmount = -balance;
-        
-                                decimal threshold = thresholdPct * accountBalances[primaryChecking.Value];
-                                
-                                if (threshold < 0) threshold = 0;
-                                
-                                decimal checkingBalance = accountBalances[primaryChecking.Value];
-                                // Calculate available surplus above the threshold
-                                decimal availableToSweep = checkingBalance - threshold;
+                    // DEBUG: Log or check if we are skipping due to Today check in tests
+                    if (sweepDate >= startDate.Date && sweepDate >= today.Date) {
+                        // Advanced Snowball/Investment Strategy
+                        if (effectiveSnowballOptions.EnableSnowball && primaryChecking.HasValue)
+                        {
+                            SnowballStrategyProcessor.ProcessSurplus(
+                                sweepDate,
+                                effectiveSnowballOptions,
+                                accounts,
+                                accountBalances,
+                                accountNames,
+                                primaryChecking.Value,
+                                ref runningBalance,
+                                includedTotalAccounts,
+                                rothContributionsByYear,
+                                list);
+                        }
+                        else if (primaryChecking.HasValue)
+                        {
+                            foreach (var ccId in creditCardAccountIds) {
+                                var balance = accountBalances[ccId];
+                                if (balance < 0) {
+                                    var sweepAmount = -balance;
+            
+                                    decimal threshold = effectiveSnowballOptions.CheckingSafetyThresholdPct * accountBalances[primaryChecking.Value];
+                            
+                                    if (threshold < 0) threshold = 0;
+                            
+                                    decimal checkingBalance = accountBalances[primaryChecking.Value];
+                                    // Calculate available surplus above the threshold
+                                    decimal availableToSweep = checkingBalance - threshold;
 
-                                // Cap the sweep to either the full debt amount or what's available above threshold
-                                decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
+                                    // Cap the sweep to either the full debt amount or what's available above threshold
+                                    decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
 
-                                if (actualSweepAmount > 0) 
-                                {
-                                    accountBalances[primaryChecking.Value] -= actualSweepAmount;
-                                    accountBalances[ccId] += actualSweepAmount;
-
-                                    runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
-                                        .Sum(a => accountBalances[a.Id]);
-
-                                    var sweepItem = new ProjectionItem 
+                                    if (actualSweepAmount > 0.01m) 
                                     {
-                                        TransactionDate = sweepDate,
-                                        Description = $"Auto-Sweep: {accountNames[ccId]}",
-                                        FromAccountId = primaryChecking,
-                                        ToAccountId = ccId,
-                                        Amount = -actualSweepAmount,
-                                        Balance = runningBalance,
-                                        IsSynthetic = true,
-                                        AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
-                                        InOrOutOfMoneyAccount = true
-                                    };
+                                        accountBalances[primaryChecking.Value] -= actualSweepAmount;
+                                        accountBalances[ccId] += actualSweepAmount;
 
-                                    list.Add(sweepItem);
+                                        runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
+                                            .Sum(a => accountBalances[a.Id]);
+
+                                        var sweepItem = new ProjectionItem 
+                                        {
+                                            TransactionDate = sweepDate,
+                                            Description = $"Auto-Sweep: {accountNames[ccId]}",
+                                            FromAccountId = primaryChecking,
+                                            ToAccountId = ccId,
+                                            Amount = -actualSweepAmount,
+                                            Balance = runningBalance,
+                                            IsSynthetic = true,
+                                            AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                                            InOrOutOfMoneyAccount = true
+                                        };
+
+                                        list.Add(sweepItem);
+                                    }
                                 }
                             }
                         }
@@ -459,7 +513,22 @@ public class ProjectionEngine : IProjectionEngine {
         if (useAutoSweep) {
             while (nextPaycheckDate != DateTime.MaxValue && nextPaycheckDate <= endDate) {
                 var sweepDate = nextPaycheckDate.AddDays(-1);
-                if (sweepDate >= DateTime.Today) {
+                if (sweepDate >= startDate || sweepDate >= DateTime.Today) {
+                    if (effectiveSnowballOptions.EnableSnowball && primaryChecking.HasValue)
+                    {
+                        SnowballStrategyProcessor.ProcessSurplus(
+                            sweepDate,
+                            effectiveSnowballOptions,
+                            accounts,
+                            accountBalances,
+                            accountNames,
+                            primaryChecking.Value,
+                            ref runningBalance,
+                            includedTotalAccounts,
+                            rothContributionsByYear,
+                            list);
+                    }
+                    
                     foreach (var ccId in creditCardAccountIds) {
                         var balance = accountBalances[ccId];
                         if (balance < 0 && primaryChecking.HasValue) {

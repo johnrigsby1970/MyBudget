@@ -157,4 +157,11 @@ public class ReconciliationTransaction : Transaction {
         get => _isReconciled;
         set => SetProperty(ref _isReconciled, value);
     }
+
+    private bool _isEnabled = true;
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set => SetProperty(ref _isEnabled, value);
+    }
 }

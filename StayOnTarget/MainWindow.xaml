@@ -99,6 +99,7 @@
 
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
+        <converters:DoubleToDecimalConverter x:Key="DoubleToDecimalConverter" />
         <converters:AccountTypeToIconConverter x:Key="AccountIconConverter" />
         <converters:AmountToBrushConverter x:Key="AmountToBrushConverter" />
         <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
@@ -127,6 +128,27 @@
                             ObjectType="{x:Type models:Frequency}">
             <ObjectDataProvider.MethodParameters>
                 <x:Type TypeName="models:Frequency" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        <ObjectDataProvider x:Key="EnumSurplusAllocationTarget"
+                            MethodName="GetValues"
+                            ObjectType="{x:Type sys:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="models:SurplusAllocationTarget" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        <ObjectDataProvider x:Key="EnumSnowballSortStrategy"
+                            MethodName="GetValues"
+                            ObjectType="{x:Type sys:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="models:SnowballSortStrategy" />
+            </ObjectDataProvider.MethodParameters>
+        </ObjectDataProvider>
+        <ObjectDataProvider x:Key="EnumInvestmentStrategy"
+                            MethodName="GetValues"
+                            ObjectType="{x:Type sys:Enum}">
+            <ObjectDataProvider.MethodParameters>
+                <x:Type TypeName="models:InvestmentStrategy" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
         <!-- Style for the ToggleButton -->
@@ -1854,7 +1876,6 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="1*" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="2*" />
                     </Grid.RowDefinitions>
 
                     <Border Background="#F8FAFC"
@@ -1931,8 +1952,21 @@
                   Margin="5,6,5,2" />
     </Grid>
 </Border>
-                    <DataGrid x:Name="ProjectionGrid" Grid.Row="1" ItemsSource="{Binding Projections}"
-                              AutoGenerateColumns="False" CanUserAddRows="False">
+                    
+                    <TabControl Grid.Row="1" Style="{StaticResource InnerTabControlStyle}"
+                                ItemContainerStyle="{StaticResource ModernUnderlineTabItemStyle}"
+                                SelectedIndex="{Binding SelectedProjectionTabIndex}">
+                        <TabItem Header="Current Plan">
+                            
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="1*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="2*" />
+                                </Grid.RowDefinitions>
+                                
+                            <DataGrid x:Name="ProjectionGrid" Grid.Row="0" ItemsSource="{Binding Projections}"
+                                      AutoGenerateColumns="False" CanUserAddRows="False">
                         <DataGrid.RowStyle>
                             <Style TargetType="{x:Type DataGridRow}">
                                 <Setter Property="BorderThickness" Value="0,0,0,1" />
@@ -2031,7 +2065,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <GridSplitter
-                        Grid.Row="2"
+                        Grid.Row="1"
                         ResizeDirection="Rows"
                         Height="2"
                         HorizontalAlignment="Stretch"
@@ -2039,14 +2073,9 @@
                         VerticalAlignment="Stretch"
                         ResizeBehavior="PreviousAndNext"
                         ShowsPreview="True" />
-                    <!-- <local:ProjectionLiveChartControl Grid.Row="3" Visibility="{Binding IsLoading, Converter={StaticResource InverseBooleanToVisibilityConverter}}" -->
-                    <!--                                   Projections="{Binding Projections}" -->
-                    <!--                                   Accounts="{Binding Accounts}" -->
-                    <!--                                   Margin="0,5,0,0" /> -->
-
 
                     <!-- Replace your current Grid.Row="3" element with this container Grid -->
-                    <Grid Grid.Row="3" Margin="0,5,0,0">
+                    <Grid Grid.Row="2" Margin="0,5,0,0">
 
                         <!-- 1. The LiveChart Control (Hides when IsLoading = True) -->
                         <local:ProjectionLiveChartControl
@@ -2119,6 +2148,246 @@
                                        HorizontalAlignment="Center" />
                         </StackPanel>
                     </Grid>
+                    </Grid>
+                        </TabItem>
+                        <TabItem Header="Snowball Debt Planner">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="300" />
+                                </Grid.ColumnDefinitions>
+                                <Grid Grid.Column="0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="1*" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="2*" />
+                                    </Grid.RowDefinitions>
+
+                                    <DataGrid x:Name="SnowballGrid" Grid.Row="0"
+                                              ItemsSource="{Binding SnowballProjections}"
+                                              AutoGenerateColumns="False" CanUserAddRows="False">
+                                        <DataGrid.RowStyle>
+                                            <Style TargetType="{x:Type DataGridRow}">
+                                                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                                                <Setter Property="BorderBrush" Value="LightGray" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding NeedsAttention}" Value="True">
+                                                        <Setter Property="BorderThickness" Value="0,2,0,0" />
+                                                        <Setter Property="BorderBrush" Value="black" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGrid.RowStyle>
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Posting Date"
+                                                                HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                                                Binding="{Binding TransactionDate, StringFormat='{}{0:MM/dd/yyyy}'}"
+                                                                IsReadOnly="False" Width="90">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextAlignment" Value="Center" />
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="Description" Binding="{Binding Description}"
+                                                                IsReadOnly="True"
+                                                                Width="150" />
+                                            <DataGridTextColumn Header="Amount"
+                                                                HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
+                                                                Binding="{Binding Amount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
+                                                                Width="90" MinWidth="80">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextAlignment" Value="Right" />
+                                                        <Setter Property="Padding" Value="0,0,8,0" />
+                                                        <Setter Property="Foreground"
+                                                                Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="Total Balance"
+                                                                HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
+                                                                Binding="{Binding Balance, StringFormat=C}"
+                                                                Width="90">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextAlignment" Value="Right" />
+                                                        <Setter Property="Padding" Value="0,0,8,0" />
+                                                        <Setter Property="Foreground"
+                                                                Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                                <Setter Property="Foreground" Value="Red" />
+                                                                <Setter Property="FontWeight" Value="Bold" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="Period Net"
+                                                                HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
+                                                                Binding="{Binding PeriodNet, StringFormat=C}"
+                                                                Width="90">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextAlignment" Value="Right" />
+                                                        <Setter Property="Padding" Value="0,0,8,0" />
+                                                        <Setter Property="Foreground"
+                                                                Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
+                                                        <Setter Property="FontWeight" Value="Bold" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger
+                                                                Binding="{Binding PeriodNet, Converter={StaticResource NegativeToRedConverter}}"
+                                                                Value="True">
+                                                                <Setter Property="Foreground" Value="Red" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <GridSplitter
+                                        Grid.Row="1"
+                                        ResizeDirection="Rows"
+                                        Height="2"
+                                        HorizontalAlignment="Stretch"
+                                        Background="LightGray"
+                                        VerticalAlignment="Stretch"
+                                        ResizeBehavior="PreviousAndNext"
+                                        ShowsPreview="True" />
+
+                                    <Grid Grid.Row="2" Margin="0,5,0,0">
+                                        <local:ProjectionLiveChartControl
+                                            Visibility="{Binding IsSnowballProjecting, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+                                            Projections="{Binding SnowballProjections}"
+                                            Accounts="{Binding Accounts}" />
+
+                                        <StackPanel
+                                            Visibility="{Binding IsSnowballProjecting, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Orientation="Vertical">
+                                            <Viewbox Width="50" Height="50">
+                                                <Control RenderTransformOrigin="0.5,0.5">
+                                                    <Control.Template>
+                                                        <ControlTemplate TargetType="Control">
+                                                            <Grid>
+                                                                <Grid.RenderTransform>
+                                                                    <RotateTransform x:Name="SpinTransform" Angle="0" />
+                                                                </Grid.RenderTransform>
+                                                                <Canvas Width="48" Height="48">
+                                                                    <Path Data="M24,4 A20,20 0 1,1 23.99,4"
+                                                                          Stroke="#E2E8F0"
+                                                                          StrokeThickness="4"
+                                                                          StrokeStartLineCap="Round"
+                                                                          StrokeEndLineCap="Round" />
+                                                                    <Path Data="M24,4 A20,20 0 0,1 44,24"
+                                                                          Stroke="#3B82F6"
+                                                                          StrokeThickness="4"
+                                                                          StrokeStartLineCap="Round"
+                                                                          StrokeEndLineCap="Round" />
+                                                                </Canvas>
+                                                            </Grid>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsVisible" Value="True">
+                                                                    <Trigger.EnterActions>
+                                                                        <BeginStoryboard x:Name="SpinStory">
+                                                                            <Storyboard RepeatBehavior="Forever">
+                                                                                <DoubleAnimation
+                                                                                    Storyboard.TargetName="SpinTransform"
+                                                                                    Storyboard.TargetProperty="Angle"
+                                                                                    From="0" To="360"
+                                                                                    Duration="0:0:1" />
+                                                                            </Storyboard>
+                                                                        </BeginStoryboard>
+                                                                    </Trigger.EnterActions>
+                                                                    <Trigger.ExitActions>
+                                                                        <StopStoryboard BeginStoryboardName="SpinStory" />
+                                                                    </Trigger.ExitActions>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Control.Template>
+                                                </Control>
+                                            </Viewbox>
+                                            <TextBlock Text="Loading Snowball Projections..."
+                                                       Margin="0,10,0,0"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#64748B"
+                                                       HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+
+                                <!-- Snowball Options Sidebar -->
+                                <Border Grid.Column="1" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1,0,0,0"
+                                        Padding="15">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <StackPanel>
+                                            <TextBlock Text="Snowball Strategy Options" FontSize="16" FontWeight="Bold"
+                                                       Foreground="#1E293B" Margin="0,0,0,15" />
+
+                                            <CheckBox Content="Enable Snowball Strategy" IsChecked="{Binding SnowballOptions.EnableSnowball}"
+                                                      Margin="0,0,0,15" FontSize="13" FontWeight="SemiBold" />
+
+                                            <TextBlock Text="Primary Allocation Target" FontWeight="SemiBold" Foreground="#64748B"
+                                                       Margin="0,0,0,5" />
+                                            <ComboBox ItemsSource="{Binding Source={StaticResource EnumSurplusAllocationTarget}}"
+                                                      SelectedItem="{Binding SnowballOptions.PrimaryTarget}" Margin="0,0,0,15" />
+
+                                            <TextBlock Text="Debt Payoff Strategy" FontWeight="SemiBold" Foreground="#64748B"
+                                                       Margin="0,0,0,5" />
+                                            <ComboBox ItemsSource="{Binding Source={StaticResource EnumSnowballSortStrategy}}"
+                                                      SelectedItem="{Binding SnowballOptions.DebtSortStrategy}" Margin="0,0,0,15" />
+
+                                            <TextBlock Text="Investment Strategy" FontWeight="SemiBold" Foreground="#64748B"
+                                                       Margin="0,0,0,5" />
+                                            <ComboBox ItemsSource="{Binding Source={StaticResource EnumInvestmentStrategy}}"
+                                                      SelectedItem="{Binding SnowballOptions.InvestmentStrategy}" Margin="0,0,0,15" />
+
+                                            <Separator Margin="0,5,0,15" Background="#E2E8F0" />
+
+                                            
+                                            <DockPanel Margin="0,0,0,5">
+                                                <TextBlock Text="Checking Safety Floor: " FontWeight="SemiBold" Foreground="#64748B" />
+                                                <TextBlock Text="{Binding SnowballOptions.CheckingSafetyThresholdPct, StringFormat={}{0:P0}}"
+                                                           FontWeight="Bold" Foreground="#3B82F6" HorizontalAlignment="Right" />
+                                            </DockPanel>
+                                            <Slider Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                                    Value="{Binding SnowballOptions.CheckingSafetyThresholdPct, Converter={StaticResource DoubleToDecimalConverter}}"
+                                                    Margin="0,0,0,5" />
+                                            
+                                            <TextBlock TextWrapping="Wrap" Text="How much of your checking account to keep as a cushion for upcoming bills. The remainder is extra cash." Margin="0, 0, 0, 15" />
+                                            
+                                            <DockPanel Margin="0,0,0,5">
+                                                <TextBlock Text="Goal Contribuion Rate: " FontWeight="SemiBold" Foreground="#64748B" />
+                                                <TextBlock Text="{Binding SnowballOptions.SurplusSweepPercentage, StringFormat={}{0:P0}}"
+                                                           FontWeight="Bold" Foreground="#3B82F6" HorizontalAlignment="Right" />
+                                            </DockPanel>
+                                            <Slider Minimum="0" Maximum="1" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                                    Value="{Binding SnowballOptions.SurplusSweepPercentage, Converter={StaticResource DoubleToDecimalConverter}}"
+                                                    Margin="0,0,0,5" />
+                                            <TextBlock TextWrapping="Wrap" Text="Determines what percentage of that extra cash moves toward your debt or investments rather than staying in checking." Margin="0, 0, 0, 15" />
+
+                                            <Separator Margin="0,5,0,15" Background="#E2E8F0" />
+
+                                            <TextBlock Text="Annual Roth Limit" FontWeight="SemiBold" Foreground="#64748B"
+                                                       Margin="0,0,0,5" />
+                                            <TextBox Text="{Binding SnowballOptions.AnnualRothContributionLimit, StringFormat=N0, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="0,0,0,15" />
+
+                                            <TextBlock Text="Tip: Settings are applied instantly to the projection below."
+                                                       FontSize="11" Foreground="#94A3B8" FontStyle="Italic" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </TabItem>
+                        </TabControl>
+                        
+
 
 
                 </Grid>

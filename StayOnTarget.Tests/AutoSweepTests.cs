@@ -133,7 +133,7 @@ public class AutoSweepTests
 
         // Act
         var results = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), new(), new(), allTransactions, null, false, false, true
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), new(), new(), allTransactions, null, false, false, true, null, today
         ).ToList();
 
         // Assert
