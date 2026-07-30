@@ -1,0 +1,105 @@
+﻿<Window x:Class="StayOnTarget.ExportTransactionsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:StayOnTarget"
+        xmlns:vm="clr-namespace:StayOnTarget.ViewModels"
+        xmlns:converters="clr-namespace:StayOnTarget.Converters"
+        mc:Ignorable="d"
+        Title="Export Transactions" Height="550" Width="500"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+    </Window.Resources>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Account Selection -->
+        <TextBlock Text="Select Accounts" FontWeight="Bold" Margin="0,0,0,5" />
+        <DockPanel Grid.Row="1" Margin="0,0,0,15">
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,5,0,0">
+                <Button Content="Select All" Command="{Binding SelectAllCommand}" Margin="0,0,10,0" Padding="10,2" />
+                <Button Content="Clear Selection" Command="{Binding ClearSelectionCommand}" Padding="10,2" />
+                <CheckBox Content="Include Archived Accounts" IsChecked="{Binding IncludeArchivedAccounts}" VerticalAlignment="Center" Margin="20,0,0,0" />
+            </StackPanel>
+            <Border BorderBrush="#CBD5E1" BorderThickness="1">
+                <ListBox ItemsSource="{Binding Accounts}" SelectionMode="Multiple">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Content="{Binding Account.Name}" IsChecked="{Binding IsSelected}" Margin="2" />
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Border>
+        </DockPanel>
+
+        <!-- Date Range Filter -->
+        <StackPanel Grid.Row="2" Margin="0,0,0,15">
+            <TextBlock Text="Date Range" FontWeight="Bold" Margin="0,0,0,5" />
+            <ComboBox SelectedValue="{Binding SelectedDateFilter}" SelectedValuePath="Tag">
+                <ComboBoxItem Content="All Dates" Tag="{x:Static vm:DateFilterOption.AllDates}" />
+                <ComboBoxItem Content="Year to Date" Tag="{x:Static vm:DateFilterOption.YearToDate}" />
+                <ComboBoxItem Content="Current Month" Tag="{x:Static vm:DateFilterOption.CurrentMonth}" />
+                <ComboBoxItem Content="Custom Date Range" Tag="{x:Static vm:DateFilterOption.Custom}" />
+            </ComboBox>
+            <Grid Visibility="{Binding IsCustomDateRange, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,5,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="From:" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <DatePicker Grid.Column="1" SelectedDate="{Binding FromDate}" Margin="0,0,10,0" />
+                <TextBlock Grid.Column="2" Text="To:" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <DatePicker Grid.Column="3" SelectedDate="{Binding ToDate}" />
+            </Grid>
+        </StackPanel>
+
+        <!-- CSV Export Options -->
+        <StackPanel Grid.Row="3" Margin="0,0,0,15">
+            <TextBlock Text="CSV Format &amp; Options" FontWeight="Bold" Margin="0,0,0,5" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <RadioButton Content="Standard CSV" IsChecked="{Binding SelectedPreset, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static vm:CsvExportPreset.Standard}}" Margin="0,0,20,0" />
+                <RadioButton Content="Quicken Compatible CSV" IsChecked="{Binding SelectedPreset, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static vm:CsvExportPreset.Quicken}}" />
+            </StackPanel>
+            
+            <StackPanel Orientation="Horizontal" Visibility="{Binding IsQuickenPreset, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                <CheckBox Content="Include Bucket / Category" IsChecked="{Binding IncludeBuckets}" Margin="0,0,20,0" />
+                <CheckBox Content="Include Status" IsChecked="{Binding IncludeStatus}" Margin="0,0,20,0" />
+                <CheckBox Content="Include Memos / Notes" IsChecked="{Binding IncludeMemos}" />
+            </StackPanel>
+            
+            <TextBlock Text="Quicken format uses fixed columns." FontStyle="Italic" Foreground="Gray" Visibility="{Binding IsQuickenPreset, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </StackPanel>
+
+        <!-- File Destination -->
+        <StackPanel Grid.Row="4" Margin="0,0,0,20">
+            <TextBlock Text="File Destination" FontWeight="Bold" Margin="0,0,0,5" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Text="{Binding ExportFilePath}" VerticalAlignment="Center" Padding="5,3" />
+                <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}" Margin="5,0,0,0" Padding="10,3" />
+            </Grid>
+        </StackPanel>
+
+        <!-- Footer Actions -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Export" Command="{Binding ExportCommand}" Width="80" Height="30" Margin="0,0,10,0" Background="#3b82f6" Foreground="White" FontWeight="SemiBold" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Width="80" Height="30" />
+        </StackPanel>
+    </Grid>
+</Window>

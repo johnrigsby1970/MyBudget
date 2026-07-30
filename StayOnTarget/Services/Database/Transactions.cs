@@ -31,6 +31,17 @@ public partial class BudgetService {
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
+    public async Task<IEnumerable<Transaction>> GetRawTransactionsAsync() {
+        await using var conn = _db.GetConnection();
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT t.*, t.TransactionDate as TransactionDate, a.Name as AccountName, b.Name as BucketName
+            FROM Transactions t
+            LEFT JOIN Accounts a ON t.AccountId = a.Id
+            LEFT JOIN Buckets b ON t.BucketId = b.Id")).ToList();
+        
+        return dbRows.Select(row => (Transaction)MapDynamicToTransaction(row, isTransferSide: false)).ToList();
+    }
+
     public async Task<IEnumerable<Transaction>> GetAccountTransactionsAsync(int accountId) {
         await using var conn = _db.GetConnection();
         var dbRows = (await conn

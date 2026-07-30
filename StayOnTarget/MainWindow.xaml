@@ -222,12 +222,14 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="0" Grid.ColumnSpan="2">
-            <MenuItem Header="_Help">
-                <MenuItem Header="_About" Command="{Binding ShowAboutCommand}" />
-                <Separator />
+            <MenuItem Header="_File">
+                <MenuItem Header="_Export Transactions..." Command="{Binding ExportTransactionsCommand}" />
                 <MenuItem Header="_Backup" Command="{Binding BackupCommand}" />
                 <Separator />
                 <MenuItem Header="_Exit" Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Help">
+                <MenuItem Header="_About" Command="{Binding ShowAboutCommand}" />
             </MenuItem>
         </Menu>
 

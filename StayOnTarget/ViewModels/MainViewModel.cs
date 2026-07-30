@@ -200,11 +200,13 @@ public class MainViewModel : ViewModelBase {
             new RelayCommand(() => IsBucketDescriptionExpanded = !IsBucketDescriptionExpanded);
         ToggleBillDescriptionCommand =
             new RelayCommand(() => IsBillDescriptionExpanded = !IsBillDescriptionExpanded);
+        ExportTransactionsCommand = new RelayCommand(ExportTransactions);
 
         InitializeDataCommand = new AsyncRelayCommand(InitializeDataAsync);
     }
 
-    public IAsyncRelayCommand InitializeDataCommand { get; }
+    public IRelayCommand InitializeDataCommand { get; }
+    public IRelayCommand ExportTransactionsCommand { get; }
 
     private async Task InitializeDataAsync() {
         // Force the dispatcher to render the empty screen/loading state first
@@ -3121,6 +3123,16 @@ public class MainViewModel : ViewModelBase {
         catch (Exception ex) {
             Log.Error(ex, "Error setting current period date.");
         }
+    }
+
+    private void ExportTransactions()
+    {
+        var viewModel = new ExportTransactionsViewModel(_budgetService);
+        var dialog = new ExportTransactionsDialog(viewModel)
+        {
+            Owner = Application.Current.MainWindow
+        };
+        dialog.ShowDialog();
     }
 
     private void ShowAbout() {
