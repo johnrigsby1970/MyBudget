@@ -6,10 +6,10 @@ namespace StayOnTarget.Services;
 public partial class BudgetService
 {
     // Bucket Operations
-    public async Task<IEnumerable<BudgetBucket>> GetAllBucketsAsync()
+    public async Task<IEnumerable<BudgetBucket>> GetAllBucketsAsync(bool includeArchived = false)
     {
         await using var conn = _db.GetConnection();
-        return await conn.QueryAsync<BudgetBucket>("SELECT * FROM Buckets");
+        return await conn.QueryAsync<BudgetBucket>("SELECT * FROM Buckets WHERE IsActive = 1 AND (IsArchived=0 OR IsArchived = @includeArchived)", new { includeArchived=(includeArchived ? 1: 0) });
     }
 
     public async Task UpsertBucketAsync(BudgetBucket bucket)
@@ -25,12 +25,42 @@ public partial class BudgetService
             await conn.ExecuteAsync(@"UPDATE Buckets SET Name=@Name, ExpectedAmount=@ExpectedAmount, AccountId=@AccountId, PaycheckId=@PaycheckId WHERE Id=@Id", bucket);
         }
     }
-
-    public async Task DeleteBucketAsync(int id)
+    
+    public async Task SetBucketInactiveAsync(int id)
     {
         await using var conn = _db.GetConnection();
-        await conn.ExecuteAsync("UPDATE Transactions SET BucketId=null WHERE BucketId = @id", new { id }); //Disassociate the transaction from the bucket
-        await conn.ExecuteAsync("DELETE FROM PeriodBuckets WHERE BucketId = @id", new { id });
-        await conn.ExecuteAsync("DELETE FROM Buckets WHERE Id = @id", new { id });
-    }  
+        await conn.ExecuteAsync("UPDATE Buckets SET IsActive = 0 WHERE Id = @id", new { id });
+    }
+    
+    public async Task DeleteBucketAsync(int id)
+    {
+        if (await IsBucketInUseAsync(id)) {
+            await using var conn = _db.GetConnection();
+            await conn.ExecuteAsync("UPDATE Buckets SET IsActive = 0 WHERE Id = @id", new { id });
+        }
+        else {
+            await using var conn = _db.GetConnection();
+            await conn.ExecuteAsync("DELETE FROM Buckets WHERE Id = @id", new { id });
+        }
+    }
+    
+    public async Task<bool> IsBucketInUseAsync(int bucketId)
+    {
+        await using var conn = _db.GetConnection();
+        
+        // Check Bills (AccountId or ToAccountId)
+        var periodBuckets = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM PeriodBuckets WHERE BucketId = @bucketId", 
+            new { bucketId });
+        if (periodBuckets > 0) return true;
+        
+        
+        // Check Transactions (AccountId or ToAccountId)
+        var transactions = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM Transactions WHERE BucketId = @bucketId", 
+            new { bucketId });
+        if (transactions > 0) return true;
+        
+        return false;
+    }
 }

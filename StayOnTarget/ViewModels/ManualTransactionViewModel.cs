@@ -13,9 +13,6 @@ public class ManualTransactionViewModel : ViewModelBase {
 
     public bool IsMatched {
         get => _isMatched;
-        set {
-            _isMatched = value;
-            SetProperty(ref _isMatched, value);
-        }
+        set => SetProperty(ref _isMatched, value); 
     }
 }

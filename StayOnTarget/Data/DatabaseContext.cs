@@ -47,7 +47,8 @@ public class SqliteNullableGuidHandler : SqlMapper.TypeHandler<Guid?> {
 public class DatabaseContext {
     private string _connectionString;
 
-    private const string ProgramFolderName = "StayOnTarget";
+    //private const string ProgramFolderName = "StayOnTarget";
+    private const string ProgramFolderName = @"AppData\Local\StayOnTarget";
     private const string DatabaseName = "budget.db";
 
     static DatabaseContext() {
@@ -168,7 +169,8 @@ public class DatabaseContext {
                 IncludeInTotal INTEGER DEFAULT 1,
                 Type INTEGER NOT NULL,
                 HexColor TEXT DEFAULT '#FF0000FF',
-                IsPrimary INTEGER DEFAULT 0
+                IsPrimary INTEGER DEFAULT 0,
+                IsArchived INTEGER DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS MortgageDetails (
@@ -318,6 +320,62 @@ public class DatabaseContext {
 
                 if (tableExists > 0) {
                     connection.Execute("ALTER TABLE Bills ADD COLUMN IsPrincipalOnly INTEGER DEFAULT 0");
+                }
+            }
+            
+            columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='IsArchived'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Accounts'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Accounts ADD COLUMN IsArchived INTEGER DEFAULT 0");
+                }
+            }
+            
+            columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='IsArchived'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Bills'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Bills ADD COLUMN IsArchived INTEGER DEFAULT 0");
+                }
+            }
+            
+            columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Buckets') WHERE name='IsArchived'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Buckets'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Buckets ADD COLUMN IsArchived INTEGER DEFAULT 0");
+                }
+            }
+            
+            columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Buckets') WHERE name='IsActive'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Buckets'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Buckets ADD COLUMN IsActive INTEGER DEFAULT 1");
                 }
             }
 

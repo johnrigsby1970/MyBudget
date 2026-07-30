@@ -108,6 +108,8 @@
         <converters:CategoryNameConverter x:Key="CategoryNameConverter" />
         <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
         <converters:NegativeToRedConverter x:Key="NegativeToRedConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        <converters:DeltaToBrushConverter x:Key="DeltaToBrushConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
@@ -1384,7 +1386,7 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Content="Delete" Command="{Binding CancelAccountCommand}"
+                                    <Button Content="Delete" Command="{Binding DeleteAccountCommand}"
                                             Width="80"
                                             Margin="2"
                                             Background="Red"
@@ -1969,7 +1971,10 @@
                                 </Grid.RowDefinitions>
                                 
                             <DataGrid x:Name="ProjectionGrid" Grid.Row="0" ItemsSource="{Binding Projections}"
-                                      AutoGenerateColumns="False" CanUserAddRows="False">
+                                      AutoGenerateColumns="False" CanUserAddRows="False"
+                                      ScrollViewer.CanContentScroll="True"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <DataGrid.RowStyle>
                             <Style TargetType="{x:Type DataGridRow}">
                                 <Setter Property="BorderThickness" Value="0,0,0,1" />
@@ -2157,9 +2162,11 @@
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="300" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Grid Grid.Column="0">
+                                <DockPanel Grid.Column="0">
+                                    
+                                <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="1*" />
                                         <RowDefinition Height="Auto" />
@@ -2323,11 +2330,20 @@
                                         </StackPanel>
                                     </Grid>
                                 </Grid>
-
+                                </DockPanel>
+                                <!-- Column 1: Combined Flap Handle + Collapsible Side Panel -->
+                                <Grid Grid.Column="1">
                                 <!-- Snowball Options Sidebar -->
-                                <Border Grid.Column="1" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1,0,0,0"
-                                        Padding="15">
-                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <Border x:Name="OptionsPanelBorder"
+                                        Width="300"
+                                        Margin="0"
+                                        Padding="12,10"
+                                        Background="#F9F9F9"
+                                        BorderBrush="#D0D0D0"
+                                        BorderThickness="1,0,0,0"
+                                        Visibility="{Binding ElementName=OptionsTabBtn, Path=IsChecked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" >
                                         <StackPanel>
                                             <TextBlock Text="Snowball Strategy Options" FontSize="16" FontWeight="Bold"
                                                        Foreground="#1E293B" Margin="0,0,0,15" />
@@ -2381,11 +2397,171 @@
                                             <TextBox Text="{Binding SnowballOptions.AnnualRothContributionLimit, StringFormat=N0, UpdateSourceTrigger=PropertyChanged}"
                                                      Margin="0,0,0,15" />
 
+                                            <Border Background="#E8F4FD" BorderBrush="#BEE3F8" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,5,0,15"
+        Visibility="{Binding ShowSnowballAnalysis, Converter={StaticResource BooleanToVisibilityConverter}}">
+    <StackPanel>
+        <TextBlock Text="Strategy Comparison" FontWeight="Bold" Foreground="#0369A1" Margin="0,0,0,8" />
+        
+        <!-- Debt Free Milestone (If reached) -->
+        <StackPanel Visibility="{Binding SnowballDebtFreeDate, Converter={StaticResource NullToVisibilityConverter}}">
+            <TextBlock Foreground="#1E293B" FontSize="12">
+                <Run Text="Estimated Debt Free: " />
+                <Run Text="{Binding SnowballDebtFreeDate, StringFormat={}{0:MMM yyyy}, Mode=OneWay}" FontWeight="Bold" />
+            </TextBlock>
+            <TextBlock Foreground="{Binding SnowballMonthsSaved, Converter={StaticResource DeltaToBrushConverter}}" 
+                       FontSize="11" FontWeight="Bold" Margin="0,2,0,8"
+                       Visibility="{Binding SnowballMonthsSaved, Converter={StaticResource IntToVisibilityConverter}}">
+                <Run Text="(Saves " />
+                <Run Text="{Binding SnowballMonthsSaved, Mode=OneWay}" />
+                <Run Text=" months vs current plan)" />
+            </TextBlock>
+        </StackPanel>
+
+        <!-- End of Projection Debt (If not paid off) -->
+        <StackPanel Visibility="{Binding SnowballDebtFreeDate, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}">
+            <TextBlock Foreground="#1E293B" FontSize="12">
+                <Run Text="End of Projection Debt: " />
+                <Run Text="{Binding SnowballFinalDebt, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" FontWeight="Bold" />
+            </TextBlock>
+            <TextBlock Foreground="{Binding SnowballDebtReductionVsStandard, Converter={StaticResource DeltaToBrushConverter}}" 
+                       FontSize="11" FontWeight="Bold" Margin="0,2,0,8"
+                       Visibility="{Binding SnowballDebtReductionVsStandard, Converter={StaticResource IntToVisibilityConverter}}">
+                <Run Text="(" />
+                <Run Text="{Binding SnowballDebtReductionVsStandard, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" />
+                <Run Text=" less than current plan)" />
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Net Worth Output -->
+        <TextBlock Foreground="#1E293B" FontSize="12">
+            <Run Text="Final Net Worth: " />
+            <Run Text="{Binding SnowballFinalNetWorth, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" FontWeight="Bold" />
+        </TextBlock>
+        <TextBlock Foreground="{Binding SnowballNetWorthImprovement, Converter={StaticResource DeltaToBrushConverter}}" 
+                   FontSize="11" FontWeight="Bold" Margin="0,2,0,8">
+            <Run Text="(" />
+            <Run Text="{Binding SnowballNetWorthImprovement, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" />
+            <Run Text=" improvement)" />
+        </TextBlock>
+
+        <!-- ~1~ NEW: Dynamic Layman's Summary Insight @1@ -->
+        <!-- <Border BorderBrush="#BAE6FD" BorderThickness="0,1,0,0" Margin="0,6,0,0" Padding="0,8,0,0"> -->
+        <!--     <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#0C4A6E" LineHeight="15"> -->
+        <!--         <Run Text="💡 " /> -->
+        <!--         <Run Text="{Binding StrategyTakeawayText, Mode=OneWay}" FontStyle="Italic" /> -->
+        <!--     </TextBlock> -->
+        <!-- </Border> -->
+        <!-- Insight Container -->
+        <Border BorderBrush="#BAE6FD" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,8,0,0">
+            <StackPanel>
+                <!-- Primary Outcome Paragraph -->
+                <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#0C4A6E" FontWeight="SemiBold" LineHeight="16" Margin="0,0,0,6">
+                    <Run Text="💡 " />
+                    <Run Text="{Binding StrategyTakeawayPrimary, Mode=OneWay}" />
+                </TextBlock>
+
+                <!-- General Dilemma Paragraph -->
+                <TextBlock TextWrapping="Wrap" FontSize="10.5" Foreground="#475569" LineHeight="15" FontStyle="Italic">
+                    <Run Text="{Binding StrategyTakeawayDilemma, Mode=OneWay}" />
+                </TextBlock>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</Border>
+                                            
+                                            <!-- <Border Background="#E8F4FD" BorderBrush="#BEE3F8" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,5,0,15" -->
+                                            <!--         Visibility="{Binding ShowSnowballAnalysis, Converter={StaticResource BooleanToVisibilityConverter}}"> -->
+                                            <!--     <StackPanel> -->
+                                            <!--         <TextBlock Text="Strategy Comparison" FontWeight="Bold" Foreground="#0369A1" Margin="0,0,0,8" /> -->
+                                            <!--          -->
+                                            <!--         <StackPanel Visibility="{Binding SnowballDebtFreeDate, Converter={StaticResource NullToVisibilityConverter}}"> -->
+                                            <!--             <TextBlock Foreground="#1E293B" FontSize="12"> -->
+                                            <!--                 <Run Text="Estimated Debt Free: " /> -->
+                                            <!--                 <Run Text="{Binding SnowballDebtFreeDate, StringFormat={}{0:MMM yyyy}, Mode=OneWay}" FontWeight="Bold" /> -->
+                                            <!--             </TextBlock> -->
+                                            <!--             <TextBlock Foreground="{Binding SnowballMonthsSaved, Converter={StaticResource DeltaToBrushConverter}}"  -->
+                                            <!--                        FontSize="11" FontWeight="Bold" Margin="0,2,0,8" -->
+                                            <!--                        Visibility="{Binding SnowballMonthsSaved, Converter={StaticResource IntToVisibilityConverter}}"> -->
+                                            <!--                 <Run Text="(Saves " /> -->
+                                            <!--                 <Run Text="{Binding SnowballMonthsSaved, Mode=OneWay}" /> -->
+                                            <!--                 <Run Text=" months vs current plan)" /> -->
+                                            <!--             </TextBlock> -->
+                                            <!--         </StackPanel> -->
+                                            <!-- -->
+                                            <!--         <StackPanel Visibility="{Binding SnowballDebtFreeDate, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Invert}"> -->
+                                            <!--             <TextBlock Foreground="#1E293B" FontSize="12"> -->
+                                            <!--                 <Run Text="End of Projection Debt: " /> -->
+                                            <!--                 <Run Text="{Binding SnowballFinalDebt, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" FontWeight="Bold" /> -->
+                                            <!--             </TextBlock> -->
+                                            <!--             <TextBlock Foreground="{Binding SnowballDebtReductionVsStandard, Converter={StaticResource DeltaToBrushConverter}}"  -->
+                                            <!--                        FontSize="11" FontWeight="Bold" Margin="0,2,0,8" -->
+                                            <!--                        Visibility="{Binding SnowballDebtReductionVsStandard, Converter={StaticResource IntToVisibilityConverter}}"> -->
+                                            <!--                 <Run Text="(" /> -->
+                                            <!--                 <Run Text="{Binding SnowballDebtReductionVsStandard, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" /> -->
+                                            <!--                 <Run Text=" less than current plan)" /> -->
+                                            <!--             </TextBlock> -->
+                                            <!--         </StackPanel> -->
+                                            <!-- -->
+                                            <!--         <TextBlock Foreground="#1E293B" FontSize="12"> -->
+                                            <!--             <Run Text="Final Net Worth: " /> -->
+                                            <!--             <Run Text="{Binding SnowballFinalNetWorth, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" FontWeight="Bold" /> -->
+                                            <!--         </TextBlock> -->
+                                            <!--         <TextBlock Foreground="{Binding SnowballNetWorthImprovement, Converter={StaticResource DeltaToBrushConverter}}"  -->
+                                            <!--                    FontSize="11" FontWeight="Bold" Margin="0,2,0,0"> -->
+                                            <!--             <Run Text="(" /> -->
+                                            <!--             <Run Text="{Binding SnowballNetWorthImprovement, StringFormat='{}{0:+$#,##0;-$#,##0;$0}', Mode=OneWay}" /> -->
+                                            <!--             <Run Text=" improvement)" /> -->
+                                            <!--         </TextBlock> -->
+                                            <!--     </StackPanel> -->
+                                            <!-- </Border> -->
+
                                             <TextBlock Text="Tip: Settings are applied instantly to the projection below."
                                                        FontSize="11" Foreground="#94A3B8" FontStyle="Italic" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </ScrollViewer>
+                              
                                 </Border>
+                                <!-- 2. The Flap Handle (Sits OUTSIDE the Border so it NEVER disappears) -->
+                                <ToggleButton x:Name="OptionsTabBtn"
+                                              IsChecked="True"
+                                              Width="18" 
+                                              Height="48"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center"
+                                              Margin="-18,10,0,0"
+                                              Padding="0"
+                                              Background="#F9F9F9"
+                                              BorderBrush="#D0D0D0"
+                                              BorderThickness="1,1,0,1"
+                                              ToolTip="Toggle Snowball Options">
+            
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="4,0,0,4"
+                                                    SnapsToDevicePixels="True">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+
+                                    <ToggleButton.Style>
+                                        <Style TargetType="ToggleButton">
+                                            <Setter Property="Content" Value="▶" />
+                                            <Style.Triggers>
+                                                <Trigger Property="IsChecked" Value="False">
+                                                    <Setter Property="Content" Value="◀" />
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="Background" Value="#E5E5E5" />
+                                                </Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ToggleButton.Style>
+                                </ToggleButton>
+                                </Grid>
                             </Grid>
                         </TabItem>
                     </TabControl>

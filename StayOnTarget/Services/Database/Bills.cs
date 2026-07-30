@@ -5,10 +5,10 @@ namespace StayOnTarget.Services;
 
 public partial class BudgetService
 {
-    public async Task<IEnumerable<Bill>> GetAllBillsAsync()
+    public async Task<IEnumerable<Bill>> GetAllBillsAsync(bool includeArchived = false)
     {
         await using var conn = _db.GetConnection();
-        return await conn.QueryAsync<Bill>("SELECT * FROM Bills WHERE IsActive = 1");
+        return await conn.QueryAsync<Bill>("SELECT * FROM Bills WHERE IsActive = 1 AND (IsArchived=0 OR IsArchived = @includeArchived)", new { includeArchived=(includeArchived ? 1: 0) });
     }
 
     public async Task UpsertBillAsync(Bill bill)
@@ -40,11 +40,41 @@ public partial class BudgetService
         }
     }   
     
-    public async Task DeleteBillAsync(int id)
+    public async Task SetBillInactiveAsync(int id)
     {
         await using var conn = _db.GetConnection();
-        await conn.ExecuteAsync("UPDATE Transactions SET BillId=null WHERE BillId = @id", new { id }); //Disassociate the transaction from the bill
-        await conn.ExecuteAsync("DELETE FROM PeriodBills WHERE BillId = @id", new { id });
         await conn.ExecuteAsync("UPDATE Bills SET IsActive = 0 WHERE Id = @id", new { id });
+    }
+    
+    public async Task DeleteBillAsync(int id)
+    {
+        if (await IsBillInUseAsync(id)) {
+            await using var conn = _db.GetConnection();
+            await conn.ExecuteAsync("UPDATE Bills SET IsActive = 0 WHERE Id = @id", new { id });
+        }
+        else {
+            await using var conn = _db.GetConnection();
+            await conn.ExecuteAsync("DELETE FROM Bills WHERE Id = @id", new { id });
+        }
+    }
+    
+    public async Task<bool> IsBillInUseAsync(int billId)
+    {
+        await using var conn = _db.GetConnection();
+        
+        // Check Bills (AccountId or ToAccountId)
+        var periodBills = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM PeriodBills WHERE BillId = @billId", 
+            new { billId });
+        if (periodBills > 0) return true;
+        
+        
+        // Check Transactions (AccountId or ToAccountId)
+        var transactions = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM Transactions WHERE BillId = @billId", 
+            new { billId });
+        if (transactions > 0) return true;
+        
+        return false;
     }
 }

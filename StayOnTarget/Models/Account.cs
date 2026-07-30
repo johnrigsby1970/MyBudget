@@ -15,6 +15,7 @@ public class Account : ViewModelBase
     private MortgageDetails? _mortgageDetails;
     private CreditCardDetails? _creditCardDetails;
     private bool _isPrimary;
+    private bool _isArchived;
 
     public int Id { get; set; }
 
@@ -82,6 +83,12 @@ public class Account : ViewModelBase
     {
         get => _isPrimary;
         set => SetProperty(ref _isPrimary, value);
+    }
+    
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set => SetProperty(ref _isArchived, value);
     }
     
     public List<AccountAprHistory>? AccountAprHistory { get; set; } 

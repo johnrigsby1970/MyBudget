@@ -284,10 +284,57 @@ public class MainViewModel : ViewModelBase {
     }
 
     private bool _isSnowballProjecting;
-
     public bool IsSnowballProjecting {
         get => _isSnowballProjecting;
         set => SetProperty(ref _isSnowballProjecting, value);
+    }
+
+    private string _snowballAnalysisText = string.Empty;
+    public string SnowballAnalysisText {
+        get => _snowballAnalysisText;
+        set => SetProperty(ref _snowballAnalysisText, value);
+    }
+
+    private DateTime? _snowballDebtFreeDate;
+    public DateTime? SnowballDebtFreeDate {
+        get => _snowballDebtFreeDate;
+        set => SetProperty(ref _snowballDebtFreeDate, value);
+    }
+
+    private int _snowballMonthsSaved;
+    public int SnowballMonthsSaved {
+        get => _snowballMonthsSaved;
+        set => SetProperty(ref _snowballMonthsSaved, value);
+    }
+
+    private decimal _snowballFinalNetWorth;
+    public decimal SnowballFinalNetWorth {
+        get => _snowballFinalNetWorth;
+        set => SetProperty(ref _snowballFinalNetWorth, value);
+    }
+
+    private decimal _snowballNetWorthImprovement;
+    public decimal SnowballNetWorthImprovement {
+        get => _snowballNetWorthImprovement;
+        set => SetProperty(ref _snowballNetWorthImprovement, value);
+    }
+
+    private decimal _snowballFinalDebt;
+    public decimal SnowballFinalDebt {
+        get => _snowballFinalDebt;
+        set => SetProperty(ref _snowballFinalDebt, value);
+    }
+
+    private decimal _snowballDebtReductionVsStandard;
+    public decimal SnowballDebtReductionVsStandard {
+        get => _snowballDebtReductionVsStandard;
+        set => SetProperty(ref _snowballDebtReductionVsStandard, value);
+    }
+
+    private bool _showSnowballAnalysis;
+    public bool ShowSnowballAnalysis {
+        get => _showSnowballAnalysis;
+        set => SetProperty(ref _showSnowballAnalysis, value);
     }
     
     public ObservableCollection<Bill> Bills {
@@ -2010,6 +2057,67 @@ public class MainViewModel : ViewModelBase {
 
     #region Helpers
 
+    public string StrategyTakeawayPrimary
+{
+    get
+    {
+        // Using a small tolerance threshold ($1) avoids floating-point/decimal rounding glitches
+        bool netWorthImproved = SnowballNetWorthImprovement > 1.00m;
+        bool netWorthWorse = SnowballNetWorthImprovement < -1.00m;
+        bool reducedDebt = SnowballDebtReductionVsStandard > 1.00m;
+        bool increasedDebt = SnowballDebtReductionVsStandard < -1.00m;
+
+        string primaryAnalysis;
+
+        // 1. Dual-Metric Win-Win
+        if (reducedDebt && netWorthImproved)
+        {
+            primaryAnalysis = $"Clear Win: You eliminate {Math.Abs(SnowballDebtReductionVsStandard):C0} in debt while growing your net worth by an extra {Math.Abs(SnowballNetWorthImprovement):C0}.";
+        }
+        // 2. Wealth Growth Focus (Investing extra cash over debt)
+        else if (increasedDebt && netWorthImproved)
+        {
+            primaryAnalysis = $"Wealth Growth Focus: Investing extra cash boosts your net worth by {Math.Abs(SnowballNetWorthImprovement):C0}, but leaves {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt balance than the standard plan.";
+        }
+        // 3. Risk Reduction Focus (Paying debt over investing)
+        else if (reducedDebt && netWorthWorse)
+        {
+            primaryAnalysis = $"Risk Reduction Focus: Pays off {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt for peace of mind, though net worth ends up {Math.Abs(SnowballNetWorthImprovement):C0} lower than investing.";
+        }
+        // 4. Suboptimal Strategy (More debt AND lower net worth)
+        else if (increasedDebt && netWorthWorse)
+        {
+            primaryAnalysis = $"Suboptimal Strategy: This configuration increases your debt by {Math.Abs(SnowballDebtReductionVsStandard):C0} and lowers your final net worth by {Math.Abs(SnowballNetWorthImprovement):C0}.";
+        }
+        // 5. Single-Metric Edge Cases (Debt same, Net Worth changes OR Net Worth same, Debt changes)
+        else if (netWorthImproved)
+        {
+            primaryAnalysis = $"Net Worth Boost: Your net worth increases by {Math.Abs(SnowballNetWorthImprovement):C0} with no change to your debt payoff trajectory.";
+        }
+        else if (reducedDebt)
+        {
+            primaryAnalysis = $"Debt Payoff Boost: You eliminate {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt with no overall impact on your final net worth.";
+        }
+        else
+        {
+            primaryAnalysis = "Strategy matches your standard baseline plan.";
+        }
+
+        //string dilemmaExplanation = "Choosing between paying down debt or investing involves a trade-off: debt paydown offers a guaranteed return and lowers monthly liabilities, while investing aims for higher long-term wealth growth at the cost of carrying debt longer.";
+
+        return $"{primaryAnalysis}";
+    }
+}
+    
+    public string StrategyTakeawayDilemma
+{
+    get
+    {
+        string dilemmaExplanation = "Choosing between paying down debt or investing involves a trade-off: debt paydown offers a guaranteed return and lowers monthly liabilities, while investing aims for higher long-term wealth growth—at the cost, and potential worry, of carrying debt longer.";
+
+        return $"{dilemmaExplanation}";
+    }
+}
     // public async Task CalculateProjectionsAsync() {
     //     if (_isCalculatingProjections) return;
     //     _isCalculatingProjections = true;
@@ -2114,14 +2222,13 @@ public class MainViewModel : ViewModelBase {
     // }
 
 
-public async Task CalculateProjectionsAsync() {
-    if (_isCalculatingProjections) return;
-    _isCalculatingProjections = true;
-    try {
-        IsProjecting = true;
-        IsSnowballProjecting = true;
-        
-        // Force WPF to draw the spinner on screen BEFORE background processing starts
+    public async Task CalculateProjectionsAsync() {
+        if (_isCalculatingProjections) return;
+        _isCalculatingProjections = true;
+        try {
+            IsProjecting = true;
+            IsSnowballProjecting = true;
+            SnowballAnalysisText = "Analyzing strategy...";
         await Task.Yield();
 
         // Capture local copies of ViewModel properties on the UI thread first
@@ -2215,6 +2322,14 @@ public async Task CalculateProjectionsAsync() {
         // 2. BACK ON UI THREAD: Safely update bound collections and show toasts!
         Projections = new ObservableCollection<ProjectionItem>(resultList);
         SnowballProjections = new ObservableCollection<ProjectionItem>(snowballList);
+
+        if (SnowballOptions.EnableSnowball) {
+            UpdateSnowballAnalysis(resultList, snowballList);
+        } else {
+            ShowSnowballAnalysis = false;
+        }
+
+        IsSnowballProjecting = false;
 
         if (negativeAccounts.Any()) {
             string message = $"Warning: The following accounts go negative in the projection: {string.Join(", ", negativeAccounts)}";
@@ -2859,6 +2974,86 @@ public async Task CalculateProjectionsAsync() {
         catch (Exception ex) {
             Log.Error(ex, "Error showing amortization window.");
         }
+    }
+
+    private void UpdateSnowballAnalysis(List<ProjectionItem> standard, List<ProjectionItem> snowball) {
+        if (standard == null || snowball == null || !standard.Any() || !snowball.Any()) {
+            ShowSnowballAnalysis = false;
+            return;
+        }
+
+        var lastStd = standard.Last();
+        var lastSnow = snowball.Last();
+
+        decimal stdTotalDebt = standard.Count > 0 ? GetTotalDebt(standard.Last()) : 0;
+        decimal snowTotalDebt = snowball.Count > 0 ? GetTotalDebt(snowball.Last()) : 0;
+        
+        DateTime? stdDebtFreeDate = FindDebtFreeDate(standard);
+        DateTime? snowDebtFreeDate = FindDebtFreeDate(snowball);
+
+        SnowballDebtFreeDate = snowDebtFreeDate;
+        if (snowDebtFreeDate.HasValue && stdDebtFreeDate.HasValue) {
+            var diff = stdDebtFreeDate.Value - snowDebtFreeDate.Value;
+            SnowballMonthsSaved = (int)(diff.TotalDays / 30);
+        } else {
+            SnowballMonthsSaved = 0;
+        }
+
+        SnowballFinalNetWorth = lastSnow.Balance;
+        SnowballNetWorthImprovement = lastSnow.Balance - lastStd.Balance;
+
+        SnowballFinalDebt = snowTotalDebt;
+        SnowballDebtReductionVsStandard = stdTotalDebt - snowTotalDebt;
+
+        ShowSnowballAnalysis = true;
+
+        // Keep the text property for backward compatibility or simple tooltip if needed, 
+        // but we'll use individual properties for the UI now.
+        var sb = new System.Text.StringBuilder();
+        if (snowDebtFreeDate.HasValue) {
+            sb.AppendLine($"Estimated Debt Free: {snowDebtFreeDate.Value:MMM yyyy}");
+            if (SnowballMonthsSaved > 0) sb.AppendLine($"(Saves {SnowballMonthsSaved} months)");
+        } else {
+            sb.AppendLine($"Final Debt: {snowTotalDebt:C0}");
+        }
+        sb.AppendLine($"Final Net Worth: {lastSnow.Balance:C0}");
+        SnowballAnalysisText = sb.ToString();
+        OnPropertyChanged(nameof(StrategyTakeawayPrimary));
+        
+        OnPropertyChanged(nameof(StrategyTakeawayDilemma));
+
+    }
+
+    private decimal GetTotalDebt(ProjectionItem item) {
+        decimal totalDebt = 0;
+        var debtAccountNames = Accounts.Where(a => a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage or AccountType.Auto)
+                                     .Select(a => a.Name)
+                                     .ToList();
+        
+        foreach (var name in debtAccountNames) {
+            if (item.AccountBalances.TryGetValue(name, out decimal bal) && bal < 0) {
+                totalDebt += -bal;
+            }
+        }
+        return totalDebt;
+    }
+
+    private DateTime? FindDebtFreeDate(List<ProjectionItem> items) {
+        var debtAccountNames = Accounts.Where(a => a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage or AccountType.Auto)
+                                     .Select(a => a.Name)
+                                     .ToList();
+
+        foreach (var item in items) {
+            bool hasDebt = false;
+            foreach (var name in debtAccountNames) {
+                if (item.AccountBalances.TryGetValue(name, out decimal bal) && bal < -0.01m) {
+                    hasDebt = true;
+                    break;
+                }
+            }
+            if (!hasDebt) return item.TransactionDate;
+        }
+        return null;
     }
 
     #endregion

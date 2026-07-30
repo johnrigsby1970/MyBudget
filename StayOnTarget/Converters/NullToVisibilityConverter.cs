@@ -6,11 +6,11 @@ namespace StayOnTarget.Converters;
 
 public class NullToVisibilityConverter : IValueConverter {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) {
-        if (value is not null) {
-            return Visibility.Visible;
+        bool isNull = value is null;
+        if (parameter != null && parameter.ToString() == "Invert") {
+            return isNull ? Visibility.Visible : Visibility.Collapsed;
         }
-
-        return Visibility.Collapsed;
+        return isNull ? Visibility.Collapsed : Visibility.Visible;
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) {
