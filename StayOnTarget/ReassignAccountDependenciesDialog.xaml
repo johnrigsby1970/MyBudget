@@ -1,0 +1,110 @@
+﻿<Window x:Class="StayOnTarget.ReassignAccountDependenciesDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:StayOnTarget"
+        xmlns:viewModels="clr-namespace:StayOnTarget.ViewModels"
+        xmlns:converters="clr-namespace:StayOnTarget.Converters"
+        mc:Ignorable="d"
+        Title="Reassign Account Dependencies" Height="600" Width="500" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+    </Window.Resources>
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Reassign Account Dependencies" FontSize="16" FontWeight="Bold" Margin="0,0,0,15" />
+        
+        <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0,10,0,10" VerticalAlignment="Center">
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" Margin="0,0,0,10">
+            The following active paychecks, bills, or buckets are currently tied to this account. Please reassign them to another account or clear the reference.
+        </TextBlock>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,10" VerticalAlignment="Center">
+            <TextBlock Text="Reassign all items to:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <ComboBox ItemsSource="{Binding AvailableAccountsWithNone}" 
+                      SelectedItem="{Binding GlobalTargetAccount}"
+                      DisplayMemberPath="Name"
+                      Width="200" Margin="0,0,10,0"/>
+        </StackPanel>
+            </StackPanel>
+
+        <TabControl x:Name="MainTabControl" Grid.Row="2" Margin="0,10,0,10">
+            <TabItem Header="Paychecks" Visibility="{Binding Paychecks.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                <DataGrid ItemsSource="{Binding Paychecks}" AutoGenerateColumns="False" CanUserAddRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Paycheck Name" Binding="{Binding Description}" Width="*" IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="Target Account" Width="250">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.AvailableAccountsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              SelectedValue="{Binding TargetAccountId, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="Id"
+                                              DisplayMemberPath="Name"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Bills" Visibility="{Binding Bills.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                <DataGrid ItemsSource="{Binding Bills}" AutoGenerateColumns="False" CanUserAddRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Bill Name" Binding="{Binding Description}" Width="*" IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="Source Account" Width="200">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.AvailableAccountsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              SelectedValue="{Binding TargetAccountId, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="Id"
+                                              DisplayMemberPath="Name"
+                                              Visibility="{Binding ShowAccountId, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Transfer To Account" Width="200">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.AvailableAccountsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              SelectedValue="{Binding TargetToAccountId, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="Id"
+                                              DisplayMemberPath="Name"
+                                              Visibility="{Binding ShowToAccountId, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Envelopes" Visibility="{Binding Buckets.Count, Converter={StaticResource CountToVisibilityConverter}}">
+                <DataGrid ItemsSource="{Binding Buckets}" AutoGenerateColumns="False" CanUserAddRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Envelope Name" Binding="{Binding Description}" Width="*" IsReadOnly="True"/>
+                        <DataGridTemplateColumn Header="Target Account" Width="250">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.AvailableAccountsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                              SelectedValue="{Binding TargetAccountId, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="Id"
+                                              DisplayMemberPath="Name"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Save / Reassign" Click="Save_Click" Width="120" Margin="0,0,10,0" IsDefault="True"/>
+            <Button Content="Cancel" Click="Cancel_Click" Width="100" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

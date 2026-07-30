@@ -13,8 +13,9 @@ public class Bill : ViewModelBase
     private DateTime? _nextDueDate;
     private string _category = string.Empty;
     private bool _isActive = true;
-    private bool _isPrincipalOnly = false;
-
+    private bool _isPrincipalOnly;
+    private bool _isArchived;
+    
     public int Id { get; set; }
 
     public string Name
@@ -69,6 +70,12 @@ public class Bill : ViewModelBase
     {
         get => _isActive;
         set => SetProperty(ref _isActive, value);
+    }
+    
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set => SetProperty(ref _isArchived, value);
     }
     
     public bool IsPrincipalOnly

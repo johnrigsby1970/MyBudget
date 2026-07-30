@@ -8,7 +8,8 @@ public class BudgetBucket : ViewModelBase
     private decimal _expectedAmount;
     private int? _accountId;
     private int? _paycheckId;
-
+    private bool _isArchived;
+    
     public int Id { get; set; }
 
     public string Name
@@ -33,5 +34,11 @@ public class BudgetBucket : ViewModelBase
     {
         get => _paycheckId;
         set => SetProperty(ref _paycheckId, value);
+    }
+    
+    public bool IsArchived
+    {
+        get => _isArchived;
+        set => SetProperty(ref _isArchived, value);
     }
 }

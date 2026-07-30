@@ -16,6 +16,7 @@ public class MainViewModel : ViewModelBase {
     private readonly ReconciliationService _reconciliationService;
     private readonly IProjectionEngine _projectionEngine;
     private ObservableCollection<Account> _accounts = new();
+    private ObservableCollection<Account> _visibleAccounts = new();
     private ObservableCollection<Account> _accountsWithNone = new();
     private ObservableCollection<Bill> _bills = new();
     private ObservableCollection<Bill> _billsWithNone = new();
@@ -54,6 +55,9 @@ public class MainViewModel : ViewModelBase {
     private PeriodBucket? _editingPeriodBucketClone;
     private Account? _editingAccountClone;
     private Transaction? _editingTransactionClone;
+    private bool _isEditingTransactionEnabled = true;
+    private ObservableCollection<Account> _transactionAccounts = new();
+    private ObservableCollection<Account> _transactionToAccounts = new();
     private Paycheck? _editingPaycheckClone;
     private DateTime _currentPeriodDate = DateTime.MinValue;
     private bool _showByMonth;
@@ -105,9 +109,7 @@ public class MainViewModel : ViewModelBase {
         _budgetService = budgetService;
         _reconciliationService = reconciliationService;
         _projectionEngine = new ProjectionEngine();
-        _snowballOptions.PropertyChanged += (s, e) => {
-            _ = CalculateProjectionsAsync();
-        };
+        _snowballOptions.PropertyChanged += (s, e) => { _ = CalculateProjectionsAsync(); };
 
         ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => IsEditingAccount);
         ReconcileAccountCommand =
@@ -216,15 +218,15 @@ public class MainViewModel : ViewModelBase {
 
         try {
             await LoadDataAsync();
-            
+
             await Task.Yield();
 
             InitializePeriod();
 
             await Task.Yield();
-            
+
             await LoadPeriodDataAsync();
-            
+
             await Task.Yield();
 
             IsGatheringData = false;
@@ -247,8 +249,8 @@ public class MainViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _useAutoSweep, value)) {
                 // 1. Immediately toggle the flag on the UI thread
-                IsProjecting = true; 
-            
+                IsProjecting = true;
+
                 // 2. Schedule the calculation for the next UI tick
                 OnCalculateProjections();
             }
@@ -261,7 +263,7 @@ public class MainViewModel : ViewModelBase {
         get => _yearsProjecting;
         set => SetProperty(ref _yearsProjecting, value);
     }
-    
+
     private bool _isGatheringData;
 
     public bool IsGatheringData {
@@ -284,59 +286,70 @@ public class MainViewModel : ViewModelBase {
     }
 
     private bool _isSnowballProjecting;
+
     public bool IsSnowballProjecting {
         get => _isSnowballProjecting;
         set => SetProperty(ref _isSnowballProjecting, value);
     }
 
     private string _snowballAnalysisText = string.Empty;
+
     public string SnowballAnalysisText {
         get => _snowballAnalysisText;
         set => SetProperty(ref _snowballAnalysisText, value);
     }
 
     private DateTime? _snowballDebtFreeDate;
+
     public DateTime? SnowballDebtFreeDate {
         get => _snowballDebtFreeDate;
         set => SetProperty(ref _snowballDebtFreeDate, value);
     }
 
     private int _snowballMonthsSaved;
+
     public int SnowballMonthsSaved {
         get => _snowballMonthsSaved;
         set => SetProperty(ref _snowballMonthsSaved, value);
     }
 
     private decimal _snowballFinalNetWorth;
+
     public decimal SnowballFinalNetWorth {
         get => _snowballFinalNetWorth;
         set => SetProperty(ref _snowballFinalNetWorth, value);
     }
 
     private decimal _snowballNetWorthImprovement;
+
     public decimal SnowballNetWorthImprovement {
         get => _snowballNetWorthImprovement;
         set => SetProperty(ref _snowballNetWorthImprovement, value);
     }
 
     private decimal _snowballFinalDebt;
+
     public decimal SnowballFinalDebt {
         get => _snowballFinalDebt;
         set => SetProperty(ref _snowballFinalDebt, value);
     }
 
     private decimal _snowballDebtReductionVsStandard;
+
     public decimal SnowballDebtReductionVsStandard {
         get => _snowballDebtReductionVsStandard;
         set => SetProperty(ref _snowballDebtReductionVsStandard, value);
     }
 
     private bool _showSnowballAnalysis;
+
     public bool ShowSnowballAnalysis {
         get => _showSnowballAnalysis;
         set => SetProperty(ref _showSnowballAnalysis, value);
     }
-    
+
+    private ObservableCollection<Account> _activeAccountsWithNone = new();
+
     public ObservableCollection<Bill> Bills {
         get => _bills;
         set => SetProperty(ref _bills, value);
@@ -354,10 +367,20 @@ public class MainViewModel : ViewModelBase {
 
     public ObservableCollection<Account> Accounts {
         get => _accounts;
-        set => SetProperty(ref _accounts, value); 
+        set => SetProperty(ref _accounts, value);
+    }
+
+    public ObservableCollection<Account> VisibleAccounts {
+        get => _visibleAccounts;
+        set => SetProperty(ref _visibleAccounts, value);
     }
 
     public AccountType[] AccountTypes => (AccountType[])Enum.GetValues(typeof(AccountType));
+
+    public ObservableCollection<Account> ActiveAccountsWithNone {
+        get => _activeAccountsWithNone;
+        set => SetProperty(ref _activeAccountsWithNone, value);
+    }
 
     public ObservableCollection<Account> AccountsWithNone {
         get => _accountsWithNone;
@@ -378,7 +401,7 @@ public class MainViewModel : ViewModelBase {
         get => _projections;
         set => SetProperty(ref _projections, value);
     }
-    
+
     public ObservableCollection<PeriodBill> CurrentPeriodBills {
         get => _currentPeriodBills;
         set {
@@ -492,8 +515,8 @@ public class MainViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _showReconciled, value)) {
                 // 1. Immediately toggle the flag on the UI thread
-                IsProjecting = true; 
-            
+                IsProjecting = true;
+
                 // 2. Schedule the calculation for the next UI tick
                 OnCalculateProjections();
             }
@@ -513,7 +536,8 @@ public class MainViewModel : ViewModelBase {
 
         try {
             // Force WPF to paint the UI (spinner shows instantly!)
-            await Application.Current.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+            await Application.Current.Dispatcher.InvokeAsync(() => { },
+                System.Windows.Threading.DispatcherPriority.Render);
 
             // Wait 300ms — if the user changes the date again, this task gets cancelled
             await Task.Delay(300, token);
@@ -527,7 +551,7 @@ public class MainViewModel : ViewModelBase {
             Log.Error(ex, "Failed to calculate projections.");
         }
     }
-    
+
     // private async void OnCalculateProjections() {
     //     try {
     //         // Ensure IsProjecting is set
@@ -568,8 +592,8 @@ public class MainViewModel : ViewModelBase {
             if (SetProperty(ref _selectedPeriodPaycheckId, value)) {
                 SetCurrentPeriodDate(value);
                 // 1. Immediately toggle the flag on the UI thread
-                IsProjecting = true; 
-            
+                IsProjecting = true;
+
                 // 2. Schedule the calculation for the next UI tick
                 OnCalculateProjections();
             }
@@ -598,8 +622,8 @@ public class MainViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _projectionEndDate, value)) {
                 // 1. Immediately toggle the flag on the UI thread
-                IsProjecting = true; 
-            
+                IsProjecting = true;
+
                 // 2. Schedule the calculation for the next UI tick
                 OnCalculateProjections();
             }
@@ -611,8 +635,8 @@ public class MainViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _projectionStartDate, value)) {
                 // 1. Immediately toggle the flag on the UI thread
-                IsProjecting = true; 
-            
+                IsProjecting = true;
+
                 // 2. Schedule the calculation for the next UI tick
                 OnCalculateProjections();
             }
@@ -633,7 +657,7 @@ public class MainViewModel : ViewModelBase {
         get => _selectedProjectionTabIndex;
         set => SetProperty(ref _selectedProjectionTabIndex, value);
     }
-    
+
     public DateTime CurrentPeriodDate {
         get => _currentPeriodDate;
         set {
@@ -921,6 +945,21 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _editingTransactionClone, value);
     }
 
+    public bool IsEditingTransactionEnabled {
+        get => _isEditingTransactionEnabled;
+        private set => SetProperty(ref _isEditingTransactionEnabled, value);
+    }
+
+    public ObservableCollection<Account> TransactionAccounts {
+        get => _transactionAccounts;
+        private set => SetProperty(ref _transactionAccounts, value);
+    }
+
+    public ObservableCollection<Account> TransactionToAccounts {
+        get => _transactionToAccounts;
+        private set => SetProperty(ref _transactionToAccounts, value);
+    }
+
     public Paycheck? EditingPaycheckClone {
         get => _editingPaycheckClone;
         set => SetProperty(ref _editingPaycheckClone, value);
@@ -1181,8 +1220,10 @@ public class MainViewModel : ViewModelBase {
             EditingBillClone = new Bill {
                 Id = SelectedBill.Id, Name = SelectedBill.Name, ExpectedAmount = SelectedBill.ExpectedAmount,
                 Frequency = SelectedBill.Frequency, DueDay = SelectedBill.DueDay, AccountId = SelectedBill.AccountId,
-                ToAccountId = SelectedBill.ToAccountId, NextDueDate = SelectedBill.NextDueDate, IsPrincipalOnly = SelectedBill.IsPrincipalOnly,
-                Category = SelectedBill.Category, IsActive = SelectedBill.IsActive
+                ToAccountId = SelectedBill.ToAccountId, NextDueDate = SelectedBill.NextDueDate,
+                IsPrincipalOnly = SelectedBill.IsPrincipalOnly,
+                Category = SelectedBill.Category, IsActive = SelectedBill.IsActive, 
+                IsArchived = SelectedBill.IsArchived
             };
             IsEditingBill = true;
         }
@@ -1406,7 +1447,8 @@ public class MainViewModel : ViewModelBase {
                 Name = SelectedBucket.Name,
                 ExpectedAmount = SelectedBucket.ExpectedAmount,
                 AccountId = SelectedBucket.AccountId,
-                PaycheckId = SelectedBucket.PaycheckId
+                PaycheckId = SelectedBucket.PaycheckId,
+                IsArchived = SelectedBucket.IsArchived
             };
             IsEditingBucket = true;
         }
@@ -1590,7 +1632,14 @@ public class MainViewModel : ViewModelBase {
                 Description = "", Memo = "", Amount = 0, TransactionDate = DateTime.Today,
                 FitId = guid
             };
+            EditingTransactionClone.PropertyChanged += (s, e) => {
+                if (e.PropertyName == nameof(Transaction.AccountId) ||
+                    e.PropertyName == nameof(Transaction.ToAccountId)) {
+                    RefreshTransactionEditState();
+                }
+            };
             SelectedTransaction = null;
+            RefreshTransactionEditState();
             IsEditingTransaction = true;
         }
         catch (Exception ex) {
@@ -1622,11 +1671,75 @@ public class MainViewModel : ViewModelBase {
                 FromAccountReconciledId = SelectedTransaction.FromAccountReconciledId,
                 ToAccountReconciledId = SelectedTransaction.ToAccountReconciledId
             };
+            EditingTransactionClone.PropertyChanged += (s, e) => {
+                if (e.PropertyName == nameof(Transaction.AccountId) ||
+                    e.PropertyName == nameof(Transaction.ToAccountId)) {
+                    RefreshTransactionEditState();
+                }
+            };
+            RefreshTransactionEditState();
             IsEditingTransaction = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for transaction.");
         }
+    }
+
+    private void RefreshTransactionEditState() {
+        if (EditingTransactionClone == null) return;
+
+        var fromAccount = Accounts.FirstOrDefault(a => a.Id == EditingTransactionClone.AccountId);
+        var toAccount = Accounts.FirstOrDefault(a => a.Id == EditingTransactionClone.ToAccountId);
+
+        bool fromArchived = fromAccount?.IsArchived ?? false;
+        bool toArchived = toAccount?.IsArchived ?? false;
+
+        IsEditingTransactionEnabled = !fromArchived && !toArchived;
+
+        // If fromAccount is NULL but AccountId is not 0, it means it's missing from the Accounts collection.
+        // This shouldn't happen if LoadAccountDataAsync(true) works, but we should be safe.
+        if (fromAccount == null && EditingTransactionClone.AccountId != null && EditingTransactionClone.AccountId != 0) {
+            // We assume it might be archived if we can't find it in our current list (though our list SHOULD have archived)
+            // To be safe, we disable editing if we can't find the account.
+            IsEditingTransactionEnabled = false;
+        }
+        if (toAccount == null && EditingTransactionClone.ToAccountId != null && EditingTransactionClone.ToAccountId != 0) {
+            IsEditingTransactionEnabled = false;
+        }
+
+        // If editing is enabled, filter out archived accounts (except the ones already selected)
+        // If editing is disabled (historical transaction with archived account), show ALL accounts so the archived ones are visible
+        var filteredAccounts = IsEditingTransactionEnabled
+            ? Accounts.Where(a => !a.IsArchived || a.Id == EditingTransactionClone.AccountId).ToList()
+            : Accounts.ToList();
+
+        // If the transaction has an account that is NOT in the list (e.g. deleted or just missing), we should still show it if we can
+        if (EditingTransactionClone.AccountId != null && EditingTransactionClone.AccountId != 0 && !filteredAccounts.Any(a => a.Id == EditingTransactionClone.AccountId)) {
+            var missingAccount = fromAccount;
+            if (missingAccount != null) {
+                filteredAccounts.Add(missingAccount);
+            }
+        }
+
+        var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
+        accountsWithNone.AddRange(filteredAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
+        TransactionAccounts = new ObservableCollection<Account>(accountsWithNone);
+
+        var filteredToAccounts = IsEditingTransactionEnabled
+            ? Accounts.Where(a => !a.IsArchived || a.Id == EditingTransactionClone.ToAccountId).ToList()
+            : Accounts.ToList();
+
+        // If the transaction has a to-account that is NOT in the list, we should still show it
+        if (EditingTransactionClone.ToAccountId != null && EditingTransactionClone.ToAccountId != 0 && !filteredToAccounts.Any(a => a.Id == EditingTransactionClone.ToAccountId)) {
+            var missingAccount = toAccount;
+            if (missingAccount != null) {
+                filteredToAccounts.Add(missingAccount);
+            }
+        }
+
+        var toAccountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
+        toAccountsWithNone.AddRange(filteredToAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
+        TransactionToAccounts = new ObservableCollection<Account>(toAccountsWithNone);
     }
 
     private async Task SaveTransactionAsync() {
@@ -1872,7 +1985,8 @@ public class MainViewModel : ViewModelBase {
                 IncludeInTotal = SelectedAccount.IncludeInTotal,
                 Type = SelectedAccount.Type,
                 HexColor = SelectedAccount.HexColor,
-                IsPrimary = SelectedAccount.IsPrimary
+                IsPrimary = SelectedAccount.IsPrimary,
+                IsArchived = SelectedAccount.IsArchived
             };
             if (SelectedAccount.MortgageDetails != null) {
                 EditingAccountClone.MortgageDetails = new MortgageDetails {
@@ -1934,8 +2048,20 @@ public class MainViewModel : ViewModelBase {
                 }
                 else {
                     EditingAccountClone.Id = await _budgetService.UpsertAccountAsync(EditingAccountClone);
+                    var debtAccountTypes = new List<AccountType>()
+                        { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan };
+
                     var openingBalance = new Transaction() {
-                        AccountId = EditingAccountClone.Id,
+                        AccountId = debtAccountTypes.Contains(EditingAccountClone.Type) ? EditingAccountClone.Id : null,
+                        ToAccountId = debtAccountTypes.Contains(EditingAccountClone.Type)
+                            ? null
+                            : EditingAccountClone.Id,
+                        AccountName = debtAccountTypes.Contains(EditingAccountClone.Type)
+                            ? EditingAccountClone.Name
+                            : null,
+                        ToAccountName = debtAccountTypes.Contains(EditingAccountClone.Type)
+                            ? null
+                            : EditingAccountClone.Name,
                         Amount = EditingAccountClone.Balance,
                         TransactionDate = EditingAccountClone.BalanceAsOf,
                         TransactionId = Guid.NewGuid(),
@@ -1952,18 +2078,37 @@ public class MainViewModel : ViewModelBase {
                             Log.Error(ex, "Error upserting transaction in PropertyChanged.");
                         }
 
-                        var transactions =
-                            await _budgetService.GetAccountTransactionsAsync(openingBalance.AccountId.Value);
+                        List<Transaction> transactions = new List<Transaction>();
+                        if (openingBalance.AccountId.HasValue) {
+                            transactions.AddRange(
+                                await _budgetService.GetAccountTransactionsAsync(openingBalance.AccountId.Value));
+                        }
+
+                        if (openingBalance.ToAccountId.HasValue) {
+                            transactions.AddRange(
+                                await _budgetService.GetAccountTransactionsAsync(openingBalance.ToAccountId.Value));
+                        }
 
                         string json = JsonConvert.SerializeObject(transactions.ToList());
                         var reconciliationTransactions =
                             JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
                         if (reconciliationTransactions != null) {
-                            await _reconciliationService.ReconcileAccountAsync(
-                                openingBalance.AccountId.Value,
-                                reconciliationTransactions,
-                                openingBalance.Amount,
-                                openingBalance.TransactionDate);
+                            if (openingBalance.AccountId.HasValue) {
+                                await _reconciliationService.ReconcileAccountAsync(
+                                    openingBalance.AccountId.Value,
+                                    reconciliationTransactions,
+                                    openingBalance.Amount,
+                                    openingBalance.TransactionDate);
+                            }
+
+                            if (openingBalance.ToAccountId.HasValue) {
+                                await _reconciliationService.ReconcileAccountAsync(
+                                    openingBalance.ToAccountId.Value,
+                                    reconciliationTransactions,
+                                    openingBalance.Amount,
+                                    openingBalance.TransactionDate);
+                            }
+
                         }
                     }
                 }
@@ -1973,8 +2118,6 @@ public class MainViewModel : ViewModelBase {
                 IsEditingAccount = false;
                 EditingAccountClone = null;
                 await CalculateProjectionsAsync();
-
-
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error saving account.");
@@ -2027,6 +2170,45 @@ public class MainViewModel : ViewModelBase {
 
     private async Task DeleteAccountAsync() {
         if (EditingAccountClone == null) return;
+
+        var affectedPaychecks = Paychecks.Where(x =>
+            x.AccountId == EditingAccountClone.Id && (x.EndDate == null || x.EndDate > DateTime.Now)).ToList();
+        var affectedBills = Bills.Where(x =>
+            (x.AccountId == EditingAccountClone.Id || x.ToAccountId == EditingAccountClone.Id) && x.IsActive &&
+            !x.IsArchived).ToList();
+        var affectedBuckets = Buckets.Where(x => x.AccountId == EditingAccountClone.Id && !x.IsArchived).ToList();
+
+        if (affectedPaychecks.Any() || affectedBills.Any() || affectedBuckets.Any()) {
+            var availableAccounts = Accounts.Where(a => a.Id != EditingAccountClone.Id && !a.IsArchived).ToList();
+            var vm = new ReassignAccountDependenciesViewModel(affectedPaychecks, affectedBills, affectedBuckets,
+                availableAccounts, EditingAccountClone.Id);
+            var dialog = new ReassignAccountDependenciesDialog(vm) {
+                Owner = Application.Current.MainWindow
+            };
+
+            if (dialog.ShowDialog() == true) {
+                // Apply reassignments
+                foreach (var pItem in vm.Paychecks) {
+                    pItem.Item.AccountId = pItem.TargetAccountId;
+                    await _budgetService.UpsertPaycheckAsync(pItem.Item);
+                }
+
+                foreach (var bItem in vm.Bills) {
+                    bItem.Bill.AccountId = bItem.TargetAccountId;
+                    bItem.Bill.ToAccountId = bItem.TargetToAccountId;
+                    await _budgetService.UpsertBillAsync(bItem.Bill);
+                }
+
+                foreach (var bItem in vm.Buckets) {
+                    bItem.Item.AccountId = bItem.TargetAccountId;
+                    await _budgetService.UpsertBucketAsync(bItem.Item);
+                }
+            }
+            else {
+                return; // User canceled
+            }
+        }
+
         var messageBoxResult = MessageBox.Show(
             "Are you sure you want to delete this account?", // Message
             "Delete Confirmation", // Title
@@ -2057,67 +2239,63 @@ public class MainViewModel : ViewModelBase {
 
     #region Helpers
 
-    public string StrategyTakeawayPrimary
-{
-    get
-    {
-        // Using a small tolerance threshold ($1) avoids floating-point/decimal rounding glitches
-        bool netWorthImproved = SnowballNetWorthImprovement > 1.00m;
-        bool netWorthWorse = SnowballNetWorthImprovement < -1.00m;
-        bool reducedDebt = SnowballDebtReductionVsStandard > 1.00m;
-        bool increasedDebt = SnowballDebtReductionVsStandard < -1.00m;
+    public string StrategyTakeawayPrimary {
+        get {
+            // Using a small tolerance threshold ($1) avoids floating-point/decimal rounding glitches
+            bool netWorthImproved = SnowballNetWorthImprovement > 1.00m;
+            bool netWorthWorse = SnowballNetWorthImprovement < -1.00m;
+            bool reducedDebt = SnowballDebtReductionVsStandard > 1.00m;
+            bool increasedDebt = SnowballDebtReductionVsStandard < -1.00m;
 
-        string primaryAnalysis;
+            string primaryAnalysis;
 
-        // 1. Dual-Metric Win-Win
-        if (reducedDebt && netWorthImproved)
-        {
-            primaryAnalysis = $"Clear Win: You eliminate {Math.Abs(SnowballDebtReductionVsStandard):C0} in debt while growing your net worth by an extra {Math.Abs(SnowballNetWorthImprovement):C0}.";
-        }
-        // 2. Wealth Growth Focus (Investing extra cash over debt)
-        else if (increasedDebt && netWorthImproved)
-        {
-            primaryAnalysis = $"Wealth Growth Focus: Investing extra cash boosts your net worth by {Math.Abs(SnowballNetWorthImprovement):C0}, but leaves {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt balance than the standard plan.";
-        }
-        // 3. Risk Reduction Focus (Paying debt over investing)
-        else if (reducedDebt && netWorthWorse)
-        {
-            primaryAnalysis = $"Risk Reduction Focus: Pays off {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt for peace of mind, though net worth ends up {Math.Abs(SnowballNetWorthImprovement):C0} lower than investing.";
-        }
-        // 4. Suboptimal Strategy (More debt AND lower net worth)
-        else if (increasedDebt && netWorthWorse)
-        {
-            primaryAnalysis = $"Suboptimal Strategy: This configuration increases your debt by {Math.Abs(SnowballDebtReductionVsStandard):C0} and lowers your final net worth by {Math.Abs(SnowballNetWorthImprovement):C0}.";
-        }
-        // 5. Single-Metric Edge Cases (Debt same, Net Worth changes OR Net Worth same, Debt changes)
-        else if (netWorthImproved)
-        {
-            primaryAnalysis = $"Net Worth Boost: Your net worth increases by {Math.Abs(SnowballNetWorthImprovement):C0} with no change to your debt payoff trajectory.";
-        }
-        else if (reducedDebt)
-        {
-            primaryAnalysis = $"Debt Payoff Boost: You eliminate {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt with no overall impact on your final net worth.";
-        }
-        else
-        {
-            primaryAnalysis = "Strategy matches your standard baseline plan.";
-        }
+            // 1. Dual-Metric Win-Win
+            if (reducedDebt && netWorthImproved) {
+                primaryAnalysis =
+                    $"Clear Win: You eliminate {Math.Abs(SnowballDebtReductionVsStandard):C0} in debt while growing your net worth by an extra {Math.Abs(SnowballNetWorthImprovement):C0}.";
+            }
+            // 2. Wealth Growth Focus (Investing extra cash over debt)
+            else if (increasedDebt && netWorthImproved) {
+                primaryAnalysis =
+                    $"Wealth Growth Focus: Investing extra cash boosts your net worth by {Math.Abs(SnowballNetWorthImprovement):C0}, but leaves {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt balance than the standard plan.";
+            }
+            // 3. Risk Reduction Focus (Paying debt over investing)
+            else if (reducedDebt && netWorthWorse) {
+                primaryAnalysis =
+                    $"Risk Reduction Focus: Pays off {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt for peace of mind, though net worth ends up {Math.Abs(SnowballNetWorthImprovement):C0} lower than investing.";
+            }
+            // 4. Suboptimal Strategy (More debt AND lower net worth)
+            else if (increasedDebt && netWorthWorse) {
+                primaryAnalysis =
+                    $"Suboptimal Strategy: This configuration increases your debt by {Math.Abs(SnowballDebtReductionVsStandard):C0} and lowers your final net worth by {Math.Abs(SnowballNetWorthImprovement):C0}.";
+            }
+            // 5. Single-Metric Edge Cases (Debt same, Net Worth changes OR Net Worth same, Debt changes)
+            else if (netWorthImproved) {
+                primaryAnalysis =
+                    $"Net Worth Boost: Your net worth increases by {Math.Abs(SnowballNetWorthImprovement):C0} with no change to your debt payoff trajectory.";
+            }
+            else if (reducedDebt) {
+                primaryAnalysis =
+                    $"Debt Payoff Boost: You eliminate {Math.Abs(SnowballDebtReductionVsStandard):C0} more debt with no overall impact on your final net worth.";
+            }
+            else {
+                primaryAnalysis = "Strategy matches your standard baseline plan.";
+            }
 
-        //string dilemmaExplanation = "Choosing between paying down debt or investing involves a trade-off: debt paydown offers a guaranteed return and lowers monthly liabilities, while investing aims for higher long-term wealth growth at the cost of carrying debt longer.";
+            //string dilemmaExplanation = "Choosing between paying down debt or investing involves a trade-off: debt paydown offers a guaranteed return and lowers monthly liabilities, while investing aims for higher long-term wealth growth at the cost of carrying debt longer.";
 
-        return $"{primaryAnalysis}";
+            return $"{primaryAnalysis}";
+        }
     }
-}
-    
-    public string StrategyTakeawayDilemma
-{
-    get
-    {
-        string dilemmaExplanation = "Choosing between paying down debt or investing involves a trade-off: debt paydown offers a guaranteed return and lowers monthly liabilities, while investing aims for higher long-term wealth growth—at the cost, and potential worry, of carrying debt longer.";
 
-        return $"{dilemmaExplanation}";
+    public string StrategyTakeawayDilemma {
+        get {
+            string dilemmaExplanation =
+                "Choosing between paying down debt or investing involves a trade-off: debt paydown offers a guaranteed return and lowers monthly liabilities, while investing aims for higher long-term wealth growth, with no guarantee—at the cost and potential worry of carrying debt longer.";
+
+            return $"{dilemmaExplanation}";
+        }
     }
-}
     // public async Task CalculateProjectionsAsync() {
     //     if (_isCalculatingProjections) return;
     //     _isCalculatingProjections = true;
@@ -2229,123 +2407,128 @@ public class MainViewModel : ViewModelBase {
             IsProjecting = true;
             IsSnowballProjecting = true;
             SnowballAnalysisText = "Analyzing strategy...";
-        await Task.Yield();
+            await Task.Yield();
 
-        // Capture local copies of ViewModel properties on the UI thread first
-        var showReconciled = ShowReconciled;
-        var currentPeriodDate = CurrentPeriodDate;
-        var projectionStartDate = ProjectionStartDate;
-        var projectionEndDate = ProjectionEndDate;
+            // Capture local copies of ViewModel properties on the UI thread first
+            var showReconciled = ShowReconciled;
+            var currentPeriodDate = CurrentPeriodDate;
+            var projectionStartDate = ProjectionStartDate;
+            var projectionEndDate = ProjectionEndDate;
 
-        // 1. ALL HEAVY I/O, DATA MASSAGING, AND CALCULATIONS ON BACKGROUND THREAD
-        var (resultList, snowballList, negativeAccounts) = await Task.Run(async () => {
-            var paychecks = await _budgetService.GetAllPaychecksAsync();
-            var bills = await _budgetService.GetAllBillsAsync();
-            var buckets = await _budgetService.GetAllBucketsAsync();
-            var periodBills = await _budgetService.GetAllPeriodBillsAsync();
-            var periodBuckets = await _budgetService.GetAllPeriodBucketsAsync();
-            var transactions = showReconciled
-                ? await _budgetService.GetAllTransactionsAsync()
-                : await _budgetService.GetAllUnreconciledTransactionsAsync();
-            var reconciliations = !showReconciled ? await _budgetService.GetAllAccountReconciliationsAsync() : null;
-            reconciliations = null;
+            // 1. ALL HEAVY I/O, DATA MASSAGING, AND CALCULATIONS ON BACKGROUND THREAD
+            var (resultList, snowballList, negativeAccounts) = await Task.Run(async () => {
+                var paychecks = await _budgetService.GetAllPaychecksAsync();
+                var bills = await _budgetService.GetAllBillsAsync();
+                var buckets = await _budgetService.GetAllBucketsAsync();
+                var periodBills = await _budgetService.GetAllPeriodBillsAsync();
+                var periodBuckets = await _budgetService.GetAllPeriodBucketsAsync();
+                var transactions = showReconciled
+                    ? await _budgetService.GetAllTransactionsAsync()
+                    : await _budgetService.GetAllUnreconciledTransactionsAsync();
+                var reconciliations = !showReconciled ? await _budgetService.GetAllAccountReconciliationsAsync() : null;
+                reconciliations = null;
 
-            var start = currentPeriodDate == DateTime.MinValue ? DateTime.Today : currentPeriodDate;
-            if (projectionStartDate.HasValue) start = projectionStartDate.Value;
+                var start = currentPeriodDate == DateTime.MinValue ? DateTime.Today : currentPeriodDate;
+                if (projectionStartDate.HasValue) start = projectionStartDate.Value;
 
-            var accounts = (await _budgetService.GetAllAccountsAsOfAsync(start.AddDays(-1))).ToList();
-            var end = projectionEndDate;
-            if (end < start) end = start.AddYears(1);
+                var accounts = (await _budgetService.GetAllAccountsAsOfAsync(start.AddDays(-1), true)).ToList();
+                var end = projectionEndDate;
+                if (end < start) end = start.AddYears(1);
 
-            var allPaycheckTransactions = await _budgetService.GetAllPaycheckTransactionsAsync();
-            var allBillTransactions = await _budgetService.GetBillTransactionsAsync();
-            var allBucketTransactions = await _budgetService.GetBucketTransactionsAsync();
-            var allTransactions = (await _budgetService.GetAllTransactionsAsync()).ToList();
-            var paycheckTransactions = allPaycheckTransactions.ToList();
+                var allPaycheckTransactions = await _budgetService.GetAllPaycheckTransactionsAsync();
+                var allBillTransactions = await _budgetService.GetBillTransactionsAsync();
+                var allBucketTransactions = await _budgetService.GetBucketTransactionsAsync();
+                var allTransactions = (await _budgetService.GetAllTransactionsAsync()).ToList();
+                var paycheckTransactions = allPaycheckTransactions.ToList();
 
-            #region Massage paycheck transaction date
-            // Whatever date the paycheck may have come in on, for purposes of this projection, it came in on its expected date.
-            // So that it can be attributed to the pay period.
-            foreach (var allPaycheckTransaction in paycheckTransactions) {
-                if (allPaycheckTransaction.PaycheckOccurrenceDate != null && allPaycheckTransaction.TransactionDate !=
-                    allPaycheckTransaction.PaycheckOccurrenceDate) {
-                    allPaycheckTransaction.TransactionDate = allPaycheckTransaction.PaycheckOccurrenceDate.Value;
-                }
-            }
+                #region Massage paycheck transaction date
 
-            allTransactions.Where(x => x.PaycheckId != null).ToList().ForEach(x => {
-                if (x.PaycheckOccurrenceDate != null && x.TransactionDate != x.PaycheckOccurrenceDate) {
-                    x.TransactionDate = x.PaycheckOccurrenceDate.Value;
-                }
-            });
-            #endregion
-
-            // Run Projection Engine (Standard)
-            var results = _projectionEngine.CalculateProjections(
-                paycheckTransactions,
-                allBillTransactions.ToList(),
-                allBucketTransactions.ToList(),
-                allTransactions,
-                start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(),
-                periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
-                showReconciled, true, UseAutoSweep, null);
-
-            var list = results.ToList();
-
-            // Run Projection Engine (Snowball)
-            var snowballOptions = SnowballOptions;
-            var snowballResults = _projectionEngine.CalculateProjections(
-                paycheckTransactions,
-                allBillTransactions.ToList(),
-                allBucketTransactions.ToList(),
-                allTransactions,
-                start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(),
-                periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
-                showReconciled, true, UseAutoSweep, snowballOptions);
-
-            var snowballList = snowballResults.ToList();
-
-            // Check for negative checking/savings accounts
-            var negAccounts = new HashSet<string>();
-            foreach (var item in list) {
-                foreach (var acc in accounts) {
-                    if (acc.Type is not (AccountType.Checking or AccountType.Savings)) continue;
-                    if (item.AccountBalances.TryGetValue(acc.Name, out decimal balance) && balance < 0) {
-                        negAccounts.Add(acc.Name);
+                // Whatever date the paycheck may have come in on, for purposes of this projection, it came in on its expected date.
+                // So that it can be attributed to the pay period.
+                foreach (var allPaycheckTransaction in paycheckTransactions) {
+                    if (allPaycheckTransaction.PaycheckOccurrenceDate != null &&
+                        allPaycheckTransaction.TransactionDate !=
+                        allPaycheckTransaction.PaycheckOccurrenceDate) {
+                        allPaycheckTransaction.TransactionDate = allPaycheckTransaction.PaycheckOccurrenceDate.Value;
                     }
                 }
+
+                allTransactions.Where(x => x.PaycheckId != null).ToList().ForEach(x => {
+                    if (x.PaycheckOccurrenceDate != null && x.TransactionDate != x.PaycheckOccurrenceDate) {
+                        x.TransactionDate = x.PaycheckOccurrenceDate.Value;
+                    }
+                });
+
+                #endregion
+
+                // Run Projection Engine (Standard)
+                var results = _projectionEngine.CalculateProjections(
+                    paycheckTransactions,
+                    allBillTransactions.ToList(),
+                    allBucketTransactions.ToList(),
+                    allTransactions,
+                    start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(),
+                    periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
+                    showReconciled, true, UseAutoSweep, null);
+
+                var list = results.ToList();
+
+                // Run Projection Engine (Snowball)
+                var snowballOptions = SnowballOptions;
+                var snowballResults = _projectionEngine.CalculateProjections(
+                    paycheckTransactions,
+                    allBillTransactions.ToList(),
+                    allBucketTransactions.ToList(),
+                    allTransactions,
+                    start, end, accounts.ToList(), paychecks.ToList(), bills.ToList(), buckets.ToList(),
+                    periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
+                    showReconciled, true, UseAutoSweep, snowballOptions);
+
+                var snowballList = snowballResults.ToList();
+
+                // Check for negative checking/savings accounts
+                var negAccounts = new HashSet<string>();
+                foreach (var item in list) {
+                    foreach (var acc in accounts) {
+                        if (acc.Type is not (AccountType.Checking or AccountType.Savings)) continue;
+                        if (item.AccountBalances.TryGetValue(acc.Name, out decimal balance) && balance < 0) {
+                            negAccounts.Add(acc.Name);
+                        }
+                    }
+                }
+
+                return (list, snowballList, negAccounts);
+            });
+
+            // 2. BACK ON UI THREAD: Safely update bound collections and show toasts!
+            Projections = new ObservableCollection<ProjectionItem>(resultList);
+            SnowballProjections = new ObservableCollection<ProjectionItem>(snowballList);
+
+            if (SnowballOptions.EnableSnowball) {
+                UpdateSnowballAnalysis(resultList, snowballList);
+            }
+            else {
+                ShowSnowballAnalysis = false;
             }
 
-            return (list, snowballList, negAccounts);
-        });
+            IsSnowballProjecting = false;
 
-        // 2. BACK ON UI THREAD: Safely update bound collections and show toasts!
-        Projections = new ObservableCollection<ProjectionItem>(resultList);
-        SnowballProjections = new ObservableCollection<ProjectionItem>(snowballList);
-
-        if (SnowballOptions.EnableSnowball) {
-            UpdateSnowballAnalysis(resultList, snowballList);
-        } else {
-            ShowSnowballAnalysis = false;
+            if (negativeAccounts.Any()) {
+                string message =
+                    $"Warning: The following accounts go negative in the projection: {string.Join(", ", negativeAccounts)}";
+                ShowToast(message);
+            }
         }
-
-        IsSnowballProjecting = false;
-
-        if (negativeAccounts.Any()) {
-            string message = $"Warning: The following accounts go negative in the projection: {string.Join(", ", negativeAccounts)}";
-            ShowToast(message);
+        catch (Exception ex) {
+            Log.Error(ex, "Error calculating projections.");
+            ShowToast("Failed to calculate projections. Check logs.");
+        }
+        finally {
+            _isCalculatingProjections = false;
+            IsProjecting = false;
+            IsSnowballProjecting = false;
         }
     }
-    catch (Exception ex) {
-        Log.Error(ex, "Error calculating projections.");
-        ShowToast("Failed to calculate projections. Check logs.");
-    }
-    finally {
-        _isCalculatingProjections = false;
-        IsProjecting = false;
-        IsSnowballProjecting = false;
-    }
-}
 
     public void ShowToast(string message) {
         Application.Current.Dispatcher.Invoke(() => {
@@ -2455,9 +2638,9 @@ public class MainViewModel : ViewModelBase {
 
             // Re-trigger Accounts collection change to update chart
             OnPropertyChanged(nameof(Accounts));
-            
+
             //UpdateProjectionColumns(Accounts);
-            
+
             Log.Information("Budget data loaded successfully. Accounts: {AccountCount}, Bills: {BillCount}",
                 Accounts.Count, Bills.Count);
         }
@@ -2475,7 +2658,7 @@ public class MainViewModel : ViewModelBase {
         Log.Information("Loading account data.");
         _isLoadingAccountData = true;
         try {
-            var accounts = (await _budgetService.GetAllAccountsAsync()).ToList();
+            var accounts = (await _budgetService.GetAllAccountsAsync(true)).ToList();
             if (accounts.All(a => !(a.Name == "Household Cash" && a.Type == AccountType.Cash))) {
                 Log.Information("Household Cash account not found. Creating default.");
                 var cashAccount = new Account {
@@ -2485,10 +2668,10 @@ public class MainViewModel : ViewModelBase {
                     IncludeInTotal = true
                 };
                 await _budgetService.UpsertAccountAsync(cashAccount);
-                accounts = (await _budgetService.GetAllAccountsAsync()).ToList();
+                accounts = (await _budgetService.GetAllAccountsAsync(true)).ToList();
             }
 
-            var accountBalances = (await _budgetService.GetAllAccountsAsOfAsync(DateTime.Now)).ToList();
+            var accountBalances = (await _budgetService.GetAllAccountsAsOfAsync(DateTime.Now, true)).ToList();
             accounts = accounts.OrderBy(b => b.Name).ToList();
             foreach (var a in accounts) {
                 a.Balance = accountBalances.SingleOrDefault(b => b.Id == a.Id)?.Balance ?? 0;
@@ -2496,15 +2679,23 @@ public class MainViewModel : ViewModelBase {
 
             foreach (var a in accounts) a.PropertyChanged += Item_PropertyChanged;
             Accounts = new ObservableCollection<Account>(accounts);
+            VisibleAccounts =
+                new ObservableCollection<Account>(accounts.Where(a => !a.IsArchived).OrderBy(a => a.Name));
 
             var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
             accountsWithNone.AddRange(accounts);
             AccountsWithNone = new ObservableCollection<Account>(accountsWithNone);
 
-            if (Accounts.Any(x => x.Type == AccountType.Checking && x.IsPrimary) && Accounts.Any(x => x.Type == AccountType.CreditCard)) {
+            var activeAccountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
+            activeAccountsWithNone.AddRange(accounts.Where(a => !a.IsArchived));
+            ActiveAccountsWithNone = new ObservableCollection<Account>(activeAccountsWithNone);
+
+            if (Accounts.Any(x => x.Type == AccountType.Checking && x.IsPrimary) &&
+                Accounts.Any(x => x.Type == AccountType.CreditCard)) {
                 UseAutoSweep = true;
                 OnPropertyChanged(nameof(UseAutoSweep));
             }
+
             Log.Information("Account data loaded successfully. Accounts: {AccountCount}",
                 Accounts.Count);
         }
@@ -2522,13 +2713,13 @@ public class MainViewModel : ViewModelBase {
         Log.Information("Loading bill data.");
         _isLoadingBillData = true;
         try {
-            var bills = await _budgetService.GetAllBillsAsync();
+            var bills = (await _budgetService.GetAllBillsAsync(true)).ToList();
             bills = bills.OrderBy(b => b.DueDay).ThenBy(b => b.Name).ToList();
             foreach (var b in bills) b.PropertyChanged += Item_PropertyChanged;
             Bills = new ObservableCollection<Bill>(bills);
 
             var billsWithNone = new List<Bill> { new Bill { Id = 0, Name = "(None)" } };
-            billsWithNone.AddRange(bills);
+            billsWithNone.AddRange(bills.Where(b => !b.IsArchived));
             BillsWithNone = new ObservableCollection<Bill>(billsWithNone);
 
             Log.Information("Bill data loaded successfully. Bills: {BillCount}",
@@ -2548,13 +2739,13 @@ public class MainViewModel : ViewModelBase {
         Log.Information("Loading all bucket data.");
         _isLoadingBucketData = true;
         try {
-            var buckets = await _budgetService.GetAllBucketsAsync();
+            var buckets = (await _budgetService.GetAllBucketsAsync(true)).ToList();
             buckets = buckets.OrderBy(b => b.Name).ToList();
             foreach (var b in buckets) b.PropertyChanged += Item_PropertyChanged;
             Buckets = new ObservableCollection<BudgetBucket>(buckets);
 
             var bucketsWithNone = new List<BudgetBucket> { new BudgetBucket { Id = 0, Name = "(None)" } };
-            bucketsWithNone.AddRange(buckets);
+            bucketsWithNone.AddRange(buckets.Where(b => !b.IsArchived));
             BucketsWithNone = new ObservableCollection<BudgetBucket>(bucketsWithNone);
 
             Log.Information("Bucket data loaded successfully. Accounts: {BucketCount}",
@@ -2987,7 +3178,7 @@ public class MainViewModel : ViewModelBase {
 
         decimal stdTotalDebt = standard.Count > 0 ? GetTotalDebt(standard.Last()) : 0;
         decimal snowTotalDebt = snowball.Count > 0 ? GetTotalDebt(snowball.Last()) : 0;
-        
+
         DateTime? stdDebtFreeDate = FindDebtFreeDate(standard);
         DateTime? snowDebtFreeDate = FindDebtFreeDate(snowball);
 
@@ -2995,7 +3186,8 @@ public class MainViewModel : ViewModelBase {
         if (snowDebtFreeDate.HasValue && stdDebtFreeDate.HasValue) {
             var diff = stdDebtFreeDate.Value - snowDebtFreeDate.Value;
             SnowballMonthsSaved = (int)(diff.TotalDays / 30);
-        } else {
+        }
+        else {
             SnowballMonthsSaved = 0;
         }
 
@@ -3013,35 +3205,41 @@ public class MainViewModel : ViewModelBase {
         if (snowDebtFreeDate.HasValue) {
             sb.AppendLine($"Estimated Debt Free: {snowDebtFreeDate.Value:MMM yyyy}");
             if (SnowballMonthsSaved > 0) sb.AppendLine($"(Saves {SnowballMonthsSaved} months)");
-        } else {
+        }
+        else {
             sb.AppendLine($"Final Debt: {snowTotalDebt:C0}");
         }
+
         sb.AppendLine($"Final Net Worth: {lastSnow.Balance:C0}");
         SnowballAnalysisText = sb.ToString();
         OnPropertyChanged(nameof(StrategyTakeawayPrimary));
-        
-        OnPropertyChanged(nameof(StrategyTakeawayDilemma));
 
+        OnPropertyChanged(nameof(StrategyTakeawayDilemma));
     }
 
     private decimal GetTotalDebt(ProjectionItem item) {
         decimal totalDebt = 0;
-        var debtAccountNames = Accounts.Where(a => a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage or AccountType.Auto)
-                                     .Select(a => a.Name)
-                                     .ToList();
-        
+        var debtAccountNames = Accounts.Where(a =>
+                a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage
+                    or AccountType.Auto)
+            .Select(a => a.Name)
+            .ToList();
+
         foreach (var name in debtAccountNames) {
             if (item.AccountBalances.TryGetValue(name, out decimal bal) && bal < 0) {
                 totalDebt += -bal;
             }
         }
+
         return totalDebt;
     }
 
     private DateTime? FindDebtFreeDate(List<ProjectionItem> items) {
-        var debtAccountNames = Accounts.Where(a => a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage or AccountType.Auto)
-                                     .Select(a => a.Name)
-                                     .ToList();
+        var debtAccountNames = Accounts.Where(a =>
+                a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage
+                    or AccountType.Auto)
+            .Select(a => a.Name)
+            .ToList();
 
         foreach (var item in items) {
             bool hasDebt = false;
@@ -3051,8 +3249,10 @@ public class MainViewModel : ViewModelBase {
                     break;
                 }
             }
+
             if (!hasDebt) return item.TransactionDate;
         }
+
         return null;
     }
 

@@ -177,7 +177,7 @@ public class NewTransactionViewModel : ViewModelBase {
 
     private async Task LoadPeriodDataAsync() {
         try {
-            var accounts = (await _budgetService.GetAllAccountsAsync()).ToList();
+            var accounts = (await _budgetService.GetAllAccountsAsync(true)).ToList();
             if (accounts.All(a => a.Name != "Household Cash" && a.Type != AccountType.Cash)) {
                 var cashAccount = new Account {
                     Name = "Household Cash",
@@ -186,20 +186,20 @@ public class NewTransactionViewModel : ViewModelBase {
                     IncludeInTotal = true
                 };
                 await _budgetService.UpsertAccountAsync(cashAccount);
-                accounts = (await _budgetService.GetAllAccountsAsync()).ToList();
+                accounts = (await _budgetService.GetAllAccountsAsync(true)).ToList();
             }
 
             accounts = accounts.OrderBy(b => b.Name).ToList();
 
             var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
-            accountsWithNone.AddRange(accounts);
+            accountsWithNone.AddRange(accounts.Where(a => !a.IsArchived));
             AccountsWithNone = new ObservableCollection<Account>(accountsWithNone);
 
-            var bills = await _budgetService.GetAllBillsAsync();
+            var bills = await _budgetService.GetAllBillsAsync(true);
             bills = bills.OrderBy(b => b.DueDay).ThenBy(b => b.Name).ToList();
 
             var billsWithNone = new List<Bill> { new Bill { Id = 0, Name = "(None)" } };
-            billsWithNone.AddRange(bills);
+            billsWithNone.AddRange(bills.Where(b => !b.IsArchived));
             BillsWithNone = new ObservableCollection<Bill>(billsWithNone);
 
             var paychecks = await _budgetService.GetAllPaychecksAsync();
@@ -209,11 +209,11 @@ public class NewTransactionViewModel : ViewModelBase {
             paychecksWithNone.AddRange(paychecks);
             PaychecksWithNone = new ObservableCollection<Paycheck>(paychecksWithNone);
 
-            var buckets = await _budgetService.GetAllBucketsAsync();
+            var buckets = await _budgetService.GetAllBucketsAsync(true);
             buckets = buckets.OrderBy(b => b.Name).ToList();
 
             var bucketsWithNone = new List<BudgetBucket> { new BudgetBucket { Id = 0, Name = "(None)" } };
-            bucketsWithNone.AddRange(buckets);
+            bucketsWithNone.AddRange(buckets.Where(b => !b.IsArchived));
             BucketsWithNone = new ObservableCollection<BudgetBucket>(bucketsWithNone);
         }
         catch (Exception ex) {

@@ -40,6 +40,18 @@ public partial class BudgetService
         }
     }   
     
+    public async Task ArchiveBillAsync(int id)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync(@"UPDATE Bills SET IsArchived=1 WHERE Id=@id", new { id });
+    }
+    
+    public async Task UnArchiveBillAsync(int id)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync(@"UPDATE Bills SET IsArchived=0 WHERE Id=@id", new { id });
+    }
+    
     public async Task SetBillInactiveAsync(int id)
     {
         await using var conn = _db.GetConnection();
@@ -50,7 +62,7 @@ public partial class BudgetService
     {
         if (await IsBillInUseAsync(id)) {
             await using var conn = _db.GetConnection();
-            await conn.ExecuteAsync("UPDATE Bills SET IsActive = 0 WHERE Id = @id", new { id });
+            await conn.ExecuteAsync("UPDATE Bills SET IsArchived = 1 WHERE Id = @id", new { id });
         }
         else {
             await using var conn = _db.GetConnection();

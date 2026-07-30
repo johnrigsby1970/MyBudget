@@ -26,6 +26,19 @@ public partial class BudgetService
         }
     }
     
+    public async Task ArchiveBucketAsync(int id)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync(@"UPDATE Buckets SET IsArchived=1 WHERE Id=@id", new { id });
+    }
+    
+    public async Task UnArchiveBucketAsync(int id)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync(@"UPDATE Buckets SET IsArchived=0 WHERE Id=@id", new { id });
+    }
+
+    
     public async Task SetBucketInactiveAsync(int id)
     {
         await using var conn = _db.GetConnection();
@@ -36,7 +49,7 @@ public partial class BudgetService
     {
         if (await IsBucketInUseAsync(id)) {
             await using var conn = _db.GetConnection();
-            await conn.ExecuteAsync("UPDATE Buckets SET IsActive = 0 WHERE Id = @id", new { id });
+            await conn.ExecuteAsync("UPDATE Buckets SET IsArchived = 1 WHERE Id = @id", new { id });
         }
         else {
             await using var conn = _db.GetConnection();

@@ -8,7 +8,7 @@ public partial class BudgetService
     public async Task< IEnumerable<Account>> GetAllAccountsAsync(bool includeArchived = false)
     {
         await using var conn = _db.GetConnection();
-        var accounts = (await conn.QueryAsync<Account>("SELECT * FROM Accounts WHERE IsArchived=0 OR IsArchived = @includeArchived", new { includeArchived=(includeArchived ? 1: 0) })).ToList();
+        var accounts = (await conn.QueryAsync<Account>("SELECT * FROM Accounts WHERE IsArchived=0 OR @includeArchived=1", new { includeArchived=(includeArchived ? 1: 0) })).ToList();
         foreach (var acc in accounts)
         {
             if (acc.Type == AccountType.Mortgage)
@@ -29,7 +29,7 @@ public partial class BudgetService
     public async Task<IEnumerable<Account>> GetAllAccountsAsOfAsync(DateTime asOfDate, bool includeArchived = false)
     {
         await using var conn = _db.GetConnection();
-        var accounts = (await conn.QueryAsync<Account>("SELECT * FROM Accounts WHERE IsArchived=0 OR IsArchived = @includeArchived", new { includeArchived=(includeArchived ? 1: 0) })).ToList();
+        var accounts = (await conn.QueryAsync<Account>("SELECT * FROM Accounts WHERE IsArchived=0 OR @includeArchived=1", new { includeArchived=(includeArchived ? 1: 0) })).ToList();
         foreach (var acc in accounts)
         {
             if (acc.Type == AccountType.Mortgage)
@@ -181,6 +181,18 @@ public partial class BudgetService
         return account.Id;
     }
     
+    public async Task ArchiveAccountAsync(int id)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync(@"UPDATE Accounts SET IsArchived=1 WHERE Id=@id", new { id });
+    }
+    
+    public async Task UnArchiveAccountAsync(int id)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.ExecuteAsync(@"UPDATE Accounts SET IsArchived=0 WHERE Id=@id", new { id });
+    }
+    
     public async Task DeleteAccountAsync(int id)
     {
         if (!await IsAccountInUseAsync(id)) {
@@ -189,8 +201,9 @@ public partial class BudgetService
             await conn.ExecuteAsync("DELETE FROM AccountSnapshots WHERE AccountId = @id", new { id });
             await conn.ExecuteAsync("DELETE FROM AccountReconciliations WHERE AccountId = @id", new { id });
             await conn.ExecuteAsync("DELETE FROM AccountAprHistory WHERE AccountId = @id", new { id });
-            await conn.ExecuteAsync("DELETE FROM Bills WHERE ToAccountId = @id", new { id });
-            await conn.ExecuteAsync("DELETE FROM Bills WHERE AccountId = @id", new { id });
+            await conn.ExecuteAsync("UPDATE Bills Set ToAccountId=null WHERE ToAccountId = @id", new { id });
+            await conn.ExecuteAsync("UPDATE Bills Set AccountId=null WHERE AccountId = @id", new { id });
+            await conn.ExecuteAsync("UPDATE Paychecks Set AccountId=null WHERE AccountId = @id", new { id });
             await conn.ExecuteAsync("DELETE FROM MortgageDetails WHERE AccountId = @id", new { id });
             await conn.ExecuteAsync("DELETE FROM CreditCardDetails WHERE AccountId = @id", new { id });
             await conn.ExecuteAsync("DELETE FROM Accounts WHERE Id = @id", new { id }); 
@@ -217,36 +230,42 @@ public partial class BudgetService
             new { accountId });
         if (buckets > 0) return true;
 
-        // Check Transactions (AccountId or ToAccountId)
+        // Check Paychecks (AccountId)
+        var paychecks = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM Paychecks WHERE AccountId = @accountId", 
+            new { accountId });
+        if (paychecks > 0) return true;
+        
+        // Check Transactions (AccountId without concern for initial balance)
         var transactions = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM Transactions WHERE AccountId = @accountId", 
+            "SELECT COUNT(*) FROM Transactions WHERE AccountId = @accountId and not Description='Opening Balance'", 
             new { accountId });
         if (transactions > 0) return true;
         
-        var accountSnapshots = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM AccountSnapshots WHERE AccountId = @accountId ", 
-            new { accountId });
-        if (accountSnapshots > 0) return true;
-        
-        var accountAprHistory = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM AccountAprHistory WHERE AccountId = @accountId ", 
-            new { accountId });
-        if (accountAprHistory > 0) return true;
-
-        var accountReconciliations = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM AccountReconciliations WHERE AccountId = @accountId ", 
-            new { accountId });
-        if (accountReconciliations > 0) return true;
-        
-        var mortgageDetails = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM MortgageDetails WHERE AccountId = @accountId ", 
-            new { accountId });
-        if (mortgageDetails > 0) return true;
-        
-        var creditCardDetails = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(*) FROM CreditCardDetails WHERE AccountId = @accountId ", 
-            new { accountId });
-        if (creditCardDetails > 0) return true;
+        // var accountSnapshots = await conn.ExecuteScalarAsync<int>(
+        //     "SELECT COUNT(*) FROM AccountSnapshots WHERE AccountId = @accountId ", 
+        //     new { accountId });
+        // if (accountSnapshots > 0) return true;
+        //
+        // var accountAprHistory = await conn.ExecuteScalarAsync<int>(
+        //     "SELECT COUNT(*) FROM AccountAprHistory WHERE AccountId = @accountId ", 
+        //     new { accountId });
+        // if (accountAprHistory > 0) return true;
+        //
+        // var accountReconciliations = await conn.ExecuteScalarAsync<int>(
+        //     "SELECT COUNT(*) FROM AccountReconciliations WHERE AccountId = @accountId ", 
+        //     new { accountId });
+        // if (accountReconciliations > 0) return true;
+        //
+        // var mortgageDetails = await conn.ExecuteScalarAsync<int>(
+        //     "SELECT COUNT(*) FROM MortgageDetails WHERE AccountId = @accountId ", 
+        //     new { accountId });
+        // if (mortgageDetails > 0) return true;
+        //
+        // var creditCardDetails = await conn.ExecuteScalarAsync<int>(
+        //     "SELECT COUNT(*) FROM CreditCardDetails WHERE AccountId = @accountId ", 
+        //     new { accountId });
+        // if (creditCardDetails > 0) return true;
         
         return false;
     }

@@ -40,10 +40,10 @@ public partial class MainWindow : Window {
     
     private void Vm_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
         try {
-            if (e.PropertyName == nameof(MainViewModel.Accounts) && sender == DataContext) {
-                if (DataContext is MainViewModel vm && vm.Accounts != null) {
-                    UpdateProjectionColumns(vm.Accounts);
-                    UpdateSnowballColumns(vm.Accounts);
+            if ((e.PropertyName == nameof(MainViewModel.Accounts) || e.PropertyName == nameof(MainViewModel.VisibleAccounts)) && sender == DataContext) {
+                if (DataContext is MainViewModel vm && vm.VisibleAccounts != null) {
+                    UpdateProjectionColumns(vm.VisibleAccounts);
+                    UpdateSnowballColumns(vm.VisibleAccounts);
                 }
             }
         }

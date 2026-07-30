@@ -329,7 +329,6 @@
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Button.Style>
-
                                                 </Button>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" Orientation="Horizontal"
@@ -356,6 +355,7 @@
                                                         Margin="2"
                                                         Background=" CornflowerBlue"
                                                         Foreground="White"
+                                                        IsEnabled="{Binding IsEditingTransactionEnabled}"
                                                         Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                 <Button Content="Cancel"
                                                         Command="{Binding CancelTransactionCommand}"
@@ -427,7 +427,7 @@
                                                 </DataGrid.Columns>
                                             </DataGrid>
 
-                                            <StackPanel Grid.Row="1" Margin="5">
+                                            <StackPanel Grid.Row="1" Margin="5" IsEnabled="{Binding IsEditingTransactionEnabled}">
                                                 <TextBlock Text="Edit Transaction Item" FontWeight="Bold" Margin="0,5"
                                                            Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                 <Grid
@@ -476,14 +476,14 @@
 
                                                     <Label Grid.Column="0" Grid.Row="3" Content="From Account:" />
                                                     <ComboBox Grid.Column="1" Grid.Row="3" x:Name="FromAccountComboBox"
-                                                              ItemsSource="{Binding AccountsWithNone}"
+                                                              ItemsSource="{Binding TransactionAccounts}"
                                                               SelectedValue="{Binding EditingTransactionClone.AccountId}"
                                                               SelectedValuePath="Id" DisplayMemberPath="Name"
                                                               Margin="5" />
 
                                                     <Label Grid.Column="2" Grid.Row="3" Content="To Account:" />
                                                     <ComboBox Grid.Column="3" Grid.Row="3" x:Name="ToAccountComboBox"
-                                                              ItemsSource="{Binding AccountsWithNone}"
+                                                              ItemsSource="{Binding TransactionToAccounts}"
                                                               SelectedValue="{Binding EditingTransactionClone.ToAccountId}"
                                                               SelectedValuePath="Id" DisplayMemberPath="Name"
                                                               Margin="5" />
@@ -1000,7 +1000,7 @@
                                         </Grid.RowDefinitions>
 
                                         <Label Content="From Account:" />
-                                        <ComboBox Grid.Column="1" ItemsSource="{Binding AccountsWithNone}"
+                                        <ComboBox Grid.Column="1" ItemsSource="{Binding ActiveAccountsWithNone}"
                                                   SelectedValue="{Binding EditingBucketClone.AccountId}"
                                                   SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
@@ -1178,13 +1178,13 @@
                                         </DatePicker>
 
                                         <Label Grid.Column="0" Grid.Row="2" Content="From Account:" />
-                                        <ComboBox Grid.Column="1" Grid.Row="2" ItemsSource="{Binding AccountsWithNone}"
+                                        <ComboBox Grid.Column="1" Grid.Row="2" ItemsSource="{Binding ActiveAccountsWithNone}"
                                                   x:Name="BillAccountComboBox"
                                                   SelectedValue="{Binding EditingBillClone.AccountId}"
                                                   SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
                                         <Label Grid.Column="2" Grid.Row="2" Content="To Account:" />
-                                        <ComboBox Grid.Column="3" Grid.Row="2" ItemsSource="{Binding AccountsWithNone}"
+                                        <ComboBox Grid.Column="3" Grid.Row="2" ItemsSource="{Binding ActiveAccountsWithNone}"
                                                   x:Name="BillToAccountComboBox"
                                                   SelectedValue="{Binding EditingBillClone.ToAccountId}"
                                                   SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
@@ -1482,7 +1482,7 @@
                                     <RowDefinition Height="*" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <DataGrid Grid.Row="0" ItemsSource="{Binding Accounts}"
+                                <DataGrid Grid.Row="0" ItemsSource="{Binding VisibleAccounts}"
                                           SelectedItem="{Binding SelectedAccount}"
                                           AutoGenerateColumns="False"
                                           HorizontalScrollBarVisibility="Auto"
@@ -2089,7 +2089,7 @@
                         <local:ProjectionLiveChartControl
                             Visibility="{Binding IsProjecting, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                             Projections="{Binding Projections}"
-                            Accounts="{Binding Accounts}" />
+                            Accounts="{Binding VisibleAccounts}" />
 
                         <!-- 2. Animated Hourglass Overlay (Shows when IsLoading = True) -->
                         <StackPanel
@@ -2271,7 +2271,7 @@
                                         <local:ProjectionLiveChartControl
                                             Visibility="{Binding IsSnowballProjecting, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                                             Projections="{Binding SnowballProjections}"
-                                            Accounts="{Binding Accounts}" />
+                                            Accounts="{Binding VisibleAccounts}" />
 
                                         <StackPanel
                                             Visibility="{Binding IsSnowballProjecting, Converter={StaticResource BooleanToVisibilityConverter}}"
