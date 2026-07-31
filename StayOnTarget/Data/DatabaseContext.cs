@@ -95,10 +95,11 @@ public class DatabaseContext {
         var userProfileFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         var dbFolder = Path.Combine(userProfileFolder, ProgramFolderName);
         var oldPath = Path.Combine(dbFolder, DatabaseName);
-        if(string.IsNullOrWhiteSpace(oldPath)) {
+        if (string.IsNullOrWhiteSpace(oldPath)) {
             MessageBox.Show("No file found to backup.");
             return string.Empty;
         }
+
         string directory = Path.GetDirectoryName(oldPath)!;
         string filenameWithoutExt = Path.GetFileNameWithoutExtension(oldPath);
         string extension = Path.GetExtension(oldPath);
@@ -293,6 +294,68 @@ public class DatabaseContext {
                 BalanceTransferRate DECIMAL NOT NULL,
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
             );
+
+CREATE TABLE IF NOT EXISTS AccountSnapshots (
+    SnapshotDate TEXT NOT NULL,    -- ISO8601 YYYY-MM-DD
+    AccountID INTEGER NOT NULL,
+    Balance REAL NOT NULL,
+    PRIMARY KEY (SnapshotDate, AccountID),
+    FOREIGN KEY (AccountID) REFERENCES Accounts(ID)
+);
+
+-- 1. INSERT TRIGGER
+CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterInsert
+AFTER INSERT ON Transactions
+BEGIN
+    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+    VALUES (
+        NEW.TransactionDate, 
+        NEW.AccountID, 
+        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = NEW.AccountID AND TransactionDate <= NEW.TransactionDate), 0.00)
+    )
+    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
+        Balance = EXCLUDED.Balance;
+END;
+
+-- 2. UPDATE TRIGGER
+CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterUpdate
+AFTER UPDATE ON Transactions
+BEGIN
+    -- Fix the snapshot chain for the OLD account/date
+    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+    VALUES (
+        OLD.TransactionDate, 
+        OLD.AccountID, 
+        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = OLD.AccountID AND TransactionDate <= OLD.TransactionDate), 0.00)
+    )
+    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
+        Balance = EXCLUDED.Balance;
+
+    -- Fix the snapshot chain for the NEW account/date
+    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+    VALUES (
+        NEW.TransactionDate, 
+        NEW.AccountID, 
+        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = NEW.AccountID AND TransactionDate <= NEW.TransactionDate), 0.00)
+    )
+    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
+        Balance = EXCLUDED.Balance;
+END;
+
+-- 3. DELETE TRIGGER
+CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterDelete
+AFTER DELETE ON Transactions
+BEGIN
+    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+    VALUES (
+        OLD.TransactionDate, 
+        OLD.AccountID, 
+        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = OLD.AccountID AND TransactionDate <= OLD.TransactionDate), 0.00)
+    )
+    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
+        Balance = EXCLUDED.Balance;
+END;
+
         ");
 
             var columnExists = connection.ExecuteScalar<int>(@"
@@ -308,7 +371,7 @@ public class DatabaseContext {
                     connection.Execute("ALTER TABLE Transactions ADD COLUMN IsInterestOnly INTEGER DEFAULT 0");
                 }
             }
-            
+
             columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='IsPrincipalOnly'");
 
@@ -322,7 +385,7 @@ public class DatabaseContext {
                     connection.Execute("ALTER TABLE Bills ADD COLUMN IsPrincipalOnly INTEGER DEFAULT 0");
                 }
             }
-            
+
             columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='IsArchived'");
 
@@ -336,7 +399,7 @@ public class DatabaseContext {
                     connection.Execute("ALTER TABLE Accounts ADD COLUMN IsArchived INTEGER DEFAULT 0");
                 }
             }
-            
+
             columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='IsArchived'");
 
@@ -350,7 +413,7 @@ public class DatabaseContext {
                     connection.Execute("ALTER TABLE Bills ADD COLUMN IsArchived INTEGER DEFAULT 0");
                 }
             }
-            
+
             columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Buckets') WHERE name='IsArchived'");
 
@@ -364,7 +427,7 @@ public class DatabaseContext {
                     connection.Execute("ALTER TABLE Buckets ADD COLUMN IsArchived INTEGER DEFAULT 0");
                 }
             }
-            
+
             columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Buckets') WHERE name='IsActive'");
 

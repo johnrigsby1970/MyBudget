@@ -1001,12 +1001,12 @@
                                             <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
 
-                                        <Label Content="From Account:" />
+                                        <Label Content="Paid From:" />
                                         <ComboBox Grid.Column="1" ItemsSource="{Binding ActiveAccountsWithNone}"
                                                   SelectedValue="{Binding EditingBucketClone.AccountId}"
                                                   SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
-                                        <Label Grid.Column="2" Grid.Row="0" Content="Paycheck:" />
+                                        <Label Grid.Column="2" Grid.Row="0" Content="Paycheck Association:" />
                                         <ComboBox Grid.Column="3" Grid.Row="0"
                                                   ItemsSource="{Binding PaychecksWithNone}"
                                                   SelectedValue="{Binding EditingBucketClone.PaycheckId}"
@@ -1179,13 +1179,13 @@
                                             </DatePicker.Style>
                                         </DatePicker>
 
-                                        <Label Grid.Column="0" Grid.Row="2" Content="From Account:" />
+                                        <Label Grid.Column="0" Grid.Row="2" Content="Paid From:" />
                                         <ComboBox Grid.Column="1" Grid.Row="2" ItemsSource="{Binding ActiveAccountsWithNone}"
                                                   x:Name="BillAccountComboBox"
                                                   SelectedValue="{Binding EditingBillClone.AccountId}"
                                                   SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
-                                        <Label Grid.Column="2" Grid.Row="2" Content="To Account:" />
+                                        <Label Grid.Column="2" Grid.Row="2" Content="Paid To:" />
                                         <ComboBox Grid.Column="3" Grid.Row="2" ItemsSource="{Binding ActiveAccountsWithNone}"
                                                   x:Name="BillToAccountComboBox"
                                                   SelectedValue="{Binding EditingBillClone.ToAccountId}"
