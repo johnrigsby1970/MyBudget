@@ -1,5 +1,4 @@
 ﻿using System.Collections.ObjectModel;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StayOnTarget.Views.Wizard;
@@ -73,19 +72,6 @@ public partial class WizardViewModel : ObservableObject
             OnPropertyChanged(nameof(CanFinish));
         }
     }
-    // public WizardViewModel(IEnumerable<IWizardStepViewModel> steps)
-    // {
-    //     foreach (var step in steps)
-    //     {
-    //         Steps.Add(step);
-    //     }
-    //
-    //     if (Steps.Count > 0)
-    //     {
-    //         CurrentStepIndex = 0;
-    //         CurrentStep = Steps[0];
-    //     }
-    // }
 
     [RelayCommand(CanExecute = nameof(CanGoNext))]
     private void Next()

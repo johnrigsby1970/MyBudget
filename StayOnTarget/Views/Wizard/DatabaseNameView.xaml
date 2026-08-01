@@ -12,6 +12,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
         
         <Style x:Key="AccentButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#007ACC"/>
@@ -75,20 +76,21 @@
             <TextBlock Text="{Binding DatabaseName}" Margin="0,0,0,15"
                        Visibility="{Binding DatabaseInitialized, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             
-            <TextBox Text="{Binding DatabaseName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,15" Padding="5"
+            <TextBox IsEnabled="false" Text="{Binding DatabaseName, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" Margin="0,0,0,15" Padding="5"
                      Visibility="{Binding DatabaseInitialized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
             
             <TextBlock Text="Master Password" Margin="0,0,0,5"
                        Visibility="{Binding DatabaseInitialized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
             <PasswordBox helpers:PasswordBoxHelper.BindPassword="True" 
-                         helpers:PasswordBoxHelper.BoundPassword="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         helpers:PasswordBoxHelper.BoundPassword="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
                          Visibility="{Binding DatabaseInitialized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
-                         Margin="0,0,0,15" Padding="5"/>
-            
+                         Margin="0,0,0,5" Padding="5"/>
+            <TextBlock Text="Password must be a minimum af 12 characters." FontSize="11" Foreground="DimGray" Margin="0,0,0,15" FontWeight="SemiBold"/>
+
             <TextBlock Text="Confirm Password" Margin="0,0,0,5"
                        Visibility="{Binding DatabaseInitialized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"/>
             <PasswordBox helpers:PasswordBoxHelper.BindPassword="True" 
-                         helpers:PasswordBoxHelper.BoundPassword="{Binding ConfirmPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         helpers:PasswordBoxHelper.BoundPassword="{Binding ConfirmPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
                          Visibility="{Binding DatabaseInitialized, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                          Margin="0,0,0,15" Padding="5"/>
             
@@ -107,8 +109,9 @@
                        Visibility="{Binding DatabaseInitialized, Converter={StaticResource BooleanToVisibilityConverter}}"/>
         </StackPanel>
 
-        <!-- Right Column: Callout Box -->
-        <Border Grid.Column="2" 
+        <StackPanel Grid.Column="2">
+            <!-- Right Column: Callout Box -->
+        <Border 
                 VerticalAlignment="Top" 
                 Margin="0,45,0,0"
                 Background="#F0F7FF" 
@@ -131,5 +134,28 @@
                            TextWrapping="Wrap" FontSize="10.5" FontStyle="Italic" Foreground="#004085"/>
             </StackPanel>
         </Border>
+        
+        <!-- Validation Error Callout Box -->
+        <Border Background="#FDF2F2" 
+                BorderBrush="#F8C4C4" 
+                BorderThickness="1" 
+                CornerRadius="4" 
+                Padding="12,10" 
+                Margin="0,12,0,0"
+                Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}">
+            <StackPanel Orientation="Horizontal">
+                <!-- Warning / Exclamation Icon -->
+                <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" 
+                      Fill="#D13438" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Top"/>
+            
+                <TextBlock Text="{Binding ErrorMessage}" 
+                           Foreground="#A80000" 
+                           FontSize="11.5" 
+                           TextWrapping="Wrap" 
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+        </StackPanel>
+        
     </Grid>
 </UserControl>

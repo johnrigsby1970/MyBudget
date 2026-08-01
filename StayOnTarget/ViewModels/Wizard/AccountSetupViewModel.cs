@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
@@ -8,7 +10,7 @@ using StayOnTarget.Views.Wizard;
 
 namespace StayOnTarget.ViewModels.Wizard;
 
-public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel {
+public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel, INotifyDataErrorInfo {
     public string StepTitle { get; }
     public int StepIndex { get; }
     public bool IsValid => Accounts.Any();
@@ -24,24 +26,108 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         Type = AccountType.Checking,
         Balance = 0,
         IsPrimary = false,
-        BalanceAsOf = DateTime.Today,
+        BalanceAsOf = DateTime.Today.AddDays(-1),
         IncludeInTotal = true,
         HexColor = "#FF007ACC",
         MortgageDetails = new MortgageDetails(),
         CreditCardDetails = new CreditCardDetails()
     };
 
-    public Account EditingAccount {
+    public Account EditingAccount
+    {
         get => _editingAccount;
-        set => SetProperty(ref _editingAccount, value);
+        set
+        {
+            if (_editingAccount != value)
+            {
+                // 1. Unsubscribe from old Account AND old child objects
+                UnsubscribeFromAccountEvents(_editingAccount);
+
+                _editingAccount = value;
+                OnPropertyChanged();
+
+                // 2. Subscribe to new Account AND new child objects
+                SubscribeToAccountEvents(_editingAccount);
+
+                // 3. Refresh command state immediately
+                AddAccountCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+    
+    private void SubscribeToAccountEvents(Account account)
+    {
+        if (account == null) return;
+
+        // Unsubscribe FIRST to avoid duplicate handlers
+        UnsubscribeFromAccountEvents(account);
+        
+        // Listen to top-level Account properties
+        account.PropertyChanged += OnEditingAccountPropertyChanged;
+
+        // Listen to child object properties
+        if (account.CreditCardDetails != null)
+            account.CreditCardDetails.PropertyChanged += OnEditingAccountPropertyChanged;
+
+        if (account.MortgageDetails != null)
+            account.MortgageDetails.PropertyChanged += OnEditingAccountPropertyChanged;
     }
 
+    private void UnsubscribeFromAccountEvents(Account account)
+    {
+        if (account == null) return;
+
+        account.PropertyChanged -= OnEditingAccountPropertyChanged;
+
+        if (account.CreditCardDetails != null)
+            account.CreditCardDetails.PropertyChanged -= OnEditingAccountPropertyChanged;
+
+        if (account.MortgageDetails != null)
+            account.MortgageDetails.PropertyChanged -= OnEditingAccountPropertyChanged;
+    }
+    
+    private void OnEditingAccountPropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+        // 1. If the Account Type dropdown changed, initialize child details & wire up events
+        if (e.PropertyName == nameof(Account.Type))
+        {
+            HandleTypeChange(_editingAccount);
+        }
+        
+        // Re-evaluate CanExecute when Name, BankName, etc. change inside the model
+        AddAccountCommand.NotifyCanExecuteChanged();
+    }
+
+    private void HandleTypeChange(Account account)
+    {
+        if (account == null) return;
+
+        // Instantiate child objects if they don't exist yet
+        if (account.Type == AccountType.CreditCard && account.CreditCardDetails == null)
+        {
+            account.CreditCardDetails = new CreditCardDetails();
+        }
+        else if (account.Type == AccountType.Mortgage && account.MortgageDetails == null)
+        {
+            account.MortgageDetails = new MortgageDetails();
+        }
+
+        // Crucial: Re-subscribe so event listeners attach to the child object!
+        SubscribeToAccountEvents(account);
+    }
+    
     public AccountSetupViewModel(DatabaseInitializationContext ctx) {
         DatabaseInitializationContext = ctx;
         StepTitle = "Accounts";
         StepIndex = 1;
 
-        _editingAccount.IsPrimary = !Accounts.Any(a => (_editingAccount.Type== AccountType.Checking || _editingAccount.Type== AccountType.Savings) && a.IsPrimary);
+        _editingAccount.IsPrimary = !Accounts.Any(a => (a.Type== AccountType.Checking || a.Type== AccountType.Savings) && a.IsPrimary);
+        
+        // Subscribe to the default initial instance
+        if (_editingAccount != null)
+        {
+            SubscribeToAccountEvents(_editingAccount);
+        }
     }
 
     public void OnStepNavigatedTo() {
@@ -55,59 +141,50 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         OnPropertyChanged(nameof(IsValid));
     }
 
-    [RelayCommand]
+    private bool CanAddAccount()
+    {
+        if (EditingAccount == null) return false;
+
+        // Basic requirements
+        if (string.IsNullOrWhiteSpace(EditingAccount.Name)) return false;
+        if (string.IsNullOrWhiteSpace(EditingAccount.BankName)) return false;
+
+        // Conditional requirements based on type
+        if (EditingAccount.Type == AccountType.Mortgage)
+        {
+            var m = EditingAccount.MortgageDetails;
+            if (m == null || m.InterestRate <= 0 || m.LoanPayment <= 0 || m.StatementDay <= 0)
+                return false;
+        }
+
+        if (EditingAccount.Type == AccountType.CreditCard)
+        {
+            var cc = EditingAccount.CreditCardDetails;
+            if (cc == null || cc.StatementDay <= 0 || EditingAccount.AccountAprHistory == null)
+                return false;
+        }
+
+        return true;
+    }
+    
+    [RelayCommand(CanExecute = nameof(CanAddAccount))]
     private async Task AddAccountAsync() {
-        if (string.IsNullOrWhiteSpace(EditingAccount.Name)) return;
+        //if (string.IsNullOrWhiteSpace(EditingAccount.Name)) return;
 
         if (DatabaseInitializationContext.BudgetService == null) return;
 
         try {
-            if (string.IsNullOrWhiteSpace(EditingAccount.Name)) {
-                MessageBox.Show("Account name cannot be empty.");
-                return;
-            }
-            if (string.IsNullOrWhiteSpace(EditingAccount.BankName)) {
-                MessageBox.Show("Bank name cannot be empty.");
-                return;
-            }
-            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails == null) {
-                MessageBox.Show("Mortgage details must be defined.");
+            List<string> errors = GetValidationErrors(EditingAccount);
+
+            if (errors.Any())
+            {
+                // Show only the first error found
+                ErrorMessage = errors.First();
                 return;
             }
             
-            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails?.InterestRate == 0) {
-                MessageBox.Show("Mortgage interest rate must be defined.");
-                return;
-            }
-            
-            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails?.LoanPayment == 0) {
-                MessageBox.Show("Mortgage payment must be defined.");
-                return;
-            }
-            
-            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails?.StatementDay == 0) {
-                MessageBox.Show("Mortgage statement day must be defined. Necessary to project when payments are due. If you do not know, choose the 1st of the month for now.");
-                return;
-            }
-            
-            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.CreditCardDetails == null) {
-                MessageBox.Show("Credit card details must be defined.");
-                return;
-            }
-            
-            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.CreditCardDetails?.StatementDay == 0) {
-                MessageBox.Show("Credit card statement day must be defined. Necessary to project when payments are due. If you do not know, choose the 1st of the month for now.");
-                return;
-            }
-            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.CreditCardDetails?.StatementDay == 0) {
-                MessageBox.Show("Credit card statement day must be defined. Necessary to project when payments are due. If you do not know, choose the 1st of the month for now.");
-                return;
-            }
-            
-            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.AccountAprHistory == null) {
-                MessageBox.Show("Credit card interest rates must be defined. Choose Manage Interest Rates and setup the current rate.");
-                return;
-            }
+            // Success path
+            ErrorMessage = string.Empty;
             
             var account = new Account {
                 Name = EditingAccount.Name,
@@ -201,9 +278,9 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 Name = "",
                 Type = AccountType.Checking,
                 Balance = 0,
-                BalanceAsOf = DateTime.Today,
+                BalanceAsOf = DateTime.Today.AddDays(-1),
                 IncludeInTotal = true,
-                IsPrimary = !Accounts.Any(a => (_editingAccount.Type== AccountType.Checking || _editingAccount.Type== AccountType.Savings) && a.IsPrimary),
+                IsPrimary = !Accounts.Any(a => (a.Type== AccountType.Checking || _editingAccount.Type== AccountType.Savings) && a.IsPrimary),
                 HexColor = "#FF808080",
                 MortgageDetails = new MortgageDetails(),
                 CreditCardDetails = new CreditCardDetails()
@@ -235,7 +312,16 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
             var window = new AccountAprHistoryWindow(EditingAccount, DatabaseInitializationContext.BudgetService) {
                 Owner = Application.Current.MainWindow
             };
+            // 1. Blocks here until the user closes the interest rate window
             window.ShowDialog();
+            // 2. Re-subscribe events (to catch any new objects/collections attached inside the dialog)
+            SubscribeToAccountEvents(EditingAccount);
+
+            // 3. Notify the UI that EditingAccount state may have changed
+            OnPropertyChanged(nameof(EditingAccount));
+
+            // 4. Force the Add Account button to re-evaluate its enabled state
+            AddAccountCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing APR history window.");
@@ -243,4 +329,89 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 MessageBoxImage.Error);
         }
     }
+
+    #region Error Validation
+    
+    private string _errorMessage  = string.Empty;
+    public string ErrorMessage {
+        get => _errorMessage;
+        set => SetProperty(ref _errorMessage, value);
+    }
+
+    private readonly Dictionary<string, List<string>> _errors = new();
+
+    public bool HasErrors => _errors.Any();
+    
+    public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
+    
+    public IEnumerable GetErrors(string? propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName) || !_errors.ContainsKey(propertyName))
+            return null;
+        return _errors[propertyName];
+    }
+    
+    public void AddError(string propertyName, string error)
+    {
+        if (!_errors.ContainsKey(propertyName))
+            _errors[propertyName] = new List<string>();
+
+        if (!_errors[propertyName].Contains(error))
+        {
+            _errors[propertyName].Add(error);
+            OnErrorsChanged(propertyName);
+        }
+    }
+
+    public void ClearErrors(string propertyName)
+    {
+        if (_errors.Remove(propertyName))
+            OnErrorsChanged(propertyName);
+    }
+
+    private void OnErrorsChanged(string propertyName)
+    {
+        ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
+        // Re-evaluate your AddAccountCommand.CanExecute() here
+    }
+    
+    public List<string> GetValidationErrors(Account account)
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(account.Name))
+            errors.Add("Account name is required.");
+
+        if (string.IsNullOrWhiteSpace(account.BankName))
+            errors.Add("Bank name is required.");
+
+        if (account.Type == AccountType.Mortgage)
+        {
+            var m = account.MortgageDetails;
+            if (m == null)
+            {
+                errors.Add("Mortgage details must be defined.");
+            }
+            else
+            {
+                if (m.InterestRate <= 0) errors.Add("Mortgage interest rate is required.");
+                if (m.LoanPayment <= 0) errors.Add("Mortgage payment is required.");
+                if (m.StatementDay <= 0) errors.Add("Mortgage statement day is required.");
+            }
+        }
+
+        if (account.Type == AccountType.CreditCard)
+        {
+            var cc = account.CreditCardDetails;
+            if (cc == null || cc.StatementDay <= 0)
+                errors.Add("Credit card statement day is required.");
+
+            if (account.AccountAprHistory == null)
+                errors.Add("Credit card interest rate must be set.");
+        }
+
+        return errors;
+    }
+    
+    #endregion
 }

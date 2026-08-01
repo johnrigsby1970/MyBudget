@@ -7,6 +7,8 @@
         xmlns:converters="clr-namespace:StayOnTarget.Converters"
         xmlns:helpers="clr-namespace:StayOnTarget" 
         xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        xmlns:helpers1="clr-namespace:StayOnTarget.Helpers"
+        xmlns:controls="clr-namespace:StayOnTarget.Controls"
         mc:Ignorable="d"
         Title="ReconciliationWindow" Height="450" Width="750">
     <i:Interaction.Triggers>
@@ -158,23 +160,6 @@
                             Width="120" 
                             Margin="10,0,10,0">
                     </Button>
-                    
-                    <!-- <StackPanel Orientation="Horizontal" -->
-                    <!--             Visibility="{Binding Account.Type, ConverterParameter='RealEstate|AppreciatingAsset|Investment|Brokerage|Retirement401k|CD|CollegeFund', Converter={StaticResource AccountTypeToVisibilityConverter}}"> -->
-                    <!--     <Label Content="Current Value:" Margin="20,0,0,0" /> -->
-                    <!--     ~1~ <TextBox @1@ -->
-                    <!--     ~1~     Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}" @1@ -->
-                    <!--     ~1~     Width="80" Margin="0,0" VerticalContentAlignment="Center" /> @1@ -->
-                    <!--     ~1~ @1@ -->
-                    <!--     <TextBox  -->
-                    <!--              helpers:TextBoxBehavior.IsNumericOnly="True" -->
-                    <!--              Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}" -->
-                    <!--              Width="80" Margin="0,0" /> -->
-                    <!--      -->
-                    <!--     <Button Content="Set Ending Balance"  -->
-                    <!--             Command="{Binding AdjustBalanceCommand}" -->
-                    <!--             Margin="10,0,0,0" Padding="10,0" /> -->
-                    <!-- </StackPanel> -->
                 </StackPanel>
                 
                 <StackPanel Grid.Row="3" Margin="0,5"
@@ -182,9 +167,8 @@
                             Visibility="{Binding Account.Type, ConverterParameter='CreditCard|Checking|Savings|Mortgage|PersonalLoan|Investment|CD|Retirement401k|Brokerage|CollegeFund|Cash|Auto', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}">
                     
                     <Label Content="Reconciled balance:" Margin="0,0" />
-                    <TextBox 
-                        helpers:TextBoxBehavior.IsNumericOnly="True"
-                        Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}"
+                    <controls:NumericTextBox 
+                        Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged}"
                         Width="80" Margin="0,0" />
                     <Label Content="Reconciled date:" Margin="0,0" />
                     <DatePicker Grid.Column="1" Grid.Row="0"
@@ -234,7 +218,7 @@
                         
                         <Label Grid.Row="1" Grid.Column="0" Content="Today's value:" Margin="0,5,0,5" />
                         <TextBox  Grid.Row="1" Grid.Column="1" 
-                                  helpers:TextBoxBehavior.IsNumericOnly="True"
+                                  helpers1:TextBoxBehavior.IsNumericOnly="True"
                                   HorizontalAlignment="Left"
                                   Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}"
                                   Width="80" Margin="0,5,0,5" />

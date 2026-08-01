@@ -1,18 +1,22 @@
 ﻿using Windows.Security.Credentials;
 using Windows.Security.Credentials.UI;
+using StayOnTarget.Helpers;
 
 namespace StayOnTarget;
 
-public static class Helpers {
+public static class HelperMethods {
     
-    public static void SaveDatabaseKeyToWindowsVault(string password) {
-        var vault = new PasswordVault();
-
-        // Resource name acts as the unique identifier for your app
-        // UserName can just be a static identifier like "MasterKey"
-        var credential = new PasswordCredential("StayOnTarget_DB_Vault", "MasterKey", password);
-
-        vault.Add(credential);
+    public static void SaveDatabaseKeyToWindowsVault(string password, string ddFileName = "MasterKey") {
+        
+        VaultManager.SaveDatabaseKey(ddFileName, password);
+        
+        // var vault = new PasswordVault();
+        //
+        // // Resource name acts as the unique identifier for your app
+        // // UserName can just be a static identifier like "MasterKey"
+        // var credential = new PasswordCredential("StayOnTarget_DB_Vault", "MasterKey", password);
+        //
+        // vault.Add(credential);
     }
 
     public static async Task<bool> IsWindowsHelloFullySetup() {
@@ -34,7 +38,7 @@ public static class Helpers {
         }
     }
 
-    public static async Task<string?> TryUnlockWithWindowsHello() {
+    public static async Task<string?> TryUnlockWithWindowsHello(string ddFileName = "MasterKey") {
         // 1. Check if the machine actually has Windows Hello biometric/PIN capability configured
         bool isAvailable = await KeyCredentialManager.IsSupportedAsync();
         if (!isAvailable) return null;
@@ -49,10 +53,11 @@ public static class Helpers {
 
             // 3. If fingerprint/PIN matches, safely fetch the password from the vault
             if (consentResult == UserConsentVerificationResult.Verified) {
-                var vault = new PasswordVault();
-                var credential = vault.Retrieve("StayOnTarget_DB_Vault", "MasterKey");
-                credential.RetrievePassword();
-                return credential.Password;
+                return VaultManager.GetDatabaseKey(ddFileName);
+                // var vault = new PasswordVault();
+                // var credential = vault.Retrieve("StayOnTarget_DB_Vault", "MasterKey");
+                // credential.RetrievePassword();
+                // return credential.Password;
             }
         }
         catch (Exception) {

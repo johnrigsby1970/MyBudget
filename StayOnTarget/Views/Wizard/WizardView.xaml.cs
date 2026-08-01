@@ -1,5 +1,4 @@
-﻿using System.Windows;
-using StayOnTarget.ViewModels.Wizard;
+﻿using StayOnTarget.ViewModels.Wizard;
 
 namespace StayOnTarget.Views.Wizard;
 

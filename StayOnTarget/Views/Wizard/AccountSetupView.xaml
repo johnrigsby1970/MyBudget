@@ -6,11 +6,15 @@
              xmlns:local="clr-namespace:StayOnTarget.Views.Wizard"
              xmlns:helpers="clr-namespace:StayOnTarget"
              xmlns:converters="clr-namespace:StayOnTarget.Converters"
+             xmlns:helpers1="clr-namespace:StayOnTarget.Helpers"
+             xmlns:controls="clr-namespace:StayOnTarget.Controls"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+        
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <Style x:Key="AccentButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#007ACC"/>
@@ -83,6 +87,27 @@ Be sure to mark your main checking account as your Primary payment account so au
                     <!-- </TextBlock> -->
                 </StackPanel>
             </Border>
+            
+            <!-- Validation Error Callout Box -->
+            <Border Background="#FDF2F2" 
+                    BorderBrush="#F8C4C4" 
+                    BorderThickness="1" 
+                    CornerRadius="4" 
+                    Padding="12,10" 
+                    Margin="0,12,0,0"
+                    Visibility="{Binding ErrorMessage, Converter={StaticResource StringToVisibilityConverter}}">
+                <StackPanel Orientation="Horizontal">
+                    <!-- Warning / Exclamation Icon -->
+                    <Path Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" 
+                          Fill="#D13438" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Top"/>
+            
+                    <TextBlock Text="{Binding ErrorMessage}" 
+                               Foreground="#A80000" 
+                               FontSize="11.5" 
+                               TextWrapping="Wrap" 
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </StackPanel>
 
         <Border Grid.Column="1" Background="#F5F5F5" Padding="15">
@@ -109,16 +134,16 @@ Be sure to mark your main checking account as your Primary payment account so au
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Name" Margin="0,0,0,5"/>
-                    <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding EditingAccount.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+                    <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding EditingAccount.Name, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" Margin="0,0,0,10"/>
                 
                     <TextBlock Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="2"  Text="Bank Name" Margin="0,0,0,5"/>
-                    <TextBox Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2"  Text="{Binding EditingAccount.BankName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+                    <TextBox Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2"  Text="{Binding EditingAccount.BankName, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" Margin="0,0,0,10"/>
                     
                     
                     <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Initial Balance" Margin="0,0,0,5"/>
-                    <TextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding EditingAccount.Balance, UpdateSourceTrigger=PropertyChanged}" 
-                             helpers:TextBoxBehavior.IsNumericOnly="True"
-                             Margin="0,0,0,15"/>
+                    <controls:NumericTextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" 
+                                             Text="{Binding EditingAccount.Balance, UpdateSourceTrigger=PropertyChanged}" 
+                                             Margin="0,0,0,15"/>
                     
                     <Label Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="2"  Content="Balance as of:" />
                     <DatePicker Grid.Row="3" Grid.Column="3" Grid.ColumnSpan="2"
@@ -126,7 +151,9 @@ Be sure to mark your main checking account as your Primary payment account so au
                                 MinWidth="90" Margin="0,0,0,15" />
                     
                     <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Type" Margin="0,0,0,5"/>
-                    <ComboBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding AccountTypes}" SelectedItem="{Binding EditingAccount.Type}" Margin="0,0,0,10"/>
+                    <ComboBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" 
+                              ItemsSource="{Binding AccountTypes}" 
+                              SelectedItem="{Binding EditingAccount.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
                     
                     <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Content="Primary payment account"
                               IsChecked="{Binding EditingAccount.IsPrimary}"
@@ -186,11 +213,11 @@ Be sure to mark your main checking account as your Primary payment account so au
 
                                                 <Label Grid.Row="1" Grid.Column="2" Content="Payment $:" />
                                                 <TextBox Grid.Row="1" Grid.Column="3"
-                                                         Text="{Binding EditingAccount.MortgageDetails.LoanPayment, UpdateSourceTrigger=PropertyChanged}"
+                                                         Text="{Binding EditingAccount.MortgageDetails.LoanPayment, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
                                                          Margin="5" />
                                                 <Label Grid.Row="2" Grid.Column="0" Content="Statement date:" />
                                                 <DatePicker Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
-                                                            SelectedDate="{Binding EditingAccount.MortgageDetails.PaymentDate, UpdateSourceTrigger=PropertyChanged}"
+                                                            SelectedDate="{Binding EditingAccount.MortgageDetails.PaymentDate, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
                                                             MinWidth="90" Margin="5" />
                                             </Grid>
                                         </StackPanel>
@@ -220,7 +247,7 @@ Be sure to mark your main checking account as your Primary payment account so au
 
                                                 <Label Grid.Row="0" Grid.Column="0" Content="Statement Day:" />
                                                 <TextBox Grid.Row="0" Grid.Column="1"
-                                                         Text="{Binding EditingAccount.CreditCardDetails.StatementDay, UpdateSourceTrigger=PropertyChanged}"
+                                                         Text="{Binding EditingAccount.CreditCardDetails.StatementDay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
                                                          Margin="5" />
                                                 <Label Grid.Row="0" Grid.Column="2" Content="Due Date Offset:" />
                                                 <TextBox Grid.Row="0" Grid.Column="3"

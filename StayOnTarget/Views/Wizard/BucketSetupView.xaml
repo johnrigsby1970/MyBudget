@@ -5,6 +5,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:StayOnTarget.Views.Wizard"
              xmlns:helpers="clr-namespace:StayOnTarget"
+             xmlns:helpers1="clr-namespace:StayOnTarget.Helpers"
+             xmlns:controls="clr-namespace:StayOnTarget.Controls"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid Margin="20">
@@ -63,9 +65,8 @@ Be honest with your budget to get the clearest picture of your finances." />
                 <TextBox Text="{Binding EditingBucket.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
                 
                 <TextBlock Text="Target Amount" Margin="0,0,0,5"/>
-                <TextBox Text="{Binding EditingBucket.ExpectedAmount, UpdateSourceTrigger=PropertyChanged}" 
-                         helpers:TextBoxBehavior.IsNumericOnly="True"
-                         Margin="0,0,0,10"/>
+                <controls:NumericTextBox Text="{Binding EditingBucket.ExpectedAmount, UpdateSourceTrigger=PropertyChanged}" 
+                                         Margin="0,0,0,10"/>
 
                 <TextBlock Text="Paid From" Margin="0,0,0,5"/>
                 <ComboBox ItemsSource="{Binding Accounts}" 

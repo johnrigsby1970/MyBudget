@@ -1,8 +1,11 @@
-﻿using StayOnTarget.ViewModels;
+﻿using System.Collections;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Models;
 
-public class Account : ViewModelBase
+public class Account : ViewModelBase, INotifyDataErrorInfo
 {
     private string _name = string.Empty;
     private string _bankName = string.Empty;
@@ -18,17 +21,28 @@ public class Account : ViewModelBase
     private bool _isArchived;
 
     public int Id { get; set; }
+    
+    [Required(ErrorMessage = "Account name is required.")]
+    [MinLength(1, ErrorMessage = "Account name cannot be empty.")]
 
     public string Name
     {
         get => _name;
-        set => SetProperty(ref _name, value);
+        set {
+            if (SetProperty(ref _name, value)) {
+                ValidateProperty(nameof(Name), value);
+            } 
+        }
     }
-
-    public string BankName
-    {
+    [Required(ErrorMessage = "Account bank name is required.")]
+    [MinLength(1, ErrorMessage = "Account bank name cannot be empty.")]
+    public string BankName {
         get => _bankName;
-        set => SetProperty(ref _bankName, value);
+        set {
+            if (SetProperty(ref _bankName, value)) {
+                ValidateProperty(nameof(BankName), value);
+            } 
+        }
     }
 
     public decimal Balance
@@ -91,5 +105,39 @@ public class Account : ViewModelBase
         set => SetProperty(ref _isArchived, value);
     }
     
-    public List<AccountAprHistory>? AccountAprHistory { get; set; } 
+    public List<AccountAprHistory>? AccountAprHistory { get; set; }
+    
+    #region Error Validation
+    
+    // --- INotifyDataErrorInfo Implementation ---
+
+    private readonly Dictionary<string, List<string>> _errors = new();
+    public bool HasErrors => _errors.Any();
+    public event EventHandler<DataErrorsChangedEventArgs> ErrorsChanged;
+
+    public IEnumerable GetErrors(string propertyName)
+    {
+        return _errors.ContainsKey(propertyName) ? _errors[propertyName] : null;
+    }
+
+    private void ValidateProperty(string propertyName, object value)
+    {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(this) { MemberName = propertyName };
+
+        Validator.TryValidateProperty(value, context, results);
+
+        if (results.Any())
+        {
+            _errors[propertyName] = results.Select(r => r.ErrorMessage).ToList();
+        }
+        else
+        {
+            _errors.Remove(propertyName);
+        }
+
+        ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
+        
+        #endregion
+    }
 }

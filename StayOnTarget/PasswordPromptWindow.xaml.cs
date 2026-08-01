@@ -36,7 +36,7 @@ public partial class PasswordPromptWindow : Window {
     private async void PasswordPromptWindow_Loaded(object sender, RoutedEventArgs e) {
         try {
             // Now you can safely await your helper!
-            _isWindowsHello = await Helpers.IsWindowsHelloFullySetup();
+            _isWindowsHello = await HelperMethods.IsWindowsHelloFullySetup();
 
             // Dynamically adjust your UI visibility based on the result
             if (_isWindowsHello) {
@@ -102,6 +102,11 @@ public partial class PasswordPromptWindow : Window {
             ShowError("Password cannot be empty.");
             return;
         }
+        
+        if (!IsValidDatabasePassword(inputPassword)) {
+            ShowError("Password must be at least 12 characters and cannot contain tabs.");
+            return;
+        }
 
         if (_isNewDatabase) {
             if (inputPassword != ConfirmPasswordInput.Password) {
@@ -125,7 +130,7 @@ public partial class PasswordPromptWindow : Window {
                 try {
                     StayOnTarget.Properties.Settings.Default.UseWindowsHello = true;
                     StayOnTarget.Properties.Settings.Default.Save();
-                    Helpers.SaveDatabaseKeyToWindowsVault(Password);
+                    HelperMethods.SaveDatabaseKeyToWindowsVault(Password);
                 }
                 catch (Exception ex) {
                     // Gracefully log or handle vault storage issues without crashing the app setup
@@ -157,6 +162,21 @@ public partial class PasswordPromptWindow : Window {
         }
     }
 
+    private static bool IsValidDatabasePassword(string password)
+    {
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 12)
+            return false; // Minimum length recommendation for DB encryption
+
+        // Ensure no control characters (null bytes, newlines, tabs)
+        foreach (char c in password)
+        {
+            if (char.IsControl(c))
+                return false;
+        }
+
+        return true;
+    }
+    
     private void ShowError(string message) {
         ErrorMessage.Text = message;
         ErrorMessage.Visibility = Visibility.Visible;

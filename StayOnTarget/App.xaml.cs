@@ -39,7 +39,7 @@ public partial class App : Application {
             try {
                 bool userWantsHello = StayOnTarget.Properties.Settings.Default.UseWindowsHello;
                 if (userWantsHello) {
-                    password = await Helpers.TryUnlockWithWindowsHello();
+                    password = await HelperMethods.TryUnlockWithWindowsHello();
                 }
             }
             catch (Exception ex) {

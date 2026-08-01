@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:StayOnTarget.Views.Wizard"
              xmlns:helpers="clr-namespace:StayOnTarget"
              xmlns:converters="clr-namespace:StayOnTarget.Converters"
+             xmlns:helpers1="clr-namespace:StayOnTarget.Helpers"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     
@@ -70,29 +71,6 @@ Planning for mandatory bills first keeps your target on track and stress-free." 
             <StackPanel>
                 <TextBlock Text="Add Bill" FontWeight="Bold" Margin="0,0,0,15"/>
                 
-                <!-- <TextBlock Text="Name" Margin="0,0,0,5"/> -->
-                <!-- <TextBox Text="{Binding EditingBill.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/> -->
-                <!-- -->
-                <!-- <TextBlock Text="Expected Amount" Margin="0,0,0,5"/> -->
-                <!-- <TextBox Text="{Binding EditingBill.ExpectedAmount, UpdateSourceTrigger=PropertyChanged}"  -->
-                <!--          helpers:TextBoxBehavior.IsNumericOnly="True" -->
-                <!--          Margin="0,0,0,10"/> -->
-                <!-- -->
-                <!-- <TextBlock Text="Frequency" Margin="0,0,0,5"/> -->
-                <!-- <ComboBox ItemsSource="{Binding Frequencies}" SelectedItem="{Binding EditingBill.Frequency}" Margin="0,0,0,10"/> -->
-                <!-- -->
-                <!-- <TextBlock Text="Due Day (1-31)" Margin="0,0,0,5"/> -->
-                <!-- <TextBox Text="{Binding EditingBill.DueDay, UpdateSourceTrigger=PropertyChanged}"  -->
-                <!--          helpers:TextBoxBehavior.IsNumericOnly="True" -->
-                <!--          Margin="0,0,0,10"/> -->
-                <!-- -->
-                <!-- <TextBlock Text="Pay From" Margin="0,0,0,5"/> -->
-                <!-- <ComboBox ItemsSource="{Binding Accounts}"  -->
-                <!--           SelectedValue="{Binding EditingBill.AccountId}"  -->
-                <!--           SelectedValuePath="Id"  -->
-                <!--           DisplayMemberPath="Name" -->
-                <!--           Margin="0,0,0,15"/> -->
-                
                 <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="1*" />
@@ -124,7 +102,7 @@ Planning for mandatory bills first keeps your target on track and stress-free." 
                                         
                                         <Label Grid.Column="2" Grid.Row="2"  Grid.ColumnSpan="2" Content="Budgeted:" />
                                         <TextBox Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="3"
-                                                 helpers:TextBoxBehavior.IsNumericOnly="True"
+                                                 helpers1:TextBoxBehavior.IsNumericOnly="True"
                                                  Text="{Binding EditingBill.ExpectedAmount, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}"
                                                  Margin="5" />
                                         

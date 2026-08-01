@@ -86,9 +86,17 @@ public class DatabaseContext {
         // Convert Windows backslashes to forward slashes so the SQLite URI parser reads it cleanly
         var normalizedPath = dbPath.Replace('\\', '/');
 
+        var builder = new SqliteConnectionStringBuilder
+        {
+            // Use URI syntax safely in the Data Source field
+            DataSource = $"file:{normalizedPath}?cipher=sqlcipher&legacy=4",
+            Password = password,
+            Pooling = false
+        };
+        
         // Semicolons only separate built-in keywords (Data Source, Password, Pooling)
         // The cipher settings live seamlessly inside the Data Source string itself!
-        return $"Data Source=file:{normalizedPath}?cipher=sqlcipher&legacy=4;Password={password};Pooling=False;";
+        return builder.ConnectionString;
     }
 
     public string BackupDatabase(string? password) {
