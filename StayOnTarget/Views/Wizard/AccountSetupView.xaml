@@ -77,7 +77,7 @@
                     
                     <Label Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="2"  Content="Balance as of:" />
                     <DatePicker Grid.Row="3" Grid.Column="3" Grid.ColumnSpan="2"
-                                SelectedDate="{Binding EditingAccount.MortgageDetails.BalanceAsOf, UpdateSourceTrigger=PropertyChanged}"
+                                SelectedDate="{Binding EditingAccount.BalanceAsOf, UpdateSourceTrigger=PropertyChanged}"
                                 MinWidth="90" Margin="0,0,0,15" />
                     
                     <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Type" Margin="0,0,0,5"/>

@@ -80,10 +80,19 @@ public class ImportReconciliationViewModel : ViewModelBase {
     public CsvImportMappingViewModel? CsvMapping {
         get => _csvMapping;
         set {
+            if (_csvMapping != null)
+                _csvMapping.PropertyChanged -= OnCsvMappingPropertyChanged;
             if (SetProperty(ref _csvMapping, value)) {
+                if (_csvMapping != null)
+                    _csvMapping.PropertyChanged += OnCsvMappingPropertyChanged;
                 ConfirmCsvImportCommand.NotifyCanExecuteChanged();
             }
         }
+    }
+
+    private void OnCsvMappingPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
+        if (e.PropertyName == nameof(CsvImportMappingViewModel.CanImport))
+            ConfirmCsvImportCommand.NotifyCanExecuteChanged();
     }
 
     private bool _isMappingVisible;
