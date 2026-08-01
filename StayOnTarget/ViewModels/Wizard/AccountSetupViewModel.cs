@@ -26,7 +26,9 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         IsPrimary = false,
         BalanceAsOf = DateTime.Today,
         IncludeInTotal = true,
-        HexColor = "#FF007ACC"
+        HexColor = "#FF007ACC",
+        MortgageDetails = new MortgageDetails(),
+        CreditCardDetails = new CreditCardDetails()
     };
 
     public Account EditingAccount {
@@ -60,6 +62,53 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         if (DatabaseInitializationContext.BudgetService == null) return;
 
         try {
+            if (string.IsNullOrWhiteSpace(EditingAccount.Name)) {
+                MessageBox.Show("Account name cannot be empty.");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(EditingAccount.BankName)) {
+                MessageBox.Show("Bank name cannot be empty.");
+                return;
+            }
+            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails == null) {
+                MessageBox.Show("Mortgage details must be defined.");
+                return;
+            }
+            
+            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails?.InterestRate == 0) {
+                MessageBox.Show("Mortgage interest rate must be defined.");
+                return;
+            }
+            
+            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails?.LoanPayment == 0) {
+                MessageBox.Show("Mortgage payment must be defined.");
+                return;
+            }
+            
+            if(EditingAccount.Type == AccountType.Mortgage && EditingAccount.MortgageDetails?.StatementDay == 0) {
+                MessageBox.Show("Mortgage statement day must be defined. Necessary to project when payments are due. If you do not know, choose the 1st of the month for now.");
+                return;
+            }
+            
+            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.CreditCardDetails == null) {
+                MessageBox.Show("Credit card details must be defined.");
+                return;
+            }
+            
+            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.CreditCardDetails?.StatementDay == 0) {
+                MessageBox.Show("Credit card statement day must be defined. Necessary to project when payments are due. If you do not know, choose the 1st of the month for now.");
+                return;
+            }
+            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.CreditCardDetails?.StatementDay == 0) {
+                MessageBox.Show("Credit card statement day must be defined. Necessary to project when payments are due. If you do not know, choose the 1st of the month for now.");
+                return;
+            }
+            
+            if(EditingAccount.Type == AccountType.CreditCard && EditingAccount.AccountAprHistory == null) {
+                MessageBox.Show("Credit card interest rates must be defined. Choose Manage Interest Rates and setup the current rate.");
+                return;
+            }
+            
             var account = new Account {
                 Name = EditingAccount.Name,
                 BankName = EditingAccount.BankName,
@@ -72,6 +121,9 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 MortgageDetails = new MortgageDetails(),
                 CreditCardDetails = new CreditCardDetails()
             };
+            
+            account.MortgageDetails = EditingAccount.MortgageDetails;
+            account.CreditCardDetails = EditingAccount.CreditCardDetails;
 
             account.Id = await DatabaseInitializationContext.BudgetService.UpsertAccountAsync(account);
 
@@ -152,7 +204,9 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 BalanceAsOf = DateTime.Today,
                 IncludeInTotal = true,
                 IsPrimary = !Accounts.Any(a => (_editingAccount.Type== AccountType.Checking || _editingAccount.Type== AccountType.Savings) && a.IsPrimary),
-                HexColor = "#FF808080"
+                HexColor = "#FF808080",
+                MortgageDetails = new MortgageDetails(),
+                CreditCardDetails = new CreditCardDetails()
             };
 
             OnPropertyChanged(nameof(IsValid));

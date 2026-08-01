@@ -42,23 +42,67 @@
 
         <Border Grid.Column="1" Background="#F5F5F5" Padding="15">
             <StackPanel>
+                
                 <TextBlock Text="Add New Account" FontWeight="Bold" Margin="0,0,0,15"/>
                 
-                <TextBlock Text="Account Name" Margin="0,0,0,5"/>
-                <TextBox Text="{Binding EditingAccount.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Name" Margin="0,0,0,5"/>
+                    <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding EditingAccount.Name, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
                 
-                <TextBlock Text="Account Type" Margin="0,0,0,5"/>
-                <ComboBox ItemsSource="{Binding AccountTypes}" SelectedItem="{Binding EditingAccount.Type}" Margin="0,0,0,10"/>
-                <CheckBox Content="Primary payment account"
-                          IsChecked="{Binding EditingAccount.IsPrimary}"
-                          VerticalAlignment="Center" Margin="0,0,0,5"
-                          Visibility="{Binding EditingAccount.Type, ConverterParameter='Checking|Savings', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}"/>
-                <TextBlock Margin="0,0,0,15" Foreground="DimGray" Text="(This is the account used to plan automated debt payments)" Visibility="{Binding EditingAccount.Type, ConverterParameter='Checking|Savings', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="3" Grid.ColumnSpan="2"  Text="Bank Name" Margin="0,0,0,5"/>
+                    <TextBox Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="2"  Text="{Binding EditingAccount.BankName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+                    
+                    
+                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Initial Balance" Margin="0,0,0,5"/>
+                    <TextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding EditingAccount.Balance, UpdateSourceTrigger=PropertyChanged}" 
+                             helpers:TextBoxBehavior.IsNumericOnly="True"
+                             Margin="0,0,0,15"/>
+                    
+                    <Label Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="2"  Content="Balance as of:" />
+                    <DatePicker Grid.Row="3" Grid.Column="3" Grid.ColumnSpan="2"
+                                SelectedDate="{Binding EditingAccount.MortgageDetails.BalanceAsOf, UpdateSourceTrigger=PropertyChanged}"
+                                MinWidth="90" Margin="0,0,0,15" />
+                    
+                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Type" Margin="0,0,0,5"/>
+                    <ComboBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding AccountTypes}" SelectedItem="{Binding EditingAccount.Type}" Margin="0,0,0,10"/>
+                    
+                    <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Content="Primary payment account"
+                              IsChecked="{Binding EditingAccount.IsPrimary}"
+                              VerticalAlignment="Center" Margin="0,0,0,5"
+                              Visibility="{Binding EditingAccount.Type, ConverterParameter='Checking|Savings', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}"
+
+                    />
+                    <TextBlock Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="5" 
+                               Margin="0,0,0,15" Foreground="DimGray" Text="(This is the account used to plan automated debt payments)" 
+                               TextWrapping="Wrap"
+                               Visibility="{Binding EditingAccount.Type, ConverterParameter='Checking|Savings', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}"
+
+                               />
+
+                    
+                </Grid>
                 
-                <TextBlock Text="Initial Balance" Margin="0,0,0,5"/>
-                <TextBox Text="{Binding EditingAccount.Balance, UpdateSourceTrigger=PropertyChanged}" 
-                         helpers:TextBoxBehavior.IsNumericOnly="True"
-                         Margin="0,0,0,15"/>
+                
+                
+                 
+               
                 
                 <!-- Mortgage Specific Details -->
                                         <StackPanel 
@@ -85,22 +129,22 @@
                                                 <TextBox Grid.Row="0" Grid.Column="1"
                                                          Text="{Binding EditingAccount.MortgageDetails.InterestRate, UpdateSourceTrigger=PropertyChanged}"
                                                          Margin="5" />
-                                                <Label Grid.Row="0" Grid.Column="2" Content="Escrow:" />
+                                                <Label Grid.Row="0" Grid.Column="2" Content="Escrow $:" />
                                                 <TextBox Grid.Row="0" Grid.Column="3"
                                                          Text="{Binding EditingAccount.MortgageDetails.Escrow, UpdateSourceTrigger=PropertyChanged}"
                                                          Margin="5" />
 
-                                                <Label Grid.Row="1" Grid.Column="0" Content="Insurance:" />
+                                                <Label Grid.Row="1" Grid.Column="0" Content="Insurance $:" />
                                                 <TextBox Grid.Row="1" Grid.Column="1"
                                                          Text="{Binding EditingAccount.MortgageDetails.MortgageInsurance, UpdateSourceTrigger=PropertyChanged}"
                                                          Margin="5" />
 
-                                                <Label Grid.Row="2" Grid.Column="0" Content="Payment:" />
-                                                <TextBox Grid.Row="2" Grid.Column="1"
+                                                <Label Grid.Row="1" Grid.Column="2" Content="Payment $:" />
+                                                <TextBox Grid.Row="1" Grid.Column="3"
                                                          Text="{Binding EditingAccount.MortgageDetails.LoanPayment, UpdateSourceTrigger=PropertyChanged}"
                                                          Margin="5" />
-                                                <Label Grid.Row="2" Grid.Column="2" Content="Statement date:" />
-                                                <DatePicker Grid.Row="2" Grid.Column="3"
+                                                <Label Grid.Row="2" Grid.Column="0" Content="Statement date:" />
+                                                <DatePicker Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2"
                                                             SelectedDate="{Binding EditingAccount.MortgageDetails.PaymentDate, UpdateSourceTrigger=PropertyChanged}"
                                                             MinWidth="90" Margin="5" />
                                             </Grid>
@@ -138,7 +182,7 @@
                                                          Text="{Binding EditingAccount.CreditCardDetails.DueDateOffset, UpdateSourceTrigger=PropertyChanged}"
                                                          Margin="5" />
 
-                                                <Label Grid.Row="1" Grid.Column="0" Content="Minimum payment:" />
+                                                <Label Grid.Row="1" Grid.Column="0" Content="Minimum payment $:" />
                                                 <TextBox Grid.Row="1" Grid.Column="1"
                                                          Text="{Binding EditingAccount.CreditCardDetails.MinPayFloor, UpdateSourceTrigger=PropertyChanged}"
                                                          Margin="5" />
