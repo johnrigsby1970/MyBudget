@@ -88,7 +88,7 @@ public partial class DatabaseNameViewModel : ViewModelBase, IWizardStepViewModel
     public DatabaseNameViewModel(DatabaseInitializationContext ctx)
     {
         DatabaseInitializationContext = ctx;
-        StepTitle = "Database Setup";
+        StepTitle = "Database";
         StepIndex = 0;
     }
 

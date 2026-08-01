@@ -31,7 +31,7 @@ public partial class BucketSetupViewModel : ViewModelBase, IWizardStepViewModel
     public BucketSetupViewModel(DatabaseInitializationContext ctx)
     {
         DatabaseInitializationContext = ctx;
-        StepTitle = "Envelope Setup";
+        StepTitle = "Envelopes";
         StepIndex = 4;
     }
 
@@ -59,8 +59,7 @@ public partial class BucketSetupViewModel : ViewModelBase, IWizardStepViewModel
         {
             Name = EditingBucket.Name,
             ExpectedAmount = EditingBucket.ExpectedAmount,
-            AccountId = EditingBucket.AccountId,
-            PaycheckId = EditingBucket.PaycheckId
+            AccountId = EditingBucket.AccountId
         };
 
         await DatabaseInitializationContext.BudgetService.UpsertBucketAsync(bucket);

@@ -14,7 +14,7 @@
         </Grid.ColumnDefinitions>
 
         <StackPanel Grid.Column="0" Margin="0,0,20,0">
-            <TextBlock Text="Envelope Setup (Optional)" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+            <TextBlock Text="Envelopes (Optional)" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
             
             <TextBlock Text="Your Envelopes" FontWeight="SemiBold" Margin="0,0,0,10"/>
             <ListBox ItemsSource="{Binding Buckets}" MinHeight="100">
@@ -37,6 +37,22 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+            
+            <Border BorderBrush="#BAE6FD" BorderThickness="1,1,1,1" Margin="0,10,0,0" Padding="8,8,12,8">
+                <StackPanel>
+                    <!-- Primary Outcome Paragraph -->
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#0C4A6E" FontWeight="SemiBold" LineHeight="16" Margin="0,0,0,6">
+                        <Run Text="💡 " />
+                        <Run Text="Set aside money for variable, day-to-day spending—like groceries, gas, or dining out.
+Be honest with your budget to get the clearest picture of your finances." />
+                    </TextBlock>
+
+                    <!-- ~1~ General Dilemma Paragraph @1@ -->
+                    <!-- <TextBlock TextWrapping="Wrap" FontSize="10.5" Foreground="#475569" LineHeight="15" FontStyle="Italic"> -->
+                    <!--     <Run Text="{Binding StrategyTakeawayDilemma, Mode=OneWay}" /> -->
+                    <!-- </TextBlock> -->
+                </StackPanel>
+            </Border>
         </StackPanel>
 
         <Border Grid.Column="1" Background="#F5F5F5" Padding="15">
@@ -58,12 +74,13 @@
                           DisplayMemberPath="Name"
                           Margin="0,0,0,10"/>
 
-                <TextBlock Text="Paycheck Association (Optional)" Margin="0,0,0,5"/>
-                <ComboBox ItemsSource="{Binding Paychecks}" 
-                          SelectedValue="{Binding EditingBucket.PaycheckId}" 
-                          SelectedValuePath="Id" 
+                <TextBlock Text="Income Source Association (Optional)" Margin="0,0,0,5"/>
+                <ComboBox ItemsSource="{Binding Paychecks}"
+                          SelectedValue="{Binding EditingBucket.PaycheckId}"
+                          SelectedValuePath="Id"
                           DisplayMemberPath="Name"
-                          Margin="0,0,0,15"/>
+                          Margin="0,0,0,5"/>
+                <TextBlock  Foreground="DimGray" Text="(Is this envelope funded from a specific income source?)" Margin="0,0,0,15"/>
                 
                 <Button Content="Add Envelope" Command="{Binding AddBucketCommand}" Padding="10,5"/>
             </StackPanel>

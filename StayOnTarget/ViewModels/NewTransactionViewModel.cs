@@ -365,7 +365,7 @@ public class NewTransactionViewModel : ViewModelBase {
         if (EditingTransactionClone.ToAccountId == 0) EditingTransactionClone.ToAccountId = null;
         if (EditingTransactionClone.BillId == 0) EditingTransactionClone.BillId = null;
         if (EditingTransactionClone.BucketId == 0) EditingTransactionClone.BucketId = null;
-        if (EditingTransactionClone.PaycheckId == 0) EditingTransactionClone.PaycheckId = null;
+        // if (EditingTransactionClone.PaycheckId == 0) EditingTransactionClone.PaycheckId = null;
 
         await _budgetService.UpsertTransactionAsync(EditingTransactionClone);
 

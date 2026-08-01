@@ -38,7 +38,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
 
     public AccountSetupViewModel(DatabaseInitializationContext ctx) {
         DatabaseInitializationContext = ctx;
-        StepTitle = "Account Setup";
+        StepTitle = "Accounts";
         StepIndex = 1;
 
         _editingAccount.IsPrimary = !Accounts.Any(a => (_editingAccount.Type== AccountType.Checking || _editingAccount.Type== AccountType.Savings) && a.IsPrimary);

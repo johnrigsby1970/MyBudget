@@ -18,7 +18,7 @@ public partial class PaycheckSetupViewModel : ViewModelBase, IWizardStepViewMode
 
     private Paycheck _editingPaycheck = new()
     {
-        Name = "Primary Paycheck",
+        Name = "Primary Income",
         Frequency = Frequency.BiWeekly,
         StartDate = DateTime.Today
     };
@@ -32,7 +32,7 @@ public partial class PaycheckSetupViewModel : ViewModelBase, IWizardStepViewMode
     public PaycheckSetupViewModel(DatabaseInitializationContext ctx)
     {
         DatabaseInitializationContext = ctx;
-        StepTitle = "Paycheck Setup";
+        StepTitle = "Income";
         StepIndex = 2;
     }
 

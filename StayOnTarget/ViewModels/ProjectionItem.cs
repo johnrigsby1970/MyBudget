@@ -24,48 +24,7 @@ public class ProjectionItem : ViewModelBase
     public decimal Amount 
     { 
         get => _amount; 
-        set
-        {
-            if (SetProperty(ref _amount, value))
-            {
-                // if (PaycheckId.HasValue && Date.Date <= DateTime.Today.Date)
-                // {
-                //     // Update or create Transaction
-                //     var mainVM = MainViewModel.Instance;
-                //     if (mainVM != null)
-                //     {
-                //         // Actually, we should use the service to find/create it based on Date and PaycheckId
-                //         var existing = mainVM.GetTransactionForPaycheck(PaycheckId.Value, Date);
-                //         if (existing != null)
-                //         {
-                //             existing.Amount = value;
-                //         }
-                //         else
-                //         {
-                //             // Create new one
-                //             var cashAccount = mainVM.Accounts.FirstOrDefault(a => a.Name == "Household Cash");
-                //             var paycheck = mainVM.Paychecks.FirstOrDefault(p => p.Id == PaycheckId.Value);
-                //
-                //             // Find the correct period date for this Date
-                //             DateTime pDate = mainVM.FindPeriodDateFor(Date);
-                //
-                //             var transaction = new Transaction
-                //             {
-                //                 Description = Description,
-                //                 Amount = value,
-                //                 Date = Date,
-                //                 PeriodDate = pDate,
-                //                 ToAccountId = paycheck?.AccountId ?? cashAccount?.Id,
-                //                 PaycheckId = PaycheckId.Value
-                //             };
-                //             mainVM.SaveNewTransaction(transaction);
-                //         }
-                //         if (mainVM.IsCalculatingProjections) return;
-                //         mainVM.CalculateProjections();
-                //     }
-                // }
-            }
-        }
+        set => SetProperty(ref _amount, value);
     }
     public decimal Balance { get => _balance; set => SetProperty(ref _balance, value); }
     public bool IsWarning { get => _isWarning; set => SetProperty(ref _isWarning, value); }

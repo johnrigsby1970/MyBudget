@@ -10,6 +10,35 @@
              d:DesignHeight="450" d:DesignWidth="800">
     <UserControl.Resources>
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <Style x:Key="AccentButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005A9E"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                    <Setter Property="Foreground" Value="#888888"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
     <Grid Margin="20">
         <Grid.ColumnDefinitions>
@@ -38,6 +67,22 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+            
+            <Border BorderBrush="#BAE6FD" BorderThickness="1,1,1,1" Margin="0,10,0,0" Padding="8,8,12,8">
+                <StackPanel>
+                    <!-- Primary Outcome Paragraph -->
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#0C4A6E" FontWeight="SemiBold" LineHeight="16" Margin="0,0,0,6">
+                        <Run Text="💡 " />
+                        <Run Text="Set up your real-world financial accounts here.
+Be sure to mark your main checking account as your Primary payment account so automated bills and paychecks link seamlessly." />
+                    </TextBlock>
+
+                    <!-- ~1~ General Dilemma Paragraph @1@ -->
+                    <!-- <TextBlock TextWrapping="Wrap" FontSize="10.5" Foreground="#475569" LineHeight="15" FontStyle="Italic"> -->
+                    <!--     <Run Text="{Binding StrategyTakeawayDilemma, Mode=OneWay}" /> -->
+                    <!-- </TextBlock> -->
+                </StackPanel>
+            </Border>
         </StackPanel>
 
         <Border Grid.Column="1" Background="#F5F5F5" Padding="15">
@@ -93,7 +138,7 @@
                                Margin="0,0,0,15" Foreground="DimGray" Text="(This is the account used to plan automated debt payments)" 
                                TextWrapping="Wrap"
                                Visibility="{Binding EditingAccount.Type, ConverterParameter='Checking|Savings', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}"
-
+                               
                                />
 
                     
@@ -201,7 +246,14 @@
                                             </Grid>
                                         </StackPanel>
                 
-                <Button Content="Add Account" Command="{Binding AddAccountCommand}" Padding="10,5"/>
+                <Button Content="Add Account" Command="{Binding AddAccountCommand}" Padding="10,5"
+                        Visibility="{Binding IsValid, Converter={StaticResource BooleanToVisibilityConverter}}"
+                        />
+                <Button Content="Add Account" Command="{Binding AddAccountCommand}" Padding="10,5"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Visibility="{Binding IsValid, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
+
+                />
             </StackPanel>
             
             

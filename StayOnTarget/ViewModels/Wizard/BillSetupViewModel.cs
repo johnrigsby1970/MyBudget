@@ -37,7 +37,7 @@ public partial class BillSetupViewModel : ViewModelBase, IWizardStepViewModel
     public BillSetupViewModel(DatabaseInitializationContext ctx)
     {
         DatabaseInitializationContext = ctx;
-        StepTitle = "Bill Setup";
+        StepTitle = "Bills";
         StepIndex = 3;
     }
 
