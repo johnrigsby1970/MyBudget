@@ -33,12 +33,12 @@ public class ReconciliationService {
         if (account == null) {
             return (0, null, 0);
         }
-
+var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsync(accountId);
         // Start with the latest reconciliation or the account balance
         var latestRecon = await _budgetService.GetLatestValidReconciliationAsync(accountId);
         decimal balance = latestRecon?.ReconciledBalance ?? account.Balance;
         decimal beginningBalance = balance;
-        DateTime startDate = latestRecon?.ReconciledAsOfDate ?? account.BalanceAsOf;
+        DateTime startDate = latestRecon?.ReconciledAsOfDate ?? (openingBalanceState.openingBalanceDate ?? account.BalanceAsOf);
 
         // Apply transactions after the reconciliation date
         var orderedTransactions = transactions.Where(t => t.TransactionDate >= startDate).OrderBy(t => t.TransactionDate).ToList();

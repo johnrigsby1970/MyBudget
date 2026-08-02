@@ -466,7 +466,17 @@
                                                               Text="{Binding EditingTransactionClone.Description, UpdateSourceTrigger=PropertyChanged}"
                                                               IsEditable="True"
                                                               IsTextSearchEnabled="True"
-                                                              Margin="5" />
+                                                              Margin="5">
+                                                        <ComboBox.Style>
+                                                            <Style TargetType="ComboBox">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding EditingTransactionClone.Description}" Value="{x:Static local:Constants.OpeningBalance}">
+                                                                        <Setter Property="IsEnabled" Value="False" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </ComboBox.Style>
+                                                    </ComboBox>
                                                     <Label Grid.Column="2" Grid.Row="1" Content="Memo:" />
                                                     <TextBox Grid.Column="3" Grid.Row="1"
                                                              Text="{Binding EditingTransactionClone.Memo}"

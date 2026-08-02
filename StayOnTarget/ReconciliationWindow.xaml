@@ -10,7 +10,7 @@
         xmlns:helpers1="clr-namespace:StayOnTarget.Helpers"
         xmlns:controls="clr-namespace:StayOnTarget.Controls"
         mc:Ignorable="d"
-        Title="ReconciliationWindow" Height="450" Width="750">
+        Title="Reconciliation" Height="450" Width="750">
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Loaded">
             <i:InvokeCommandAction Command="{Binding InitializeDataCommand}" />
@@ -63,8 +63,9 @@
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
     </Window.Resources>
+    
     <Grid Margin="10">
-        <DockPanel>
+        <DockPanel IsEnabled="{Binding CanReconcile}">
             <TextBlock DockPanel.Dock="Top" x:Name="HeaderLabel" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
             <Grid>
                 <Grid.RowDefinitions>
@@ -77,7 +78,8 @@
                 <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,5" Orientation="Horizontal">
                                         <Label Content="Beginning balance:" Margin="0,0" />
                                         <Label
-                                            Content="{Binding BeginningBalance, StringFormat=C}"
+                                            Content="{Binding BeginningBalance}"
+                                            ContentStringFormat="{}{0:C2}"
                                             Width="Auto" Margin="0,0" />
                                         
                                     </StackPanel>
@@ -105,10 +107,10 @@
                     <DataGridTextColumn Header="Description"
                                         Binding="{Binding Description}" Width="*" />
                     
-                    <DataGridTextColumn Header="From" Binding="{Binding AccountName}"
-                                        Width="100" />
-                    <DataGridTextColumn Header="To" Binding="{Binding ToAccountName}"
-                                        Width="100" />
+                    <!-- <DataGridTextColumn Header="From" Binding="{Binding AccountName}" -->
+                    <!--                     Width="100" /> -->
+                    <!-- <DataGridTextColumn Header="To" Binding="{Binding ToAccountName}" -->
+                    <!--                     Width="100" /> -->
                     <DataGridTextColumn Header="Amount"
                                         HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
                                         Binding="{Binding Amount, StringFormat=C}"
@@ -122,7 +124,7 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="Reconciled" Width="70">
+                    <DataGridTemplateColumn Header="Cleared" Width="75">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <CheckBox
@@ -151,42 +153,101 @@
                 </DataGrid.Columns>
             </DataGrid>
                 <StackPanel Grid.Row="2" Margin="0,5"
-                            Orientation="Horizontal">
-                    <Label Content="Ending balance:" Margin="0,0" />
-                    <Label
-                        Content="{Binding EndingBalance, StringFormat=C}"
-                        Width="100" Margin="0,0" />
-                    <Button Content="Set Ending Balance" Command="{Binding ShowAdjustmentCommand}"
-                            Width="120" 
-                            Margin="10,0,10,0">
-                    </Button>
-                </StackPanel>
-                
-                <StackPanel Grid.Row="3" Margin="0,5"
                             Orientation="Horizontal" 
-                            Visibility="{Binding Account.Type, ConverterParameter='CreditCard|Checking|Savings|Mortgage|PersonalLoan|Investment|CD|Retirement401k|Brokerage|CollegeFund|Cash|Auto', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}">
+                            Visibility="{Binding NewReconciledBalance, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}">
                     
                     <Label Content="Reconciled balance:" Margin="0,0" />
-                    <controls:NumericTextBox 
-                        Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged}"
-                        Width="80" Margin="0,0" />
+                    <Label
+                        Content="{Binding NewReconciledBalance}"
+                        ContentStringFormat="{}{0:C2}"
+                        Width="100" Margin="0,0" />
+                    
+                    <!-- <controls:NumericTextBox  -->
+                    <!--     Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged}" -->
+                    <!--     Width="80" Margin="0,0" /> -->
                     <Label Content="Reconciled date:" Margin="0,0" />
-                    <DatePicker Grid.Column="1" Grid.Row="0"
-                                SelectedDate="{Binding NewReconciledDate, UpdateSourceTrigger=PropertyChanged}"
-                                Width="80" Margin="0,0" />
+                    <Label
+                        Content="{Binding NewReconciledDate}"
+                        ContentStringFormat="{}{0:d}"
+                        Width="100" Margin="0,0" />
+                    <!-- <DatePicker Grid.Column="1" Grid.Row="0" -->
+                    <!--             SelectedDate="{Binding NewReconciledDate, UpdateSourceTrigger=PropertyChanged}" -->
+                    <!--             Width="80" Margin="0,0" /> -->
                                         
                 </StackPanel>
+                <StackPanel Grid.Row="3" Margin="0,5"
+            Orientation="Horizontal"
+            VerticalAlignment="Center">
+    
+    <!-- Register Balance -->
+    <Label Content="Register Balance:" VerticalAlignment="Center" Margin="0,0" />
+    <Label Content="{Binding EndingBalance}"
+           ContentStringFormat="{}{0:C2}"
+           VerticalAlignment="Center"
+           Width="100" Margin="0,0" />
+    
+    <!-- Edit Button -->
+    <Button Command="{Binding ShowAdjustmentCommand}"
+            ToolTip="Correct Ending Balance"
+            Width="26" 
+            Height="26"
+            Margin="5,0,20,0"
+            Cursor="Hand"
+            Background="Transparent"
+            BorderThickness="0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Visibility="{Binding Account.Type, ConverterParameter='CreditCard|Checking|Savings|Mortgage|PersonalLoan|Investment|CD|Retirement401k|Brokerage|CollegeFund|Cash|Auto', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}">
+        <Path Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" 
+              Fill="#555555" 
+              Stretch="Uniform" 
+              Width="14" 
+              Height="14" />
+    </Button>
+
+    <!-- Difference Display -->
+    <Label Content="Difference:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0" 
+           Visibility="{Binding NewReconciledBalance, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}"
+           />
+    <TextBlock Text="{Binding Difference, StringFormat={}{0:C2}}"
+               FontWeight="Bold"
+               VerticalAlignment="Center"
+               Visibility="{Binding NewReconciledBalance, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}"
+               Margin="5,0,0,0">
+        <TextBlock.Style>
+            <Style TargetType="TextBlock">
+                <!-- Default color for non-zero difference -->
+                <Setter Property="Foreground" Value="#D9534F" /> <!-- Soft Red -->
+                <Style.Triggers>
+                    <!-- Green when fully reconciled / zero difference -->
+                    <DataTrigger Binding="{Binding Difference}" Value="0">
+                        <Setter Property="Foreground" Value="#2E7D32" /> <!-- Forest Green -->
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Difference}" Value="0.00">
+                        <Setter Property="Foreground" Value="#2E7D32" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </TextBlock.Style>
+    </TextBlock>
+
+</StackPanel>
+                
+                
                 <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
                     
                     <Button Content="Import" Command="{Binding ImportAccountCommand}"
                             Width="80" 
-                            Background="YellowGreen"
                             Margin="0,0,10,0"
                             Click="HandleImportAccount_Click">
                     </Button>
-                    <Button Content="Reconcile" Width="80" Margin="0,0,10,0" 
-                            Click="OkButton_Click" IsDefault="True"
+                    <Button Content="{Binding ReconcileButtonText}"
+                            Width="100" 
+                            Margin="0,0,10,0" 
+                            Click="OkButton_Click" 
+                            IsDefault="True"
                             Background="CornflowerBlue" 
+                            IsEnabled="{Binding CanExecuteReconcile}"
                             Foreground="White"/>
                     <Button Content="Cancel" Width="80" Click="CancelButton_Click" IsCancel="True"
                             />
@@ -194,8 +255,10 @@
                 </Grid>
         </DockPanel>
         
-        <!-- CSV Mapping Overlay -->
-        <Grid Background="#80000000" Visibility="{Binding IsBalanceAdjustmentVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <!-- Balance Adjustment Overlay -->
+        <Grid Background="#80000000" 
+              IsEnabled="{Binding CanReconcile}"
+              Visibility="{Binding IsBalanceAdjustmentVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Border Background="White" Width="400" VerticalAlignment="Center" Padding="20" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
                 <StackPanel>
                     <TextBlock Text="Update Account Balance" FontSize="16" FontWeight="Bold" Margin="0,0,0,15" />
@@ -262,6 +325,64 @@
             </Border>
         </Grid>
         
+        <!-- Opening Balance Correction Overlay -->
+        <Grid Background="#80000000" 
+              Visibility="{Binding IsOpeningBalanceCorrectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Background="White" Width="400" VerticalAlignment="Center" Padding="20" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="Update Opening Balance" FontSize="16" FontWeight="Bold" Margin="0,0,0,5" />
+                    <TextBlock Text="The opening balance you have in the system, if any, is newer than the oldest transaction. Please set a new opening balance. Changes may reset prior reconciliations." FontSize="12" Margin="0,0,0,15" />
+                    
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        
+                        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Opening Balance" Margin="0,0,0,5"/>
+                        <controls:NumericTextBox Grid.Row="0" Grid.Column="1" 
+                                                 Text="{Binding OpeningBalance, UpdateSourceTrigger=PropertyChanged}" 
+                                                 Margin="0,0,0,0"/>
+                    
+                        <Label Grid.Row="1" Grid.Column="0"  Content="Balance as of:" />
+                        <DatePicker Grid.Row="1" Grid.Column="1" 
+                                    SelectedDate="{Binding OpeningBalanceAsOf, UpdateSourceTrigger=PropertyChanged}"
+                                    DisplayDateEnd="{Binding OpeningBalanceMaximumAsOf}"
+                                    MinWidth="90" Margin="0,0,0,0" />
+                        
+                        <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"  Margin="0,5,0,5" />
+                    </Grid>
+                    
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+                        <Button Content="Update" Width="80" 
+                                Command="{Binding CorrectOpeningBalanceCommand}"
+                                Margin="0,0,10,0" Padding="10,0" />
+                        
+                        <Button Content="Cancel" Command="{Binding CancelCorrectOpeningBalanceCommand}" Width="80" Margin="0,0,10,0" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+        
         <ContentControl Content="{Binding ActiveOverlay}" />
+        
+        <!-- Warning Banner / Callout Box (Only visible when blocked) -->
+        <Border Background="#FDF2F2" BorderBrush="#F8C4C4" BorderThickness="1" Padding="15" CornerRadius="4"
+                Visibility="{Binding CanReconcile, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+            <!-- Wrap everything inside ONE direct child (StackPanel) -->
+            <StackPanel>
+                <TextBlock Text="Reconciliation Blocked" FontWeight="Bold" Foreground="#A80000" FontSize="14" Margin="0,0,0,8"/>
+                <TextBlock Text="{Binding BlockingWarningMessage}" TextWrapping="Wrap" Foreground="#555555" Margin="0,0,0,12"/>
+                <Button Content="Close" Width="80" Click="CancelButton_Click" IsCancel="True" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
     </Grid>
+    
 </Window>

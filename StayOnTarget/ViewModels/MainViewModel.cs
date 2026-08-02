@@ -2059,8 +2059,8 @@ public class MainViewModel : ViewModelBase {
                         TransactionDate = EditingAccountClone.BalanceAsOf,
                         TransactionId = Guid.NewGuid(),
                         FitId = Guid.NewGuid().ToString(),
-                        Description = "Opening Balance",
-                        Memo = "Opening Balance"
+                        Description = Constants.OpeningBalance,
+                        Memo = Constants.OpeningBalance
                     };
 
                     if (openingBalance.Amount != 0) {
@@ -2846,9 +2846,13 @@ public class MainViewModel : ViewModelBase {
                 await LoadPeriodDataAsync();
                 return;
             }
-
+            var oldestTransaction = await _budgetService.GetOldestTransactionAsync();
+            
             var allPaycheckDates = new List<DateTime>();
             var end = DateTime.Today.AddYears(1);
+            if (oldestTransaction.HasValue) {
+                allPaycheckDates.Add(oldestTransaction.Value);//at least show the opening balance entry
+            }
             foreach (var pay in Paychecks.Where(p => p.Id == SelectedPeriodPaycheckId)) {
                 var nextPay = pay.StartDate;
                 while (nextPay < end) {
@@ -2857,7 +2861,7 @@ public class MainViewModel : ViewModelBase {
                         Frequency.Weekly => nextPay.AddDays(7),
                         Frequency.BiWeekly => nextPay.AddDays(14),
                         Frequency.Monthly => nextPay.AddMonths(1),
-                        _ => nextPay.AddYears(100)
+                        _ => nextPay.AddYears(100)//that is optimistic
                     };
                 }
             }

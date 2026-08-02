@@ -10,7 +10,7 @@ public partial class BudgetService {
         await using var conn = _db.GetConnection();
 
         var dbRows = (await conn.QueryAsync<dynamic>(@"
-            SELECT t.*, t.TransactionDate as TransactionDate, a1.Name as AccountName, 
+            SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
@@ -27,14 +27,21 @@ public partial class BudgetService {
 
     public async Task<IEnumerable<Transaction>> GetAllTransactionsAsync() {
         await using var conn = _db.GetConnection();
-        var dbRows =  (await conn.QueryAsync<dynamic>("SELECT *, TransactionDate as TransactionDate FROM Transactions")).ToList();
+        // var dbRows =  (await conn.QueryAsync<dynamic>("SELECT * FROM Transactions")).ToList();
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT t.*, a1.Name as AccountName, 
+                   Bills.Name as BillName, Buckets.Name as BucketName 
+            FROM Transactions t
+            LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+            LEFT JOIN Bills ON t.BillId = Bills.Id
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id")).ToList();
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
     public async Task<IEnumerable<Transaction>> GetRawTransactionsAsync() {
         await using var conn = _db.GetConnection();
         var dbRows = (await conn.QueryAsync<dynamic>(@"
-            SELECT t.*, t.TransactionDate as TransactionDate, a.Name as AccountName, b.Name as BucketName
+            SELECT t.*, a.Name as AccountName, b.Name as BucketName
             FROM Transactions t
             LEFT JOIN Accounts a ON t.AccountId = a.Id
             LEFT JOIN Buckets b ON t.BucketId = b.Id")).ToList();
@@ -44,33 +51,77 @@ public partial class BudgetService {
 
     public async Task<IEnumerable<Transaction>> GetAccountTransactionsAsync(int accountId) {
         await using var conn = _db.GetConnection();
-        var dbRows = (await conn
-            .QueryAsync<dynamic>("SELECT *, TransactionDate as TransactionDate FROM Transactions WHERE AccountId=@accountId",
-                new { accountId })).ToList();
+        
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT t.*, a1.Name as AccountName, 
+                   Bills.Name as BillName, Buckets.Name as BucketName 
+            FROM Transactions t
+            LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+            LEFT JOIN Bills ON t.BillId = Bills.Id
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id  WHERE AccountId=@accountId",
+            new { accountId })).ToList();
+        
+        // var dbRows = (await conn
+        //     .QueryAsync<dynamic>("SELECT * FROM Transactions WHERE AccountId=@accountId",
+        //         new { accountId })).ToList();
         return MergeDbRowsToUiTransactions(dbRows);
+    }
+    
+    public async Task<IEnumerable<Ledger>> GetAccountTransactionsAsDynamicAsync(int accountId) {
+        await using var conn = _db.GetConnection();
+        var dbRows = (await conn
+            .QueryAsync<Ledger>("SELECT * FROM Transactions WHERE AccountId=@accountId",
+                new { accountId })).ToList();
+        return dbRows;
     }
 
     public async Task<IEnumerable<Transaction>> GetAllPaycheckTransactionsAsync() {
         await using var conn = _db.GetConnection();
-        var dbRows = (await conn
-            .QueryAsync<dynamic>(
-                "SELECT *, TransactionDate as TransactionDate FROM Transactions WHERE PaycheckId IS NOT NULL")).ToList();
+        // var dbRows = (await conn
+        //     .QueryAsync<dynamic>(
+        //         "SELECT * FROM Transactions WHERE PaycheckId IS NOT NULL")).ToList();
+        //
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT t.*, a1.Name as AccountName, 
+                   Bills.Name as BillName, Buckets.Name as BucketName 
+            FROM Transactions t
+            LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+            LEFT JOIN Bills ON t.BillId = Bills.Id
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.PaycheckId IS NOT NULL")).ToList();
+        
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
     public async Task<IEnumerable<Transaction>> GetBillTransactionsAsync() {
         await using var conn = _db.GetConnection();
-        var dbRows = (await conn
-            .QueryAsync<dynamic>("SELECT *, TransactionDate as TransactionDate FROM Transactions WHERE BillId IS NOT NULL")
-            ).ToList();
+        // var dbRows = (await conn
+        //     .QueryAsync<dynamic>("SELECT * FROM Transactions WHERE BillId IS NOT NULL")
+        //     ).ToList();
+        
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT t.*, a1.Name as AccountName, 
+                   Bills.Name as BillName, Buckets.Name as BucketName 
+            FROM Transactions t
+            LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+            LEFT JOIN Bills ON t.BillId = Bills.Id
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE BillId IS NOT NULL")).ToList();
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
     public async Task<IEnumerable<Transaction>> GetBucketTransactionsAsync() {
         await using var conn = _db.GetConnection();
-        var dbRows =  (await conn
-            .QueryAsync<dynamic>("SELECT *, TransactionDate as TransactionDate FROM Transactions WHERE BucketId IS NOT NULL")
-            ).ToList();
+        // var dbRows =  (await conn
+        //     .QueryAsync<dynamic>("SELECT * FROM Transactions WHERE BucketId IS NOT NULL")
+        //     ).ToList();
+        
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT t.*, a1.Name as AccountName, 
+                   Bills.Name as BillName, Buckets.Name as BucketName 
+            FROM Transactions t
+            LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+            LEFT JOIN Bills ON t.BillId = Bills.Id
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE BucketId IS NOT NULL")).ToList();
+        
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
@@ -85,19 +136,31 @@ public partial class BudgetService {
 
     public async Task<IEnumerable<Transaction>> GetAllUnreconciledTransactionsAsync() {
         await using var conn = _db.GetConnection();
-        var dbRows = (await conn
-            .QueryAsync<dynamic>(
-                "SELECT *, TransactionDate as TransactionDate FROM Transactions WHERE ReconciliationId IS NULL")
-            ).ToList();
+        // var dbRows = (await conn
+        //     .QueryAsync<dynamic>(
+        //         "SELECT * FROM Transactions WHERE ReconciliationId IS NULL")
+        //     ).ToList();
+        
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT t.*, a1.Name as AccountName, 
+                   Bills.Name as BillName, Buckets.Name as BucketName 
+            FROM Transactions t
+            LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+            LEFT JOIN Bills ON t.BillId = Bills.Id
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE ReconciliationId IS NULL")).ToList();
+        
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
     public async Task<IEnumerable<Transaction>> GetAllUnreconciledTransactionsSinceLastReconciliationAsync(int accountId) {
         await using var conn = _db.GetConnection();
         var dbRows =  (await conn.QueryAsync<dynamic>(@"
-            SELECT t.*, t.TransactionDate as TransactionDate, d.MinDate 
+            SELECT t.*, a.Name as AccountName, 
+                   Bills.Name as BillName, Buckets.Name as BucketName , d.MinDate 
             FROM Accounts a
             JOIN Transactions t ON t.AccountId = a.Id
+            LEFT JOIN Bills ON t.BillId = Bills.Id
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
             INNER JOIN (
                 SELECT a.Id, IfNull(ar.MaxDate, a.BalanceAsOf) AS MinDate 
                 FROM Accounts a

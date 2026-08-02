@@ -229,8 +229,8 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 TransactionDate = account.BalanceAsOf,
                 TransactionId = Guid.NewGuid(),
                 FitId = Guid.NewGuid().ToString(),
-                Description = "Opening Balance",
-                Memo = "Opening Balance"
+                Description = Constants.OpeningBalance,
+                Memo = Constants.OpeningBalance
             };
 
             if (openingBalance.Amount != 0) {
@@ -257,6 +257,9 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 var reconciliationTransactions =
                     JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
                 if (reconciliationTransactions != null) {
+                    foreach (var reconciliationTransaction in reconciliationTransactions) {
+                        reconciliationTransaction.IsReconciled = true;
+                    }
                     if (openingBalance.AccountId.HasValue) {
                         await reconciliationService.ReconcileAccountAsync(
                             openingBalance.AccountId.Value,
