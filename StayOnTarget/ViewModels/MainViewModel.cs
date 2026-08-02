@@ -2010,6 +2010,14 @@ public class MainViewModel : ViewModelBase {
             else {
                 EditingAccountClone.CreditCardDetails = new CreditCardDetails();
             }
+            if (SelectedAccount.AccountAprHistory != null) {
+                EditingAccountClone.AccountAprHistory =
+                    JsonConvert.DeserializeObject<List<AccountAprHistory>>(
+                        JsonConvert.SerializeObject(SelectedAccount.AccountAprHistory));
+            }
+            else {
+                EditingAccountClone.AccountAprHistory = new ();
+            }
 
             IsEditingAccount = true;
         }
@@ -2148,6 +2156,15 @@ public class MainViewModel : ViewModelBase {
             target.CreditCardDetails.MinPayFloor = clone.CreditCardDetails.MinPayFloor;
             target.CreditCardDetails.PayPreviousMonthBalanceInFull =
                 clone.CreditCardDetails.PayPreviousMonthBalanceInFull;
+
+            if (clone.AccountAprHistory != null) {
+                target.AccountAprHistory =
+                    JsonConvert.DeserializeObject<List<AccountAprHistory>>(
+                        JsonConvert.SerializeObject(clone.AccountAprHistory));
+            }
+            else {
+                target.AccountAprHistory = null;
+            }
         }
     }
 

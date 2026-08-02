@@ -25,6 +25,8 @@ public class Transaction : ViewModelBase
     private int? _toAccountReconciledId;
 
     public int Id { get; set; }
+    public long? FromRecordId { get; set; }
+    public long? ToRecordId { get; set; }
     public string FitId { get; set; } = Guid.NewGuid().ToString();
     public Guid TransactionId { get; set; } = Guid.NewGuid();
     
