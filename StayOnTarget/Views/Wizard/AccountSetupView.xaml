@@ -61,8 +61,13 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                            <!-- <Button Grid.Column="1" Content="Import Statement"  -->
+                            <!--         Command="{Binding DataContext.ImportStatementCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" -->
+                            <!--         CommandParameter="{Binding}" -->
+                            <!--         Padding="5,2" Margin="5,0,0,0"/> -->
                             <Button Grid.Column="1" Content="Delete" 
                                     Command="{Binding DataContext.DeleteAccountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}"
@@ -132,6 +137,7 @@ Be sure to mark your main checking account as your Primary payment account so au
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Name" Margin="0,0,0,5"/>
                     <TextBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding EditingAccount.Name, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" Margin="0,0,0,10"/>
@@ -143,25 +149,45 @@ Be sure to mark your main checking account as your Primary payment account so au
                     <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Text="Initial Balance" Margin="0,0,0,5"/>
                     <controls:NumericTextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" 
                                              Text="{Binding EditingAccount.Balance, UpdateSourceTrigger=PropertyChanged}" 
-                                             Margin="0,0,0,15"/>
+                                             Margin="0,0,0,0"/>
                     
                     <Label Grid.Row="2" Grid.Column="3" Grid.ColumnSpan="2"  Content="Balance as of:" />
                     <DatePicker Grid.Row="3" Grid.Column="3" Grid.ColumnSpan="2"
                                 SelectedDate="{Binding EditingAccount.BalanceAsOf, UpdateSourceTrigger=PropertyChanged}"
-                                MinWidth="90" Margin="0,0,0,15" />
+                                MinWidth="90" Margin="0,0,0,0" />
+
                     
-                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Type" Margin="0,0,0,5"/>
-                    <ComboBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" 
+                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="5"
+                               TextWrapping="Wrap"
+                               Foreground="DimGray"
+                               Visibility="{Binding EditingAccount.Type, ConverterParameter='CreditCard|PersonalLoan|Mortgage', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}">
+                        <Run Text="Enter the amount you owe. If you overpaid your " />
+    
+                        <InlineUIContainer BaselineAlignment="Baseline">
+                            <TextBlock Text="card" 
+                                       Visibility="{Binding EditingAccount.Type, ConverterParameter='CreditCard', Converter={StaticResource AccountTypeToVisibilityConverter}}"/>
+                        </InlineUIContainer>
+
+                        <InlineUIContainer BaselineAlignment="Baseline">
+                            <TextBlock Text="loan" 
+                                       Visibility="{Binding EditingAccount.Type, ConverterParameter='PersonalLoan|Mortgage', Converter={StaticResource AccountTypeToVisibilityConverter}}"/>
+                        </InlineUIContainer>
+
+                        <Run Text=" and have a credit balance, enter a negative number (e.g., -$50.00)." />
+                    </TextBlock>
+                    
+                    <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Type" Margin="0,15,0,5"/>
+                    <ComboBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" 
                               ItemsSource="{Binding AccountTypes}" 
                               SelectedItem="{Binding EditingAccount.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
                     
-                    <CheckBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Content="Primary payment account"
+                    <CheckBox Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Content="Primary payment account"
                               IsChecked="{Binding EditingAccount.IsPrimary}"
                               VerticalAlignment="Center" Margin="0,0,0,5"
                               Visibility="{Binding EditingAccount.Type, ConverterParameter='Checking|Savings', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}"
 
                     />
-                    <TextBlock Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="5" 
+                    <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="5" 
                                Margin="0,0,0,15" Foreground="DimGray" Text="(This is the account used to plan automated debt payments)" 
                                TextWrapping="Wrap"
                                Visibility="{Binding EditingAccount.Type, ConverterParameter='Checking|Savings', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}"

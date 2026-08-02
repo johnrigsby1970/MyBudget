@@ -143,27 +143,18 @@ public class MainViewModel : ViewModelBase {
 
         AddBillCommand = new RelayCommand(AddBill, () => IsNotEditingBill);
         EditBillCommand = new RelayCommand(EditBill, () => CanEditBill);
-
-
         CancelBillCommand = new RelayCommand(CancelBill, () => IsEditingBill);
 
-
         EditPeriodBillCommand = new RelayCommand(EditPeriodBill, () => CanEditPeriodBill);
-
-
         CancelPeriodBillCommand = new RelayCommand(CancelPeriodBill, () => IsEditingPeriodBill);
 
 
         AddBucketCommand = new RelayCommand(AddBucket, () => IsNotEditingBucket);
         EditBucketCommand = new RelayCommand(EditBucket, () => CanEditBucket);
-
-
         CancelBucketCommand = new RelayCommand(CancelBucket, () => IsEditingBucket);
 
 
         EditPeriodBucketCommand = new RelayCommand(EditPeriodBucket, () => CanEditPeriodBucket);
-
-
         CancelPeriodBucketCommand =
             new RelayCommand(CancelPeriodBucket, () => IsEditingPeriodBucket);
         AddTransactionCommand = new RelayCommand(AddTransaction, () => IsNotEditingTransaction);

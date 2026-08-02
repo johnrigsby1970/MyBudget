@@ -6,6 +6,8 @@ using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
 using Serilog;
 using StayOnTarget.Models;
+using StayOnTarget.Services;
+using StayOnTarget.Views;
 using StayOnTarget.Views.Wizard;
 
 namespace StayOnTarget.ViewModels.Wizard;
@@ -206,19 +208,24 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
 
             var debtAccountTypes = new List<AccountType>()
                 { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan };
-
+            var isDebtAccount = debtAccountTypes.Contains(account.Type);
+            // if (account.Balance > 0) {
+            //     isDebtAccount = false; //for purposes of initial balance, if the balance is positive,
+            //                            //it's not a debt account. It is one, but it is currently carrying
+            //                            //a positive balance.
+            // }
             var openingBalance = new Transaction() {
-                AccountId = debtAccountTypes.Contains(account.Type) ? account.Id : null,
-                ToAccountId = debtAccountTypes.Contains(account.Type)
+                AccountId = isDebtAccount ? account.Id : null,
+                ToAccountId = isDebtAccount
                     ? null
                     : account.Id,
-                AccountName = debtAccountTypes.Contains(account.Type)
+                AccountName = isDebtAccount
                     ? account.Name
                     : null,
-                ToAccountName = debtAccountTypes.Contains(account.Type)
+                ToAccountName = isDebtAccount
                     ? null
                     : account.Name,
-                Amount = account.Balance,
+                Amount = isDebtAccount ? -1 * account.Balance: account.Balance, //the balance is entered as a positive number, but we want to record it as a negative number
                 TransactionDate = account.BalanceAsOf,
                 TransactionId = Guid.NewGuid(),
                 FitId = Guid.NewGuid().ToString(),
@@ -245,27 +252,27 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 //         await DatabaseInitializationContext.BudgetService.GetAccountTransactionsAsync(openingBalance.ToAccountId.Value));
                 // }
 
-                // string json = JsonConvert.SerializeObject(transactions.ToList());
-                // var reconciliationTransactions =
-                //     JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
-                // if (reconciliationTransactions != null) {
-                //     if (openingBalance.AccountId.HasValue) {
-                //         await _reconciliationService.ReconcileAccountAsync(
-                //             openingBalance.AccountId.Value,
-                //             reconciliationTransactions,
-                //             openingBalance.Amount,
-                //             openingBalance.TransactionDate);
-                //     }
-                //
-                //     if (openingBalance.ToAccountId.HasValue) {
-                //         await _reconciliationService.ReconcileAccountAsync(
-                //             openingBalance.ToAccountId.Value,
-                //             reconciliationTransactions,
-                //             openingBalance.Amount,
-                //             openingBalance.TransactionDate);
-                //     }
-                //
-                // }
+                var reconciliationService = new ReconciliationService(DatabaseInitializationContext.BudgetService);
+                string json = JsonConvert.SerializeObject(new List<Transaction>(){openingBalance});
+                var reconciliationTransactions =
+                    JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
+                if (reconciliationTransactions != null) {
+                    if (openingBalance.AccountId.HasValue) {
+                        await reconciliationService.ReconcileAccountAsync(
+                            openingBalance.AccountId.Value,
+                            reconciliationTransactions,
+                            openingBalance.Amount,
+                            openingBalance.TransactionDate);
+                    }
+                
+                    if (openingBalance.ToAccountId.HasValue) {
+                        await reconciliationService.ReconcileAccountAsync(
+                            openingBalance.ToAccountId.Value,
+                            reconciliationTransactions,
+                            openingBalance.Amount,
+                            openingBalance.TransactionDate);
+                    }
+                }
             }
 
             Accounts.Add(account);
@@ -293,6 +300,22 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         }
     }
 
+    // [RelayCommand]
+    // private async Task ImportStatementAsync(Account? account) {
+    //     if (account == null || DatabaseInitializationContext.BudgetService == null) return;
+    //     try {
+    //         var window = new ImportReconciliationWindow(account, DatabaseInitializationContext.BudgetService) {
+    //             Owner = Application.Current.MainWindow
+    //         };
+    //         window.ShowDialog();
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error showing import window.");
+    //         MessageBox.Show("Failed to open import window. See log for details.", "Error", MessageBoxButton.OK,
+    //             MessageBoxImage.Error);
+    //     }
+    // }
+    
     [RelayCommand]
     private async Task DeleteAccountAsync(Account? account) {
         if (account == null || DatabaseInitializationContext.BudgetService == null) return;
