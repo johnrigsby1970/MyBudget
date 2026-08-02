@@ -383,6 +383,11 @@
                 <Button Content="Close" Width="80" Click="CancelButton_Click" IsCancel="True" HorizontalAlignment="Left"/>
             </StackPanel>
         </Border>
+        
+        <!-- SPINNER OVERLAY: Sitting on top of everything -->
+        <controls:LoadingOverlay 
+            Message="{Binding SpinnerMessage}"
+            Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}" />
     </Grid>
     
 </Window>

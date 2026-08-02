@@ -49,6 +49,14 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
     }
 
+    private bool _isBusy;
+
+    public bool IsBusy {
+        get => _isBusy;
+        set {
+            if (SetProperty(ref _isBusy, value)) { }
+        }
+    }
 
     private bool? _lastImportAsQfx;
 
@@ -112,7 +120,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
     public IAsyncRelayCommand ConfirmCsvImportCommand { get; }
     public IRelayCommand CancelCsvImportCommand { get; }
-    
+
     public ObservableCollection<Bill> BillsWithNone { get; } = new();
     public ObservableCollection<BudgetBucket> BucketsWithNone { get; } = new();
     public IRelayCommand ToggleSelectionCommand { get; }
@@ -148,7 +156,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
         // Use a lambda to capture the parameter (param) and call your method
         LinkTransactionsCommand = new RelayCommand(
             LinkTransactions,
-            () => SelectedImported != null && !SelectedImported.IsReconciled && SelectedManual != null && !SelectedManual.IsMatched
+            () => SelectedImported != null && !SelectedImported.IsReconciled && SelectedManual != null &&
+                  !SelectedManual.IsMatched
         );
 
         ImportAsNewCommand = new RelayCommand(
@@ -161,79 +170,93 @@ public class ImportReconciliationViewModel : ViewModelBase {
             () => SelectedImported != null && SelectedImported.IsReconciled
         );
 
-        InitializeDataCommand  = new AsyncRelayCommand( LoadDataAsync); 
+        InitializeDataCommand = new AsyncRelayCommand(LoadDataAsync);
     }
-    
+
     public IAsyncRelayCommand InitializeDataCommand { get; }
-    
+
     private async void SaveAsync() {
         if (string.IsNullOrEmpty(LastFileName)) {
             return;
         }
 
-        var fixDate = false;
+        try {
+            var fixDate = false;
 
-        var differencesInDates = ImportedTransactions.Where(x =>
-            x.IsSelected &&
-            x.IsReconciled &&
-            x.MatchedManualTransactionDate != null && x.Date.HasValue &&
-            DateOnly.FromDateTime(x.MatchedManualTransactionDate.Value.Date) != DateOnly.FromDateTime(x.Date.Value));
+            var differencesInDates = ImportedTransactions.Where(x =>
+                x.IsSelected &&
+                x.IsReconciled &&
+                x.MatchedManualTransactionDate != null && x.Date.HasValue &&
+                DateOnly.FromDateTime(x.MatchedManualTransactionDate.Value.Date) !=
+                DateOnly.FromDateTime(x.Date.Value));
 
-        if (differencesInDates.Any()) {
-            MessageBoxResult messageBoxResult = MessageBox.Show(
-                $"Some dates are different between existing transactions and those found at your bank. Do you want to set the transaction dates to match your bank?",
-                "Date Change Confirmation", MessageBoxButton.YesNo);
+            if (differencesInDates.Any()) {
+                MessageBoxResult messageBoxResult = MessageBox.Show(
+                    $"Some dates are different between existing transactions and those found at your bank. Do you want to set the transaction dates to match your bank?",
+                    "Date Change Confirmation", MessageBoxButton.YesNo);
 
-            if (messageBoxResult == MessageBoxResult.Yes) {
-                fixDate = true;
+                if (messageBoxResult == MessageBoxResult.Yes) {
+                    fixDate = true;
+                }
+            }
+
+            IsBusy = true;
+
+            // Yield back to UI thread to allow WPF to render the LoadingOverlay control
+            await Task.Delay(50);
+
+            // Handled matched transactions
+            foreach (var match in ImportedTransactions.Where(x =>
+                         x.IsSelected &&
+                         x.IsReconciled && !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
+                         x.MatchedManualTransactionDate != null && !string.IsNullOrEmpty(x.MatchedManualFitId))) {
+                if (string.IsNullOrEmpty(match.BankId)) continue;
+                if (string.IsNullOrEmpty(match.Payee)) continue;
+                // Track each background database call
+                await Task.Delay(10);
+                await _budgetService.UpdateTransactionForBankFitIdAsync(
+                    _account.Id,
+                    match.MatchedManualTransactionId!,
+                    match.MatchedManualFitId!,
+                    match.BankId,
+                    fixDate && match.Date.HasValue ? match.Date.Value : match.MatchedManualTransactionDate!.Value,
+                    match.Payee
+                );
+            }
+
+            // Handle new transactions that are checked but not matched
+            foreach (var newItem in ImportedTransactions.Where(x => x.IsSelected && !x.IsReconciled)) {
+                if (string.IsNullOrEmpty(newItem.Payee)) continue;
+                if (string.IsNullOrEmpty(newItem.BankId)) continue;
+                var t = new Transaction {
+                    AccountId = newItem.Amount > 0 ? null : _account.Id,
+                    ToAccountId = newItem.Amount > 0 ? _account.Id : null,
+                    Amount = newItem.Amount,
+                    TransactionDate = newItem.Date ?? DateTime.Now,
+                    Description = newItem.Payee,
+                    FitId = newItem.BankId,
+                    BillId = newItem.BillId == 0 ? null : newItem.BillId,
+                    BucketId = newItem.BucketId == 0 ? null : newItem.BucketId
+                };
+                await Task.Delay(10);
+                await _budgetService.UpsertTransactionAsync(t);
+            }
+            
+            await Task.Delay(50);
+            
+            // 4. Now these run sequentially on the UI thread with accurate database states
+            await LoadDataAsync();
+
+            if (LastImportAsQfx != null && LastImportAsQfx.Value) {
+                await ParseAndPopulateQfxAsync(LastFileName);
+            }
+
+            if (LastImportAsQfx != null && !LastImportAsQfx.Value) {
+                await ParseAndPopulateCsv(LastFileName);
             }
         }
-        
-        // Handled matched transactions
-        foreach (var match in ImportedTransactions.Where(x =>
-                     x.IsSelected &&
-                     x.IsReconciled && !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
-                     x.MatchedManualTransactionDate != null && !string.IsNullOrEmpty(x.MatchedManualFitId))) {
-            
-            if(string.IsNullOrEmpty(match.BankId)) continue;
-            if(string.IsNullOrEmpty(match.Payee)) continue;
-            // Track each background database call
-            await _budgetService.UpdateTransactionForBankFitIdAsync(
-                _account.Id,
-                match.MatchedManualTransactionId!,
-                match.MatchedManualFitId!,
-                match.BankId,
-                fixDate && match.Date.HasValue ? match.Date.Value : match.MatchedManualTransactionDate!.Value,
-                match.Payee
-            );
-        }
-
-        // Handle new transactions that are checked but not matched
-        foreach (var newItem in ImportedTransactions.Where(x => x.IsSelected && !x.IsReconciled)) {
-            if(string.IsNullOrEmpty(newItem.Payee)) continue;
-            if(string.IsNullOrEmpty(newItem.BankId)) continue;
-            var t = new Transaction {
-                AccountId = newItem.Amount>0 ? null : _account.Id,
-                ToAccountId = newItem.Amount>0 ? _account.Id : null,
-                Amount = newItem.Amount,
-                TransactionDate = newItem.Date ?? DateTime.Now,
-                Description = newItem.Payee,
-                FitId = newItem.BankId,
-                BillId = newItem.BillId == 0 ? null : newItem.BillId,
-                BucketId = newItem.BucketId == 0 ? null : newItem.BucketId
-            };
-            await _budgetService.UpsertTransactionAsync(t);
-        }
-        
-        // 4. Now these run sequentially on the UI thread with accurate database states
-        await LoadDataAsync();
-
-        if (LastImportAsQfx != null && LastImportAsQfx.Value) {
-            await ParseAndPopulateQfxAsync(LastFileName);
-        }
-
-        if (LastImportAsQfx != null && !LastImportAsQfx.Value) {
-            await ParseAndPopulateCsv(LastFileName);
+        finally {
+            IsBusy = false;
         }
     }
 
@@ -260,7 +283,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
         }
     }
-    
+
     // private void PromptAndLoadQfx() {
     //     var openFileDialog = new Microsoft.Win32.OpenFileDialog {
     //         Filter = "QFX Files (*.qfx)|*.qfx|OFX Files (*.ofx)|*.ofx",
@@ -346,97 +369,90 @@ public class ImportReconciliationViewModel : ViewModelBase {
         AutoMatchTransactions();
     }
 
-    private async Task ParseAndPopulateQfxAsync(string filePath)
-{
-    if (!File.Exists(filePath)) return;
+    private async Task ParseAndPopulateQfxAsync(string filePath) {
+        if (!File.Exists(filePath)) return;
 
-    LastImportAsQfx = true;
-    ImportedTransactions.Clear();
+        LastImportAsQfx = true;
+        ImportedTransactions.Clear();
 
-    string content = await File.ReadAllTextAsync(filePath);
+        string content = await File.ReadAllTextAsync(filePath);
 
-    // FIX 1: Pre-process the SGML into clean chunks. 
-    // This normalizes both closed </STMTTRN> and unclosed SGML transaction blocks.
-    var txBlocks = new List<string>();
-    var matches = Regex.Matches(content, @"<STMTTRN>(.*?)(?=</STMTTRN>|<STMTTRN>|</STMTRS>)", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-    foreach (Match m in matches)
-    {
-        txBlocks.Add(m.Groups[1].Value);
-    }
+        // FIX 1: Pre-process the SGML into clean chunks. 
+        // This normalizes both closed </STMTTRN> and unclosed SGML transaction blocks.
+        var txBlocks = new List<string>();
+        var matches = Regex.Matches(content, @"<STMTTRN>(.*?)(?=</STMTTRN>|<STMTTRN>|</STMTRS>)",
+            RegexOptions.Singleline | RegexOptions.IgnoreCase);
+        foreach (Match m in matches) {
+            txBlocks.Add(m.Groups[1].Value);
+        }
 
-    // Fetch existing bank IDs from your DB to skip duplicates
-    var processedBankIds = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id);
-    
-    // Maintain a list of manual transactions to remove safely after the loop
-    var transactionsToRemove = new List<ManualTransactionViewModel>();
+        // Fetch existing bank IDs from your DB to skip duplicates
+        var processedBankIds = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id);
 
-    foreach (string txBlock in txBlocks)
-    {
-        string bankId = GetQfxTagValue(txBlock, "FITID");
-        if (string.IsNullOrWhiteSpace(bankId)) continue;
+        // Maintain a list of manual transactions to remove safely after the loop
+        var transactionsToRemove = new List<ManualTransactionViewModel>();
 
-        // Skip if this exact transaction was already committed to the DB
-        if (processedBankIds.Contains(bankId))
-        {
-            var rec = UnreconciledManualTransactions.SingleOrDefault(x => x.FitId == bankId);
-            if (rec != null) 
-            {
-                transactionsToRemove.Add(rec);
+        foreach (string txBlock in txBlocks) {
+            string bankId = GetQfxTagValue(txBlock, "FITID");
+            if (string.IsNullOrWhiteSpace(bankId)) continue;
+
+            // Skip if this exact transaction was already committed to the DB
+            if (processedBankIds.Contains(bankId)) {
+                var rec = UnreconciledManualTransactions.SingleOrDefault(x => x.FitId == bankId);
+                if (rec != null) {
+                    transactionsToRemove.Add(rec);
+                }
+
+                continue;
             }
-            continue;
+
+            string rawDate = GetQfxTagValue(txBlock, "DTPOSTED");
+            string rawAmount = GetQfxTagValue(txBlock, "TRNAMT");
+            string payee = GetQfxTagValue(txBlock, "NAME");
+
+            // Parse Date safely
+            DateTime date = DateTime.Today;
+            if (rawDate.Length >= 8 && DateTime.TryParseExact(rawDate.Substring(0, 8), "yyyyMMdd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate)) {
+                date = parsedDate;
+            }
+
+            // Parse Amount safely
+            decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amount);
+
+            ImportedTransactions.Add(new ImportedTransactionViewModel {
+                BankId = bankId,
+                Date = date,
+                Amount = amount,
+                Payee = payee, // Already sanitized by updated GetQfxTagValue
+                Status = "Unmatched"
+            });
         }
 
-        string rawDate = GetQfxTagValue(txBlock, "DTPOSTED"); 
-        string rawAmount = GetQfxTagValue(txBlock, "TRNAMT");
-        string payee = GetQfxTagValue(txBlock, "NAME");
-
-        // Parse Date safely
-        DateTime date = DateTime.Today;
-        if (rawDate.Length >= 8 && DateTime.TryParseExact(rawDate.Substring(0, 8), "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
-        {
-            date = parsedDate;
+        // FIX 3: Safely mutate the UI tracking collection outside of the processing loop
+        foreach (var rec in transactionsToRemove) {
+            UnreconciledManualTransactions.Remove(rec);
         }
 
-        // Parse Amount safely
-        decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amount);
-
-        ImportedTransactions.Add(new ImportedTransactionViewModel
-        {
-            BankId = bankId,
-            Date = date,
-            Amount = amount,
-            Payee = payee, // Already sanitized by updated GetQfxTagValue
-            Status = "Unmatched"
-        });
+        // Auto-match pass
+        AutoMatchTransactions();
     }
 
-    // FIX 3: Safely mutate the UI tracking collection outside of the processing loop
-    foreach (var rec in transactionsToRemove)
-    {
-        UnreconciledManualTransactions.Remove(rec);
+    private string GetQfxTagValue(string block, string tag) {
+        // FIX 2: Updated regex to capture content up to a closing tag, a new open tag, OR a newline/carriage return.
+        // This safely handles both standard XML <TAG>value</TAG> and SGML <TAG>value
+        var match = Regex.Match(block, $@"<{tag}>([^<\r\n]+)", RegexOptions.IgnoreCase);
+        if (!match.Success) return string.Empty;
+
+        string value = match.Groups[1].Value;
+
+        // Clean up any remaining SGML fragments or artifacts safely
+        if (value.Contains("</")) {
+            value = value.Split(new[] { "</" }, StringSplitOptions.None)[0];
+        }
+
+        return value.Trim();
     }
-
-    // Auto-match pass
-    AutoMatchTransactions();
-}
-
-private string GetQfxTagValue(string block, string tag)
-{
-    // FIX 2: Updated regex to capture content up to a closing tag, a new open tag, OR a newline/carriage return.
-    // This safely handles both standard XML <TAG>value</TAG> and SGML <TAG>value
-    var match = Regex.Match(block, $@"<{tag}>([^<\r\n]+)", RegexOptions.IgnoreCase);
-    if (!match.Success) return string.Empty;
-
-    string value = match.Groups[1].Value;
-    
-    // Clean up any remaining SGML fragments or artifacts safely
-    if (value.Contains("</"))
-    {
-        value = value.Split(new[] { "</" }, StringSplitOptions.None)[0];
-    }
-
-    return value.Trim();
-}
 
     // private async Task ParseAndPopulateQfxAsync(string filePath) {
     //     if (!File.Exists(filePath)) return;
@@ -500,7 +516,7 @@ private string GetQfxTagValue(string block, string tag)
     //     var match = Regex.Match(block, $@"<{tag}>([^<\r\n]+)");
     //     return match.Success ? match.Value.Replace($"<{tag}>", "").Trim() : string.Empty;
     // }
-    
+
     // private void AutoMatchTransactions() {
     //     //In different levels of accuracy, try to find a transaction that is already in the system that matches. The more accurate match wins
     //     foreach (var imported in ImportedTransactions.Where(x => x.Date != null)) {
@@ -595,114 +611,106 @@ private string GetQfxTagValue(string block, string tag)
     //         }
     //     }
     // }
-    
-    private void AutoMatchTransactions()
-{
-    // FIX 1: Track matches using string HashSet to align with your string? TransactionId type
-    var matchedManualIds = new HashSet<string>();
 
-    foreach (var imported in ImportedTransactions.Where(x => x.Date != null))
-    {
-        if (imported.Date == null || imported.Date == DateTime.MinValue)
-        {
-            continue; // Ignore pending items
+    private void AutoMatchTransactions() {
+        // FIX 1: Track matches using string HashSet to align with your string? TransactionId type
+        var matchedManualIds = new HashSet<string>();
+
+        foreach (var imported in ImportedTransactions.Where(x => x.Date != null)) {
+            if (imported.Date == null || imported.Date == DateTime.MinValue) {
+                continue; // Ignore pending items
+            }
+
+            // TIER 1: Exact amount, exact date, close name match
+            var exactMatch = UnreconciledManualTransactions.FirstOrDefault(m =>
+                !string.IsNullOrEmpty(m.TransactionId) &&
+                !matchedManualIds.Contains(m.TransactionId) &&
+                Math.Abs(m.Amount) == Math.Abs(imported.Amount) &&
+                Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) == 0 &&
+                TransactionMatcher.IsMatch(imported.Payee ?? "", m.Description));
+
+            if (exactMatch != null) {
+                ApplyMatch(imported, exactMatch, $"Auto-Matched ({exactMatch.Description})");
+                matchedManualIds.Add(exactMatch.TransactionId!);
+                continue;
+            }
+
+            // TIER 2: Exact amount, close date (±4 days), close name match
+            var closerMatch = UnreconciledManualTransactions.FirstOrDefault(m =>
+                !string.IsNullOrEmpty(m.TransactionId) &&
+                !matchedManualIds.Contains(m.TransactionId) &&
+                Math.Abs(m.Amount) == Math.Abs(imported.Amount) &&
+                Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) <= 4 &&
+                TransactionMatcher.IsMatch(imported.Payee ?? "", m.Description));
+
+            if (closerMatch != null) {
+                ApplyMatch(imported, closerMatch, $"Auto-Matched ({closerMatch.Description})");
+                matchedManualIds.Add(closerMatch.TransactionId!);
+                continue;
+            }
+
+            // TIER 3: Exact amount, exact date, names are completely different
+            var closeMatch = UnreconciledManualTransactions.FirstOrDefault(m =>
+                !string.IsNullOrEmpty(m.TransactionId) &&
+                !matchedManualIds.Contains(m.TransactionId) &&
+                Math.Abs(m.Amount) == Math.Abs(imported.Amount) &&
+                Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) == 0);
+
+            if (closeMatch != null) {
+                ApplyMatch(imported, closeMatch, $"Auto-Matched ({closeMatch.Description})");
+                imported.BillId = closeMatch.BillId;
+                imported.BucketId = closeMatch.BucketId;
+                imported.IsSelected = true;
+                matchedManualIds.Add(closeMatch.TransactionId!);
+                continue;
+            }
+
+            // TIER 4 Guard: Skip if multiple entries sit ambiguously inside the 4-day window
+            int ambiguousCount = UnreconciledManualTransactions.Count(m =>
+                !string.IsNullOrEmpty(m.TransactionId) &&
+                !matchedManualIds.Contains(m.TransactionId) &&
+                Math.Abs(m.Amount) == Math.Abs(imported.Amount) &&
+                Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) <= 4);
+
+            if (ambiguousCount > 1) {
+                continue;
+            }
+
+            // TIER 4: Exact amount, close date (±4 days), names are completely different
+            var match = UnreconciledManualTransactions.FirstOrDefault(m =>
+                !string.IsNullOrEmpty(m.TransactionId) &&
+                !matchedManualIds.Contains(m.TransactionId) &&
+                Math.Abs(m.Amount) == Math.Abs(imported.Amount) &&
+                Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) <= 4);
+
+            if (match != null) {
+                ApplyMatch(imported, match, $"Auto-Matched ({match.Description})");
+                imported.BillId = match.BillId;
+                imported.BucketId = match.BucketId;
+                imported.IsSelected = true;
+                matchedManualIds.Add(match.TransactionId!);
+            }
         }
 
-        // TIER 1: Exact amount, exact date, close name match
-        var exactMatch = UnreconciledManualTransactions.FirstOrDefault(m => 
-            !string.IsNullOrEmpty(m.TransactionId) &&
-            !matchedManualIds.Contains(m.TransactionId) && 
-            Math.Abs(m.Amount) == Math.Abs(imported.Amount) && 
-            Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) == 0 && 
-            TransactionMatcher.IsMatch(imported.Payee ?? "", m.Description));
-
-        if (exactMatch != null)
-        {
-            ApplyMatch(imported, exactMatch, $"Auto-Matched ({exactMatch.Description})");
-            matchedManualIds.Add(exactMatch.TransactionId!);
-            continue;
-        }
-
-        // TIER 2: Exact amount, close date (±4 days), close name match
-        var closerMatch = UnreconciledManualTransactions.FirstOrDefault(m => 
-            !string.IsNullOrEmpty(m.TransactionId) &&
-            !matchedManualIds.Contains(m.TransactionId) && 
-            Math.Abs(m.Amount) == Math.Abs(imported.Amount) && 
-            Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) <= 4 && 
-            TransactionMatcher.IsMatch(imported.Payee ?? "", m.Description));
-
-        if (closerMatch != null)
-        {
-            ApplyMatch(imported, closerMatch, $"Auto-Matched ({closerMatch.Description})");
-            matchedManualIds.Add(closerMatch.TransactionId!);
-            continue;
-        }
-
-        // TIER 3: Exact amount, exact date, names are completely different
-        var closeMatch = UnreconciledManualTransactions.FirstOrDefault(m => 
-            !string.IsNullOrEmpty(m.TransactionId) &&
-            !matchedManualIds.Contains(m.TransactionId) && 
-            Math.Abs(m.Amount) == Math.Abs(imported.Amount) && 
-            Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) == 0);
-
-        if (closeMatch != null)
-        {
-            ApplyMatch(imported, closeMatch, $"Auto-Matched ({closeMatch.Description})");
-            imported.BillId = closeMatch.BillId;
-            imported.BucketId = closeMatch.BucketId;
-            imported.IsSelected = true;
-            matchedManualIds.Add(closeMatch.TransactionId!);
-            continue;
-        }
-
-        // TIER 4 Guard: Skip if multiple entries sit ambiguously inside the 4-day window
-        int ambiguousCount = UnreconciledManualTransactions.Count(m => 
-            !string.IsNullOrEmpty(m.TransactionId) &&
-            !matchedManualIds.Contains(m.TransactionId) && 
-            Math.Abs(m.Amount) == Math.Abs(imported.Amount) && 
-            Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) <= 4);
-
-        if (ambiguousCount > 1)
-        {
-            continue; 
-        }
-
-        // TIER 4: Exact amount, close date (±4 days), names are completely different
-        var match = UnreconciledManualTransactions.FirstOrDefault(m => 
-            !string.IsNullOrEmpty(m.TransactionId) &&
-            !matchedManualIds.Contains(m.TransactionId) && 
-            Math.Abs(m.Amount) == Math.Abs(imported.Amount) && 
-            Math.Abs((m.TransactionDate - imported.Date.Value).TotalDays) <= 4);
-
-        if (match != null)
-        {
-            ApplyMatch(imported, match, $"Auto-Matched ({match.Description})");
-            imported.BillId = match.BillId;
-            imported.BucketId = match.BucketId;
-            imported.IsSelected = true;
-            matchedManualIds.Add(match.TransactionId!);
+        // Set UI Selection defaults cleanly outside the loop execution window
+        var firstUnmatchedImport = ImportedTransactions.FirstOrDefault(x => !x.IsReconciled);
+        if (firstUnmatchedImport != null) {
+            SelectedImported = firstUnmatchedImport;
+            SelectedManual = UnreconciledManualTransactions.FirstOrDefault(m =>
+                !m.IsMatched && Math.Abs(m.Amount) == Math.Abs(firstUnmatchedImport.Amount));
         }
     }
-
-    // Set UI Selection defaults cleanly outside the loop execution window
-    var firstUnmatchedImport = ImportedTransactions.FirstOrDefault(x => !x.IsReconciled);
-    if (firstUnmatchedImport != null)
-    {
-        SelectedImported = firstUnmatchedImport;
-        SelectedManual = UnreconciledManualTransactions.FirstOrDefault(m => !m.IsMatched && Math.Abs(m.Amount) == Math.Abs(firstUnmatchedImport.Amount));
-    }
-}
 
 // Clean helper parameterized explicitly to match your class definitions
-private void ApplyMatch(ImportedTransactionViewModel imported, ManualTransactionViewModel manual, string statusText)
-{
-    imported.IsReconciled = true;
-    imported.Status = statusText;
-    imported.MatchedManualFitId = manual.FitId;
-    imported.MatchedManualTransactionDate = manual.TransactionDate;
-    imported.MatchedManualTransactionId = manual.TransactionId;
-    manual.IsMatched = true; // Will safely fire notification 
-}
+    private void ApplyMatch(ImportedTransactionViewModel imported, ManualTransactionViewModel manual,
+        string statusText) {
+        imported.IsReconciled = true;
+        imported.Status = statusText;
+        imported.MatchedManualFitId = manual.FitId;
+        imported.MatchedManualTransactionDate = manual.TransactionDate;
+        imported.MatchedManualTransactionId = manual.TransactionId;
+        manual.IsMatched = true; // Will safely fire notification 
+    }
 
     private void FilterManualSuggestions() {
         // Optional: Filter or highlight the Manual list here based on SelectedImported's Amount/Date
@@ -725,8 +733,6 @@ private void ApplyMatch(ImportedTransactionViewModel imported, ManualTransaction
         OnPropertyChanged(nameof(SelectedManual));
         OnPropertyChanged(nameof(SelectedImported));
         OnPropertyChanged(nameof(UnreconciledManualTransactions));
-        
-        
     }
 
     private void ClearMatch() {
@@ -755,15 +761,15 @@ private void ApplyMatch(ImportedTransactionViewModel imported, ManualTransaction
         if (SelectedImported == null || SelectedImported.Date == null) return;
 
         // 1. Guard Check BEFORE creating the ViewModel or Window
-        if (string.IsNullOrWhiteSpace(SelectedImported?.Payee) || 
-            SelectedImported.Date == null || 
-            string.IsNullOrWhiteSpace(SelectedImported.BankId)) 
-        {
-            MessageBox.Show("The transaction lacks required fields: payee, transaction date, and a bank transaction id.", 
+        if (string.IsNullOrWhiteSpace(SelectedImported?.Payee) ||
+            SelectedImported.Date == null ||
+            string.IsNullOrWhiteSpace(SelectedImported.BankId)) {
+            MessageBox.Show(
+                "The transaction lacks required fields: payee, transaction date, and a bank transaction id.",
                 "Missing Information", MessageBoxButton.OK, MessageBoxImage.Warning);
             return; // Exit cleanly without opening the dialog window!
         }
-        
+
         ActiveOverlay = new NewTransactionViewModel(_account, _budgetService, SelectedImported, (childVm, isSaved) => {
             // This code executes when the child calls _closeCallback(...)
             if (isSaved) {

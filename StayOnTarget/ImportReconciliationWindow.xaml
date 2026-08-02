@@ -8,6 +8,7 @@
            xmlns:stayOnTarget="clr-namespace:StayOnTarget"
            xmlns:converters="clr-namespace:StayOnTarget.Converters"
            xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+           xmlns:controls="clr-namespace:StayOnTarget.Controls"
            mc:Ignorable="d"
            Title="Import &amp; Reconcile QFX Transactions" Height="650" Width="900"
            WindowStartupLocation="CenterScreen">
@@ -316,6 +317,11 @@
                 </StackPanel>
             </Border>
         </Grid>
+        
+        <!-- SPINNER OVERLAY: Sitting on top of everything -->
+        <controls:LoadingOverlay 
+            Message="Importing records..."
+            Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}" />
         
         <ContentControl Content="{Binding ActiveOverlay}" />
     </Grid>

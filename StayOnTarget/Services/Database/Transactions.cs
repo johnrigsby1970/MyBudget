@@ -58,7 +58,7 @@ public partial class BudgetService {
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id  WHERE AccountId=@accountId",
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id  WHERE t.AccountId=@accountId",
             new { accountId })).ToList();
         
         // var dbRows = (await conn
@@ -104,7 +104,7 @@ public partial class BudgetService {
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE BillId IS NOT NULL")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.BillId IS NOT NULL")).ToList();
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
@@ -120,7 +120,7 @@ public partial class BudgetService {
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE BucketId IS NOT NULL")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.BucketId IS NOT NULL")).ToList();
         
         return MergeDbRowsToUiTransactions(dbRows);
     }
@@ -147,7 +147,7 @@ public partial class BudgetService {
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE ReconciliationId IS NULL")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.ReconciliationId IS NULL")).ToList();
         
         return MergeDbRowsToUiTransactions(dbRows);
     }

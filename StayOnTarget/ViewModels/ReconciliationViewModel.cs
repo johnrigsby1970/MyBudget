@@ -57,12 +57,26 @@ public partial class ReconciliationViewModel : ViewModelBase {
         get => _account;
         set => SetProperty(ref _account, value);
     }
+    
+    private string _spinnerMessage = "Loading...";
 
+    public string SpinnerMessage {
+        get => _spinnerMessage;
+        set => SetProperty(ref _spinnerMessage, value);
+    }
+    
     private bool _isOpeningBalanceCreated;
 
     public bool IsOpeningBalanceCreated {
         get => _isOpeningBalanceCreated;
         set => SetProperty(ref _isOpeningBalanceCreated, value);
+    }
+    
+    private bool _isBusy;
+
+    public bool IsBusy {
+        get => _isBusy;
+        set => SetProperty(ref _isBusy, value);
     }
 
     private decimal _beginningBalance;
@@ -376,6 +390,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
 
     private async Task LoadDataAsync() {
         try {
+            SpinnerMessage = "Loading...";
+            IsBusy = true;
+            await Task.Delay(10);
             decimal beginningBalance = _account.Balance;
             DateTime? lastReconciledDate = _account.BalanceAsOf;
             (bool hasTransactions, decimal? openingBalance, DateTime? openingBalanceDate) openingRecord =
@@ -437,7 +454,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
             bool hasTransactionsBeforeOpening = earliestTransaction != null
                                                 && (DateTime)earliestTransaction.TransactionDate <=
                                                 openingRecord.openingBalanceDate;
-
+            IsBusy = false;
+            await Task.Delay(10);
+            
             if (hasTransactionsBeforeOpening) {
                 bool isOpeningBalanceReconciled = allTransactions.Any(x =>
                     x.Description == Constants.OpeningBalance && x.ReconciliationId != null);
@@ -481,6 +500,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
                 }
             }
 
+            IsBusy = true;
+            
+            await Task.Delay(10);
 
             string json = JsonConvert.SerializeObject(transactions.ToList());
             var reconciliationTransactions = JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
@@ -518,6 +540,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
         catch (Exception ex) {
             // Must catch exceptions locally to prevent app crash!
             Log.Error("ReconciliationViewModel failed to load data: " + ex.Message);
+        }
+        finally {
+            IsBusy = false;
         }
         // finally
         // {

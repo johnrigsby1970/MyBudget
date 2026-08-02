@@ -12,6 +12,7 @@ namespace StayOnTarget;
 public partial class ReconciliationWindow : Window {
     private readonly ReconciliationViewModel _viewModel;
 
+    private bool IsBusy { get; set; }
     public ReconciliationWindow(Account account, BudgetService budgetService) {
         InitializeComponent();
         _viewModel = new ReconciliationViewModel(account, budgetService);
@@ -26,7 +27,15 @@ public partial class ReconciliationWindow : Window {
                 "Delete Confirmation", MessageBoxButton.YesNo);
 
             if (messageBoxResult == MessageBoxResult.Yes) {
-                await _viewModel.UpdateReconciliationTransactionsAsync();
+                _viewModel.SpinnerMessage = "Reconciling records...";
+                _viewModel.IsBusy = true; // Shows the overlay & starts spinner
+                // Yield back to UI thread to allow WPF to render the LoadingOverlay control
+                await Task.Delay(50);
+                await Task.Run(async () => {
+                    await _viewModel.UpdateReconciliationTransactionsAsync();
+                });
+                
+                _viewModel.IsBusy = false; // Hides spinner
                 DialogResult = true;
             }
             else {
@@ -35,6 +44,9 @@ public partial class ReconciliationWindow : Window {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during OkButton_Click.");
+        }
+        finally {
+            _viewModel.IsBusy = false; // Hides spinner
         }
     }
 
