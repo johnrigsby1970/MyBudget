@@ -475,7 +475,7 @@ public partial class BudgetService {
                 var toAccount = (await GetAllAccountsAsOfAsync(t.TransactionDate))
                     .FirstOrDefault(a => a.Id == t.ToAccountId.Value);
 
-                if (toAccount != null && toAccount.Type == AccountType.Mortgage && toAccount.MortgageDetails != null) {
+                if (toAccount != null && (toAccount.IsLoanAccount) && toAccount.MortgageDetails != null) {
                     int statementDay = toAccount.MortgageDetails.StatementDay;
 
                     int year = t.TransactionDate.Year;

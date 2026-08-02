@@ -31,6 +31,19 @@ public enum AccountType
     RealEstate,
     AppreciatingAsset,
     Auto,
-    CollegeFund,
-    Cash
+    CollegeFund,// 529 / Coverdell
+    Cash,
+    IRA,
+    RothIRA,
+    Roth401k,
+    HSA,
+    FDA,
+    Pension,
+    DigitalAsset,
+    OtherAsset,
+    OtherLiability,
+    HELOC,
+    StudentLoan,
+    RentalProperty,
+    Business
 }

@@ -74,7 +74,48 @@ public class Account : ViewModelBase, INotifyDataErrorInfo
         get => _type;
         set => SetProperty(ref _type, value);
     }
+    
+    /// <summary>
+    /// Indicates whether the account naturally carries a negative balance in net worth calculations.
+    /// </summary>
+    public bool IsLiability => Type switch
+    {
+        AccountType.CreditCard or 
+            AccountType.Mortgage or 
+            AccountType.PersonalLoan or 
+            AccountType.StudentLoan or 
+            AccountType.HELOC or 
+            AccountType.Auto or 
+            AccountType.OtherLiability => true,
+        _ => false
+    };
 
+    /// <summary>
+    /// Indicates whether this account requires loan/amortization/interest processing.
+    /// </summary>
+    public bool IsLoanAccount => Type switch
+    {
+        AccountType.Mortgage or 
+            AccountType.StudentLoan or 
+            AccountType.PersonalLoan or 
+            AccountType.HELOC or 
+            AccountType.Auto => true,
+        _ => false
+    };
+    
+    public bool UsesAmortizedLoanProjections => Type switch
+    {
+        AccountType.Mortgage or 
+            AccountType.Auto or 
+            AccountType.StudentLoan or 
+            AccountType.PersonalLoan => true,
+
+        // HELOC only amortizes if it is in repayment mode (or configured with a fixed payoff term)
+        //AccountType.HELOC => IsHelocInRepaymentPhase, 
+
+        _ => false
+    };
+    
     public string HexColor
     {
         get => _hexColor;

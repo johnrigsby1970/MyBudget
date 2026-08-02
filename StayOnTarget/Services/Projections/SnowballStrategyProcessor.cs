@@ -35,7 +35,7 @@ public static class SnowballStrategyProcessor
         // 1. Debt Snowball Execution
         if (options.PrimaryTarget is SurplusAllocationTarget.PayDownDebt or SurplusAllocationTarget.Hybrid)
         {
-            var debtAccounts = accounts.Where(a => a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage or AccountType.Auto)
+            var debtAccounts = accounts.Where(a => a.IsLiability)
                                        .Where(a => accountBalances[a.Id] < -0.01m)
                                        .ToList();
 
@@ -48,7 +48,7 @@ public static class SnowballStrategyProcessor
             {
                 debtAccounts = debtAccounts.OrderByDescending(a => {
                     decimal rate = 0;
-                    if (a.Type == AccountType.Mortgage && a.MortgageDetails != null) 
+                    if ((a.IsLoanAccount) && a.MortgageDetails != null) 
                         rate = a.MortgageDetails.InterestRate;
                     else if (a.AccountAprHistory != null && a.AccountAprHistory.Any())
                         rate = a.AccountAprHistory.OrderByDescending(h => h.AsOfDate).First().AnnualPercentageRate;

@@ -45,9 +45,7 @@ var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsyn
 
         foreach (var transaction in orderedTransactions) {
             decimal amount = Math.Abs(transaction.Amount);
-            bool isDebitAccount = account.Type == AccountType.Mortgage ||
-                                  account.Type == AccountType.PersonalLoan ||
-                                  account.Type == AccountType.CreditCard;
+            bool isDebitAccount = account.IsLiability;
 
             // Money leaving the account
             if (transaction.AccountId == accountId) {
@@ -67,7 +65,7 @@ var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsyn
                 bool isRebalance = transaction.IsRebalance;
                 bool isInterestOnly = transaction.IsInterestOnly;
 
-                if (account.Type == AccountType.Mortgage) {
+                if (account.IsLoanAccount) {
                     if (isRebalance || isInterestOnly)
                         balance += amount;
                     else {

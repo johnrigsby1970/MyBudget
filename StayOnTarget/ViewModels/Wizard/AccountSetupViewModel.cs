@@ -109,7 +109,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         {
             account.CreditCardDetails = new CreditCardDetails();
         }
-        else if (account.Type == AccountType.Mortgage && account.MortgageDetails == null)
+        else if ((account.IsLoanAccount) && account.MortgageDetails == null)
         {
             account.MortgageDetails = new MortgageDetails();
         }
@@ -152,7 +152,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         if (string.IsNullOrWhiteSpace(EditingAccount.BankName)) return false;
 
         // Conditional requirements based on type
-        if (EditingAccount.Type == AccountType.Mortgage)
+        if (EditingAccount.IsLoanAccount)
         {
             var m = EditingAccount.MortgageDetails;
             if (m == null || m.InterestRate <= 0 || m.LoanPayment <= 0 || m.StatementDay <= 0)
@@ -208,9 +208,9 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
 
             account.Id = await DatabaseInitializationContext.BudgetService.UpsertAccountAsync(account);
 
-            var debtAccountTypes = new List<AccountType>()
-                { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan };
-            var isDebtAccount = debtAccountTypes.Contains(account.Type);
+            //var debtAccountTypes = new List<AccountType>()
+            //    { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan, AccountType.HELOC, AccountType.StudentLoan };
+            var isDebtAccount = account.IsLiability;//debtAccountTypes.Contains(account.Type);
             // if (account.Balance > 0) {
             //     isDebtAccount = false; //for purposes of initial balance, if the balance is positive,
             //                            //it's not a debt account. It is one, but it is currently carrying
@@ -414,12 +414,12 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         if (string.IsNullOrWhiteSpace(account.BankName))
             errors.Add("Bank name is required.");
 
-        if (account.Type == AccountType.Mortgage)
+        if (account.IsLoanAccount)
         {
             var m = account.MortgageDetails;
             if (m == null)
             {
-                errors.Add("Mortgage details must be defined.");
+                errors.Add("Interest and statement details must be defined.");
             }
             else
             {

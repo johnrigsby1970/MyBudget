@@ -570,11 +570,11 @@
                                                         <CheckBox Content="Principal Only (Mortgage/Loan Extra)"
                                                                   IsChecked="{Binding EditingTransactionClone.IsPrincipalOnly}"
                                                                   VerticalAlignment="Center" Margin="0,0,10,0"
-                                                                  Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                                  Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
                                                         <CheckBox Content="Rebalance (Adds to Debt)"
                                                                   IsChecked="{Binding EditingTransactionClone.IsRebalance}"
                                                                   VerticalAlignment="Center"
-                                                                  Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                                  Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
                                                     </StackPanel>
                                                 </Grid>
                                             </StackPanel>
@@ -1204,7 +1204,7 @@
                                             <CheckBox Content="Principal Only (Mortgage/Loan Extra)"
                                                       IsChecked="{Binding EditingBillClone.IsPrincipalOnly}"
                                                       VerticalAlignment="Center" Margin="0,0,10,0"
-                                                      Visibility="{Binding SelectedItem, ElementName=BillToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                      Visibility="{Binding SelectedItem, ElementName=BillToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
 
                                         </StackPanel>
                                     </Grid>

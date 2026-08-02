@@ -4,7 +4,6 @@ using StayOnTarget.Services;
 using StayOnTarget.Services.Projections;
 using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
 using StayOnTarget.Views;
@@ -2049,18 +2048,18 @@ public class MainViewModel : ViewModelBase {
                 }
                 else {
                     EditingAccountClone.Id = await _budgetService.UpsertAccountAsync(EditingAccountClone);
-                    var debtAccountTypes = new List<AccountType>()
-                        { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan };
+                    //var debtAccountTypes = new List<AccountType>()
+                    //    { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan, AccountType.HELOC, AccountType.StudentLoan };
 
                     var openingBalance = new Transaction() {
-                        AccountId = debtAccountTypes.Contains(EditingAccountClone.Type) ? EditingAccountClone.Id : null,
-                        ToAccountId = debtAccountTypes.Contains(EditingAccountClone.Type)
+                        AccountId = EditingAccountClone.IsLiability ? EditingAccountClone.Id : null,
+                        ToAccountId =  EditingAccountClone.IsLiability
                             ? null
                             : EditingAccountClone.Id,
-                        AccountName = debtAccountTypes.Contains(EditingAccountClone.Type)
+                        AccountName = EditingAccountClone.IsLiability
                             ? EditingAccountClone.Name
                             : null,
-                        ToAccountName = debtAccountTypes.Contains(EditingAccountClone.Type)
+                        ToAccountName = EditingAccountClone.IsLiability
                             ? null
                             : EditingAccountClone.Name,
                         Amount = EditingAccountClone.Balance,
@@ -2139,7 +2138,7 @@ public class MainViewModel : ViewModelBase {
         target.HexColor = clone.HexColor;
         target.IsPrimary = clone.IsPrimary;
 
-        if (clone is { Type: AccountType.Mortgage, MortgageDetails: not null }) {
+        if ((clone.IsLoanAccount) && clone.MortgageDetails!=null) {
             target.MortgageDetails ??= new MortgageDetails();
             target.MortgageDetails.InterestRate = clone.MortgageDetails.InterestRate;
             target.MortgageDetails.Escrow = clone.MortgageDetails.Escrow;
@@ -3141,8 +3140,7 @@ public class MainViewModel : ViewModelBase {
     private decimal GetTotalDebt(ProjectionItem item) {
         decimal totalDebt = 0;
         var debtAccountNames = Accounts.Where(a =>
-                a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage
-                    or AccountType.Auto)
+                a.IsLiability)
             .Select(a => a.Name)
             .ToList();
 
@@ -3157,8 +3155,7 @@ public class MainViewModel : ViewModelBase {
 
     private DateTime? FindDebtFreeDate(List<ProjectionItem> items) {
         var debtAccountNames = Accounts.Where(a =>
-                a.Type is AccountType.CreditCard or AccountType.PersonalLoan or AccountType.Mortgage
-                    or AccountType.Auto)
+                a.IsLiability)
             .Select(a => a.Name)
             .ToList();
 

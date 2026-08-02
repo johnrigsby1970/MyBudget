@@ -10,7 +10,7 @@ public partial class BudgetService {
             (await conn.QueryAsync<Account>("SELECT * FROM Accounts WHERE IsArchived=0 OR @includeArchived=1",
                 new { includeArchived = (includeArchived ? 1 : 0) })).ToList();
         foreach (var acc in accounts) {
-            if (acc.Type == AccountType.Mortgage) {
+            if (acc.IsLoanAccount) {
                 acc.MortgageDetails =
                     await conn.QueryFirstOrDefaultAsync<MortgageDetails>(
                         "SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id });
@@ -35,7 +35,7 @@ public partial class BudgetService {
             (await conn.QueryAsync<Account>("SELECT * FROM Accounts WHERE IsArchived=0 OR @includeArchived=1",
                 new { includeArchived = (includeArchived ? 1 : 0) })).ToList();
         foreach (var acc in accounts) {
-            if (acc.Type == AccountType.Mortgage) {
+            if (acc.IsLoanAccount) {
                 acc.MortgageDetails =
                     await conn.QueryFirstOrDefaultAsync<MortgageDetails>(
                         "SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id });
@@ -123,7 +123,7 @@ public partial class BudgetService {
                 accountParam);
         }
 
-        if (account.Type == AccountType.Mortgage && account.MortgageDetails != null) {
+        if ((account.IsLoanAccount) && account.MortgageDetails != null) {
             account.MortgageDetails.AccountId = account.Id;
             var mdParam = new {
                 account.MortgageDetails.Id,

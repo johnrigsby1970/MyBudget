@@ -183,7 +183,7 @@ public class ProjectionEngine : IProjectionEngine {
 
         var ccPreviousMonthPaidInFull = accounts.Where(a => a.Type == AccountType.CreditCard)
             .ToDictionary(a => a.Id, a => a.Balance <= 0.01m);
-        var mortgagePaidOff = accounts.Where(a => a.Type == AccountType.Mortgage).ToDictionary(a => a.Id, a => false);
+        var mortgagePaidOff = accounts.Where(a => a.IsLoanAccount).ToDictionary(a => a.Id, a => false);
 
         // Recalculate accountBalances based on BalanceAsOf (or reconciliation) and events before 'current'
         //Account balance to start projection is either the balanceAsOf date of the account or the reconciledAsOf date of the account.
@@ -429,7 +429,7 @@ public class ProjectionEngine : IProjectionEngine {
             if (e.ToAccountId.HasValue && accountBalances.ContainsKey(e.ToAccountId.Value)) {
                 var toAcc = accounts.FirstOrDefault(a => a.Id == e.ToAccountId.Value);
                 var amountChange = Math.Abs(currentEventAmount);
-                var isDebt = toAcc != null && (toAcc.Type == AccountType.Mortgage || toAcc.Type == AccountType.PersonalLoan || toAcc.Type == AccountType.CreditCard);
+                var isDebt = toAcc != null && (toAcc.IsLiability);
                 var isPrincipalOnly = e.IsPrincipalOnly;
                 var isRebalance = e.IsRebalance;
                 var isInterestAdjustment = (e.Type == ProjectionEventType.Transaction && e.IsInterestAdjustment);
@@ -438,7 +438,7 @@ public class ProjectionEngine : IProjectionEngine {
                 if (isInterestOrRebalance) {
                     accountBalances[e.ToAccountId.Value] += amountChange;
                 }
-                else if (toAcc?.Type == AccountType.Mortgage) {
+                else if (toAcc?.IsLoanAccount==true) {
                     var principal = amountChange;
                     if (!isPrincipalOnly && toAcc.MortgageDetails != null) {
                         var escrowAndInsurance = toAcc.MortgageDetails.Escrow + toAcc.MortgageDetails.MortgageInsurance;
@@ -474,7 +474,7 @@ public class ProjectionEngine : IProjectionEngine {
             if (effectiveFromAccountId.HasValue && accountBalances.ContainsKey(effectiveFromAccountId.Value)) {
                 var fromAcc = accounts.FirstOrDefault(a => a.Id == effectiveFromAccountId.Value);
                 var amountChange = currentEventAmount;//Math.Abs(currentEventAmount);
-                var isDebt = fromAcc != null && (fromAcc.Type == AccountType.Mortgage || fromAcc.Type == AccountType.PersonalLoan || fromAcc.Type == AccountType.CreditCard);
+                var isDebt = fromAcc != null && (fromAcc.IsLiability);
 
                 if (isDebt) {
                     accountBalances[effectiveFromAccountId.Value] += amountChange;

@@ -22,8 +22,7 @@ public static class ProjectionEngineExtensions {
             for (var d = 0; d < days; d++) {
                 var dayDate = lastDate.AddDays(d);
                 foreach (var acc in accounts.Where(a =>
-                             a.AnnualGrowthRate > 0 && a.Type != AccountType.Mortgage &&
-                             a.Type != AccountType.CreditCard)) {
+                             a.AnnualGrowthRate > 0 && !a.IsLiability)) {
                     if (dayDate < accountBalanceDates[acc.Id]) continue;
                     var dailyRate = acc.AnnualGrowthRate / 100m / 365m;
                     var growth = accountBalances[acc.Id] * dailyRate;
@@ -32,7 +31,7 @@ public static class ProjectionEngineExtensions {
                         decimal toAdd = Math.Round(accumulatedGrowth[acc.Id], 2);
                         accountBalances[acc.Id] += toAdd;
                         if (includedTotalAccounts.Contains(acc.Id)) {
-                            if (acc.Type == AccountType.Mortgage || acc.Type == AccountType.PersonalLoan) {
+                            if (acc.IsLoanAccount) {
                                 runningBalance -= toAdd;
                             }
                             else {
@@ -70,8 +69,7 @@ public static class ProjectionEngineExtensions {
             for (var d = 0; d < remainingDays; d++) {
                 var dayDate = lastDate.AddDays(d);
                 foreach (var acc in accounts.Where(a =>
-                             a.AnnualGrowthRate > 0 && a.Type != AccountType.Mortgage &&
-                             a.Type != AccountType.CreditCard)) {
+                             a.AnnualGrowthRate > 0 && !a.IsLiability)) {
                     if (dayDate < accountBalanceDates[acc.Id]) continue;
                     var dailyRate = acc.AnnualGrowthRate / 100m / 365m;
                     var growth = accountBalances[acc.Id] * dailyRate;
@@ -80,7 +78,7 @@ public static class ProjectionEngineExtensions {
                         var toAdd = Math.Round(accumulatedGrowth[acc.Id], 2);
                         accountBalances[acc.Id] += toAdd;
                         if (includedTotalAccounts.Contains(acc.Id)) {
-                            if (acc.Type == AccountType.Mortgage || acc.Type == AccountType.PersonalLoan) {
+                            if (acc.IsLoanAccount) {
                                 runningBalance -= toAdd; //a mortgage or loan reduces the net worth
                             }
                             else {
@@ -159,7 +157,7 @@ public static class ProjectionEngineExtensions {
 
                 var amountChange = Math.Abs(e.Amount);
                 if (e.FromAccountId == acc.Id) {
-                    if (acc.Type is AccountType.Mortgage or AccountType.PersonalLoan or AccountType.CreditCard) {
+                    if (acc.IsLiability) {
                         accountBalances[acc.Id] += amountChange;
                     }
                     else {
@@ -168,8 +166,8 @@ public static class ProjectionEngineExtensions {
                 }
 
                 if (e.ToAccountId == acc.Id) {
-                    var isMortgage = acc.Type == AccountType.Mortgage;
-                    var isPersonalLoan = acc.Type == AccountType.PersonalLoan;
+                    var isMortgage = (acc.Type == AccountType.Mortgage || acc.Type == AccountType.HELOC);
+                    var isPersonalLoan = (acc.Type == AccountType.PersonalLoan || acc.Type == AccountType.StudentLoan);
                     var isCreditCard = acc.Type == AccountType.CreditCard;
                     var isPrincipalOnly = e.IsPrincipalOnly;
                     var isRebalance = e.IsRebalance;
@@ -264,8 +262,7 @@ public static class ProjectionEngineExtensions {
                     }
 
                     if (includedTotalAccounts.Contains(accId)) {
-                        var isDebt = (acc.Type == AccountType.Mortgage || acc.Type == AccountType.PersonalLoan ||
-                                      acc.Type == AccountType.CreditCard);
+                        var isDebt = (acc.IsLiability);
                         if (isDebt) {
                             runningBalance -= (newBalance - oldBalance);
                         }
@@ -301,7 +298,7 @@ public static class ProjectionEngineExtensions {
 
         if (e is { Type: ProjectionEngine.ProjectionEventType.Interest, FromAccountId: not null }) {
             var acc = accounts.FirstOrDefault(a => a.Id == e.FromAccountId.Value);
-            if (acc is { Type: AccountType.Mortgage, MortgageDetails: not null }) {
+            if ((acc.IsLoanAccount) && acc.MortgageDetails != null ) {
                 var monthlyRate = (acc.MortgageDetails.InterestRate / 100m) / 12m;
                 var interest = Math.Round(accountBalances[acc.Id] * monthlyRate, 2);
                 accountBalances[acc.Id] += interest;
@@ -468,7 +465,7 @@ public static class ProjectionEngineExtensions {
         DateTime startDate,
         DateTime endDate) {
         foreach (var acc in accounts) {
-            if (acc.Type == AccountType.Mortgage && acc.MortgageDetails != null) {
+            if ((acc.IsLoanAccount) && acc.MortgageDetails != null) {
                 var nextInterest = acc.MortgageDetails.PaymentDate;
                 if (nextInterest == DateTime.MinValue) nextInterest = startDate;
                 while (nextInterest < startDate) nextInterest = nextInterest.AddMonths(1);

@@ -182,7 +182,7 @@ Planning for mandatory bills first keeps your target on track and stress-free." 
                                             <CheckBox Content="Principal Only (Mortgage/Loan Extra)"
                                                       IsChecked="{Binding EditingBill.IsPrincipalOnly}"
                                                       VerticalAlignment="Center" Margin="0,0,10,0"
-                                                      Visibility="{Binding SelectedItem, ElementName=BillToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                      Visibility="{Binding SelectedItem, ElementName=BillToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
 
                                         </StackPanel>
                                     </Grid> 

@@ -314,9 +314,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
         (bool hasTransactions, decimal? openingBalance, DateTime? openingBalanceDate) openingRecord =
             await _budgetService.GetAccountBalanceOpeningStateAsync(_account.Id);
 
-        var debtAccountTypes = new List<AccountType>()
-            { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan };
-        var isDebtAccount = debtAccountTypes.Contains(_account.Type);
+        //var debtAccountTypes = new List<AccountType>()
+        //    { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan, AccountType.HELOC, AccountType.StudentLoan };
+        var isDebtAccount = _account.IsLiability;//debtAccountTypes.Contains(_account.Type);
 
         if (openingRecord.openingBalance == null) {
             // if (account.Balance > 0) {
