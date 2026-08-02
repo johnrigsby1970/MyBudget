@@ -93,10 +93,18 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         await Task.Yield();
 
         try {
-            var histories = await _budgetService.GetAccountAprHistoriesAsync(_account.Id);
-            histories = histories.OrderBy(b => b.AsOfDate).ToList();
-       
-            AccountAprHistories = new ObservableCollection<AccountAprHistory>(histories);
+            if (_account.Id > 0) {
+                var histories = await _budgetService.GetAccountAprHistoriesAsync(_account.Id);
+                histories = histories.OrderBy(b => b.AsOfDate).ToList();
+
+                AccountAprHistories = new ObservableCollection<AccountAprHistory>(histories);
+            }
+            else {
+                //editing a pending account
+                if (_account.AccountAprHistory != null) {
+                    AccountAprHistories = new ObservableCollection<AccountAprHistory>(_account.AccountAprHistory);
+                }
+            }
         }
         finally {
             IsLoading = false;

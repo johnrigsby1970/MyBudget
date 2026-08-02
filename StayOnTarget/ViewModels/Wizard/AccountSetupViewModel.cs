@@ -198,11 +198,13 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 HexColor = EditingAccount.HexColor,
                 IsPrimary = EditingAccount.IsPrimary,
                 MortgageDetails = new MortgageDetails(),
-                CreditCardDetails = new CreditCardDetails()
+                CreditCardDetails = new CreditCardDetails(),
+                AccountAprHistory = new List<AccountAprHistory>()
             };
             
             account.MortgageDetails = EditingAccount.MortgageDetails;
             account.CreditCardDetails = EditingAccount.CreditCardDetails;
+            account.AccountAprHistory = EditingAccount.AccountAprHistory;
 
             account.Id = await DatabaseInitializationContext.BudgetService.UpsertAccountAsync(account);
 
@@ -293,7 +295,8 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 IsPrimary = !Accounts.Any(a => (a.Type== AccountType.Checking || _editingAccount.Type== AccountType.Savings) && a.IsPrimary),
                 HexColor = "#FF808080",
                 MortgageDetails = new MortgageDetails(),
-                CreditCardDetails = new CreditCardDetails()
+                CreditCardDetails = new CreditCardDetails(),
+                AccountAprHistory = new List<AccountAprHistory>()
             };
 
             OnPropertyChanged(nameof(IsValid));
