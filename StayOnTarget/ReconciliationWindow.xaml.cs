@@ -22,11 +22,11 @@ public partial class ReconciliationWindow : Window {
 
     private async void OkButton_Click(object sender, RoutedEventArgs e) {
         try {
-            MessageBoxResult messageBoxResult = MessageBox.Show(
-                $"I certify that there are no pending transactions on this account prior to {_viewModel.NewReconciledDate:MM/dd/yyyy} and that the balance is {_viewModel.NewReconciledBalance}?",
-                "Delete Confirmation", MessageBoxButton.YesNo);
+            //MessageBoxResult messageBoxResult = MessageBox.Show(
+            //    $"I certify that there are no pending transactions on this account prior to {_viewModel.NewReconciledDate:MM/dd/yyyy} and that the balance is {_viewModel.NewReconciledBalance}?",
+            //    "Delete Confirmation", MessageBoxButton.YesNo);
 
-            if (messageBoxResult == MessageBoxResult.Yes) {
+           // if (messageBoxResult == MessageBoxResult.Yes) {
                 _viewModel.SpinnerMessage = "Reconciling records...";
                 _viewModel.IsBusy = true; // Shows the overlay & starts spinner
                 // Yield back to UI thread to allow WPF to render the LoadingOverlay control
@@ -37,10 +37,10 @@ public partial class ReconciliationWindow : Window {
                 
                 _viewModel.IsBusy = false; // Hides spinner
                 DialogResult = true;
-            }
-            else {
-                MessageBox.Show("Reconciliation cancelled.");
-            }
+           // }
+            //else {
+           //     MessageBox.Show("Reconciliation cancelled.");
+           // }
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during OkButton_Click.");

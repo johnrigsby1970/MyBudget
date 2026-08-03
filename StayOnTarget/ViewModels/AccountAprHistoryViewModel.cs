@@ -59,13 +59,25 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         }
         OnPropertyChanged(nameof(AccountAprHistories));
     }
-    
-    private async Task RemoveAsync(AccountAprHistory? aah)
-    {
-        if (aah is { Id: > 0 }) {
+
+    private async Task RemoveAsync(AccountAprHistory? aah) {
+
+        // Rule 1: Prevent removing the sole rate record
+        if (AccountAprHistories.Count == 1) {
             MessageBoxResult messageBoxResult = MessageBox.Show(
-                "Are you sure you want to delete the interest rate record?", // Message
-                "Delete Confirmation", // Title
+                $"You need at least one interest rate record for an account of this type. Instead of deleting it, change its properties.",
+                "Delete Cancelled",
+                MessageBoxButton.OK, // Buttons
+                MessageBoxImage.Warning // Icon
+            );
+            return;
+        }
+        if (aah is { Id: > 0 }) {
+            // Rule 2: Warn about destructive historical impacts for existing records
+            MessageBoxResult messageBoxResult = MessageBox.Show(
+                $"Are you sure you want to delete the {aah.AnnualPercentageRate:P2} interest rate effective {aah.AsOfDate:d}?\n\n" +
+                "Deleting this rate may change interest calculations and projections associated with this account.",
+                "Confirm Delete",
                 MessageBoxButton.YesNo, // Buttons
                 MessageBoxImage.Warning // Icon
             );
