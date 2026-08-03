@@ -192,12 +192,12 @@ public partial class BudgetService {
 
             if (oldRows.Any()) {
                 //its already reconciled and with a different id
-                MessageBoxResult result = MessageBox.Show(
-                    $"This change will invalidate reconciliations for {transaction.AccountName}. You will need to redo your reconciliation request after first reverting prior reconciliation. Revert prior reconciliation?",
-                    "Confirmation",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (result != MessageBoxResult.Yes) return false;
+                // MessageBoxResult result = MessageBox.Show(
+                //     $"This change will invalidate reconciliations for {transaction.AccountName}. You will need to redo your reconciliation request after first reverting prior reconciliation. Revert prior reconciliation?",
+                //     "Confirmation",
+                //     MessageBoxButton.YesNo, MessageBoxImage.Question);
+                //
+                // if (result != MessageBoxResult.Yes) return false;
 
                 // Execute historical drops
                 await InvalidateReconciliationsAfterDateAsync(transaction.AccountId.Value, transaction.TransactionDate);
@@ -396,13 +396,13 @@ public partial class BudgetService {
                     }
 
                     if (fromImpacted || toImpacted) {
-                        MessageBoxResult result = showConfirmationOfImpactToExistingReconciliations
-                            ? MessageBox.Show("This change will invalidate reconciliations. Proceed?",
-                                "Confirmation",
-                                MessageBoxButton.YesNo, MessageBoxImage.Question)
-                            : MessageBoxResult.Yes;
-
-                        if (result != MessageBoxResult.Yes) return false;
+                        // MessageBoxResult result = showConfirmationOfImpactToExistingReconciliations
+                        //     ? MessageBox.Show("This change will invalidate reconciliations. Proceed?",
+                        //         "Confirmation",
+                        //         MessageBoxButton.YesNo, MessageBoxImage.Question)
+                        //     : MessageBoxResult.Yes;
+                        //
+                        // if (result != MessageBoxResult.Yes) return false;
 
                         if (fromImpacted && t.AccountId.HasValue)
                             await InvalidateReconciliationsAfterDateAsync(t.AccountId.Value, effectiveDate);

@@ -183,22 +183,22 @@ public class ImportReconciliationViewModel : ViewModelBase {
         try {
             var fixDate = false;
 
-            var differencesInDates = ImportedTransactions.Where(x =>
-                x.IsSelected &&
-                x.IsReconciled &&
-                x.MatchedManualTransactionDate != null && x.Date.HasValue &&
-                DateOnly.FromDateTime(x.MatchedManualTransactionDate.Value.Date) !=
-                DateOnly.FromDateTime(x.Date.Value));
-
-            if (differencesInDates.Any()) {
-                MessageBoxResult messageBoxResult = MessageBox.Show(
-                    $"Some dates are different between existing transactions and those found at your bank. Do you want to set the transaction dates to match your bank?",
-                    "Date Change Confirmation", MessageBoxButton.YesNo);
-
-                if (messageBoxResult == MessageBoxResult.Yes) {
-                    fixDate = true;
-                }
-            }
+            // var differencesInDates = ImportedTransactions.Where(x =>
+            //     x.IsSelected &&
+            //     x.IsReconciled &&
+            //     x.MatchedManualTransactionDate != null && x.Date.HasValue &&
+            //     DateOnly.FromDateTime(x.MatchedManualTransactionDate.Value.Date) !=
+            //     DateOnly.FromDateTime(x.Date.Value));
+            //
+            // if (differencesInDates.Any()) {
+            //     MessageBoxResult messageBoxResult = MessageBox.Show(
+            //         $"Some dates are different between existing transactions and those found at your bank. Do you want to set the transaction dates to match your bank?",
+            //         "Date Change Confirmation", MessageBoxButton.YesNo);
+            //
+            //     if (messageBoxResult == MessageBoxResult.Yes) {
+            //         fixDate = true;
+            //     }
+            // }
 
             IsBusy = true;
 
