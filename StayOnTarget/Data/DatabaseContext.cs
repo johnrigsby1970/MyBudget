@@ -1,6 +1,7 @@
 ﻿using Dapper;
 using Microsoft.Data.Sqlite;
 using Serilog;
+using StayOnTarget.Helpers;
 using System;
 using System.IO;
 using System.Windows;
@@ -246,6 +247,7 @@ public class DatabaseContext {
             CREATE TABLE IF NOT EXISTS Transactions (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Description TEXT,
+                NormalizedDescription TEXT,
                 Memo TEXT,
                 Amount DECIMAL NOT NULL,
                 TransactionDate TEXT NOT NULL,
@@ -366,7 +368,29 @@ END;
 
         ");
 
+                
             var columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='NormalizedDescription'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Transactions ADD COLUMN NormalizedDescription TEXT");
+
+                    // Populate the new column
+                    var transactions = connection.Query<(long Id, string Description)>("SELECT Id, Description FROM Transactions");
+                    foreach (var tx in transactions) {
+                        var normalized = TransactionMatcher.NormalizeName(tx.Description);
+                        connection.Execute("UPDATE Transactions SET NormalizedDescription = @normalized WHERE Id = @id", new { normalized, id = tx.Id });
+                    }
+                }
+            }
+            
+            columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='IsInterestOnly'");
 
             if (columnExists == 0) {

@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Windows;
 using Dapper;
+using StayOnTarget.Helpers;
 using StayOnTarget.Models;
 
 namespace StayOnTarget.Services;
@@ -730,6 +731,7 @@ public partial class BudgetService {
 
         return new Transaction {
             Description = row.Description,
+            NormalizedDescription = row.NormalizedDescription,
             Memo = row.Memo,
             Amount = amount,
             TransactionDate = DateTime.Parse(row.TransactionDate),
@@ -758,13 +760,13 @@ public partial class BudgetService {
 
     private string GetInsertSql() {
         return
-            @"INSERT INTO Transactions (TransactionId, Description, Memo, Amount, TransactionDate, AccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, IsInterestOnly, FitId, PaycheckId, PaycheckOccurrenceDate, ReconciliationId)
-                 VALUES (@TransactionId, @Description, @Memo, @Amount, @TransactionDate, @AccountId, @BillId, @BucketId, @PeriodDate, @IsPrincipalOnly, @IsInterestOnly, @FitId, @PaycheckId, @PaycheckOccurrenceDate, @ReconciliationId)";
+            @"INSERT INTO Transactions (TransactionId, Description, Memo, Amount, TransactionDate, AccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, IsInterestOnly, FitId, PaycheckId, PaycheckOccurrenceDate, ReconciliationId, NormalizedDescription)
+                 VALUES (@TransactionId, @Description, @Memo, @Amount, @TransactionDate, @AccountId, @BillId, @BucketId, @PeriodDate, @IsPrincipalOnly, @IsInterestOnly, @FitId, @PaycheckId, @PaycheckOccurrenceDate, @ReconciliationId, @NormalizedDescription)";
     }
 
     private string GetUpdateSql() {
         return
-            @"UPDATE Transactions SET TransactionId=@TransactionId, Description=@Description, Memo=@Memo, Amount=@Amount, TransactionDate=@TransactionDate, AccountId=@AccountId, BillId=@BillId, BucketId=@BucketId, PeriodDate=@PeriodDate, IsPrincipalOnly= @IsPrincipalOnly, IsInterestOnly=@IsInterestOnly, FitId=@FitId, PaycheckId=@PaycheckId, PaycheckOccurrenceDate=@PaycheckOccurrenceDate, ReconciliationId=@ReconciliationId
+            @"UPDATE Transactions SET TransactionId=@TransactionId, Description=@Description, Memo=@Memo, Amount=@Amount, TransactionDate=@TransactionDate, AccountId=@AccountId, BillId=@BillId, BucketId=@BucketId, PeriodDate=@PeriodDate, IsPrincipalOnly= @IsPrincipalOnly, IsInterestOnly=@IsInterestOnly, FitId=@FitId, PaycheckId=@PaycheckId, PaycheckOccurrenceDate=@PaycheckOccurrenceDate, ReconciliationId=@ReconciliationId, NormalizedDescription=@NormalizedDescription
                  WHERE Id=@Id";
     }
 
@@ -787,6 +789,7 @@ public partial class BudgetService {
         p.Add("PaycheckId", t.PaycheckId);
         p.Add("PaycheckOccurrenceDate", t.PaycheckOccurrenceDate?.ToString("yyyy-MM-dd"));
         p.Add("ReconciliationId", targetReconciliationId);
+        p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
         return p;
     }
 
@@ -810,6 +813,7 @@ public partial class BudgetService {
         p.Add("PaycheckOccurrenceDate", t.PaycheckOccurrenceDate?.ToString("yyyy-MM-dd"));
         p.Add("ReconciliationId", targetReconciliationId);
         p.Add("Id", id);
+        p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
         return p;
     }
 

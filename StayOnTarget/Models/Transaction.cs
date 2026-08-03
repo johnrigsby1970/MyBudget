@@ -5,6 +5,7 @@ namespace StayOnTarget.Models;
 public class Transaction : ViewModelBase
 {
     private string _description = string.Empty;
+    private string _normalizedDescription = string.Empty;
     private string? _memo = string.Empty;
     private decimal _amount;
     private DateTime _transactionDate = DateTime.Today;
@@ -36,6 +37,12 @@ public class Transaction : ViewModelBase
         set => SetProperty(ref _description, value);
     }
 
+    public string NormalizedDescription
+    {
+        get => _normalizedDescription;
+        set => SetProperty(ref _normalizedDescription, value);
+    }
+    
     public decimal Amount
     {
         get => _amount;
