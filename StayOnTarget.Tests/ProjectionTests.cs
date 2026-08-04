@@ -141,7 +141,7 @@ namespace StayOnTarget.Tests
             // Assert
             var rentEntry = results.FirstOrDefault(r => r.Description.Contains("Rent"));
             Assert.IsNotNull(rentEntry);
-            Assert.AreEqual(-500, rentEntry.Amount);
+            Assert.AreEqual(500, rentEntry.Amount);
             // Balance should be 1000 - 500 = 500 (Savings is not included in total)
             Assert.AreEqual(500, rentEntry.Balance);
             Assert.AreEqual(500m, rentEntry.AccountBalances["Checking"]);
@@ -183,7 +183,7 @@ namespace StayOnTarget.Tests
             Assert.IsNotNull(interestEntry, "Should have an interest entry");
             
             // 200,000 * 0.06 / 12 = 1000
-            Assert.AreEqual(-1000m, interestEntry.Amount);
+            Assert.AreEqual(1000m, interestEntry.Amount);
             Assert.AreEqual(-201000m, interestEntry.AccountBalances["Mortgage"]);
             // Debts are subtracted from the total balance
             Assert.AreEqual(-201000m, interestEntry.Balance);
@@ -273,7 +273,7 @@ namespace StayOnTarget.Tests
             // DPR = 0.365 / 365 = 0.001
             // Days = 14 (Feb 1 to Feb 14)
             // Interest = 1000 * 0.001 * 14 = 14
-            Assert.AreEqual(-14m, interestEntry.Amount);
+            Assert.AreEqual(14m, interestEntry.Amount);
             Assert.AreEqual(-1014m, interestEntry.AccountBalances["CreditCard"]);
             // Debt increases, so running balance decreases
             // Initial running balance was -1000. Now -1014.
@@ -328,7 +328,7 @@ namespace StayOnTarget.Tests
 
             var transactions = new List<Transaction>
             {
-                new Transaction { TransactionDate = startOfMonth.AddMonths(1).AddDays(-1), Amount = -14.40m, AccountId = 1, Description = "Small Purchase" }
+                new Transaction { TransactionDate = startOfMonth.AddMonths(1).AddDays(-1), Amount = 14.40m, AccountId = 1, Description = "Small Purchase" }
             };
 
             var startDate = startOfMonth;
@@ -374,8 +374,8 @@ namespace StayOnTarget.Tests
             var mayStatement = results.FirstOrDefault(r => r.Description.Contains("Credit Card Interest") && r.TransactionDate == startOfMonth.AddMonths(3));
             Assert.IsNotNull(mayStatement, "Statement (startOfMonth + 3 months) should exist");
             // In the simulation, interest is a negative value for debts (increases balance)
-            Assert.IsTrue(mayStatement.Amount < 0, $"Interest (startOfMonth + 3 months) should be < 0, but was {mayStatement.Amount}");
-            Assert.IsTrue(Math.Abs(mayStatement.AccountBalances["CreditCard"]) > 14.40m, "Balance should increase due to interest");
+            Assert.IsTrue(mayStatement.Amount > 0, $"Interest (startOfMonth + 3 months) should be < 0, but was {mayStatement.Amount}");
+            Assert.IsTrue(Math.Abs(mayStatement.AccountBalances["CreditCard"]) > -14.40m, "Balance should increase due to interest");
 
             var octStatement = results.FirstOrDefault(r => r.Description.Contains("Credit Card Interest") && r.TransactionDate == startOfMonth.AddMonths(8));
             Assert.IsNotNull(octStatement, "October statement (10/5) should exist");
@@ -509,7 +509,7 @@ namespace StayOnTarget.Tests
                 { 
                     Id = 1, 
                     Name = "CreditCard", 
-                    Balance = 1000, 
+                    Balance = -1000, 
                     Type = AccountType.CreditCard, 
                     IncludeInTotal = true, 
                     BalanceAsOf = new DateTime(2026, 2, 1),
@@ -564,7 +564,7 @@ namespace StayOnTarget.Tests
             var actualInterest = results.FirstOrDefault(r => r.Description == "Actual Interest");
             Assert.IsNotNull(actualInterest);
             Assert.AreEqual(25m, actualInterest.Amount);
-            Assert.AreEqual(1025m, actualInterest.AccountBalances["CreditCard"]);
+            Assert.AreEqual(-1025m, actualInterest.AccountBalances["CreditCard"]);
         }
 
         [TestMethod]
@@ -666,7 +666,7 @@ namespace StayOnTarget.Tests
             
             Assert.AreEqual(1, interestEntries.Count, "Should only have one entry on the interest date");
             Assert.AreEqual("Actual Interest", interestEntries[0].Description);
-            Assert.AreEqual(-950, interestEntries[0].Amount);
+            Assert.AreEqual(950, interestEntries[0].Amount);
             Assert.AreEqual(-200950m, interestEntries[0].AccountBalances["Mortgage"]);
             // Debts are subtracted from total balance
             Assert.AreEqual(-200950m, interestEntries[0].Balance);
@@ -724,7 +724,7 @@ namespace StayOnTarget.Tests
             // Assert
             var manualInterest = results.FirstOrDefault(r => r.Description == "Manual Interest");
             Assert.IsNotNull(manualInterest);
-            Assert.AreEqual(-1000m, manualInterest.Amount);
+            Assert.AreEqual(1000m, manualInterest.Amount);
             // It should INCREASE the debt balance
             Assert.AreEqual(-201000m, manualInterest.AccountBalances["Mortgage"]);
             Assert.AreEqual(-201000m, manualInterest.Balance);
@@ -777,7 +777,7 @@ namespace StayOnTarget.Tests
             // Bucket Groceries should be reduced by 200. Original 500 - 200 = 300.
             var bucketEntry = results.FirstOrDefault(r => r.Description.Contains("Bucket: Groceries"));
             Assert.IsNotNull(bucketEntry, "Should have a bucket entry");
-            Assert.AreEqual(-300m, bucketEntry.Amount, "Bucket amount should be reduced by transaction spending");
+            Assert.AreEqual(300m, bucketEntry.Amount, "Bucket amount should be reduced by transaction spending");
         
             // Total balance impact should be:
             // 1000 (starting) + 2000 (paycheck) - 200 (transaction) - 300 (remaining bucket) = 2500
@@ -884,7 +884,7 @@ namespace StayOnTarget.Tests
             // Bi-weekly from 2/19 means period end is 2/19 + 14 days - 1 day = 3/4.
             var graysonBucketEntry = results.FirstOrDefault(r => r.Description.Contains("Bucket: Grayson"));// && r.Date == new DateTime(2026, 3, 4));
             Assert.IsNotNull(graysonBucketEntry, "Grayson bucket entry should exist");
-            Assert.AreEqual(-50m, graysonBucketEntry.Amount, "Grayson bucket amount should be reduced to 0 because transaction exceeds it");
+            Assert.AreEqual(50m, graysonBucketEntry.Amount, "Grayson bucket amount should be reduced to 0 because transaction exceeds it");
         }
 
         [TestMethod]

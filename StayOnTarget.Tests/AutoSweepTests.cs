@@ -29,13 +29,13 @@ public class AutoSweepTests
 
         var allTransactions = new List<Transaction>();
         foreach (var pay in paychecks) {
-            allTransactions.Add(new Transaction { PaycheckId = pay.Id, TransactionDate = pay.StartDate, Amount = pay.ExpectedAmount, Description = "Initial Pay", AccountId = pay.AccountId });
+            allTransactions.Add(new Transaction { PaycheckId = pay.Id, TransactionDate = pay.StartDate, Amount = pay.ExpectedAmount, Description = "Initial Pay", ToAccountId = pay.AccountId });
         }
 
         // Transaction in the middle of Period 1
         var transactions = new List<Transaction>
         {
-            new Transaction { TransactionDate = new DateTime(2026, 8, 5), Amount = -1000m, AccountId = 2, Description = "Spending" }
+            new Transaction { TransactionDate = new DateTime(2026, 8, 5), Amount = 1000m, AccountId = 2, Description = "Spending" }
         };
         allTransactions.AddRange(transactions);
 
@@ -52,7 +52,7 @@ public class AutoSweepTests
         var sweepEntry = results.FirstOrDefault(r => r.IsSynthetic && r.Description.Contains("Auto-Sweep: CreditCard") && r.TransactionDate == sweepDate);
         
         Assert.IsNotNull(sweepEntry, "Auto-Sweep entry should exist on August 14");
-        Assert.AreEqual(-1000m, sweepEntry.Amount, "Sweep amount should be -1000 (payment of 1000 debt)");
+        Assert.AreEqual(1000m, sweepEntry.Amount, "Sweep amount should be 1000 (payment of 1000 debt)");
         
         // Verify balances in the sweep entry
         Assert.AreEqual(0m, sweepEntry.AccountBalances["CreditCard"], "CreditCard balance should be 0 after sweep");
@@ -75,13 +75,13 @@ public class AutoSweepTests
 
         var allTransactions = new List<Transaction>();
         foreach (var pay in paychecks) {
-            allTransactions.Add(new Transaction { PaycheckId = pay.Id, TransactionDate = pay.StartDate, Amount = pay.ExpectedAmount, Description = "Initial Pay", AccountId = pay.AccountId });
+            allTransactions.Add(new Transaction { PaycheckId = pay.Id, TransactionDate = pay.StartDate, Amount = pay.ExpectedAmount, Description = "Initial Pay", ToAccountId = pay.AccountId });
         }
 
         var transactions = new List<Transaction>
         {
-            new Transaction { TransactionDate = new DateTime(2026, 8, 5), Amount = -1000m, AccountId = 2, Description = "Spending P1" },
-            new Transaction { TransactionDate = new DateTime(2026, 8, 20), Amount = -500m, AccountId = 2, Description = "Spending P2" }
+            new Transaction { TransactionDate = new DateTime(2026, 8, 5), Amount = 1000m, AccountId = 2, Description = "Spending P1" },
+            new Transaction { TransactionDate = new DateTime(2026, 8, 20), Amount = 500m, AccountId = 2, Description = "Spending P2" }
         };
         allTransactions.AddRange(transactions);
 
@@ -100,8 +100,8 @@ public class AutoSweepTests
         Assert.IsNotNull(sweep1, "First sweep should exist");
         Assert.IsNotNull(sweep2, "Second sweep should exist");
         
-        Assert.AreEqual(-1000m, sweep1.Amount);
-        Assert.AreEqual(-500m, sweep2.Amount);
+        Assert.AreEqual(1000m, sweep1.Amount);
+        Assert.AreEqual(500m, sweep2.Amount);
         
         Assert.AreEqual(0m, sweep1.AccountBalances["CreditCard"]);
         Assert.AreEqual(0m, sweep2.AccountBalances["CreditCard"]);

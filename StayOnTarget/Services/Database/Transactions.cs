@@ -425,6 +425,21 @@ public partial class BudgetService {
             }
         }
 
+        // Guard: a previous save may have deleted a reconciliation that this transaction still
+        // references. Null out any stale IDs before writing to avoid an FK violation.
+        if (t.FromAccountReconciledId.HasValue) {
+            var exists = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM AccountReconciliations WHERE Id = @id",
+                new { id = t.FromAccountReconciledId.Value });
+            if (exists == 0) t.FromAccountReconciledId = null;
+        }
+        if (t.ToAccountReconciledId.HasValue) {
+            var exists = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM AccountReconciliations WHERE Id = @id",
+                new { id = t.ToAccountReconciledId.Value });
+            if (exists == 0) t.ToAccountReconciledId = null;
+        }
+
         // Step 2: In-place Upsert Logic
         await conn.OpenAsync();
         await using var tx = conn.BeginTransaction();
@@ -677,12 +692,14 @@ public partial class BudgetService {
         var uiTx = MapDynamicToTransaction(primaryRow, isTransferSide: true);
 
         if (outboundSide != null && inboundSide != null) {
+            uiTx.FromRecordId = (long)outboundSide.Id;
             uiTx.AccountId = (int)outboundSide!.AccountId;
             uiTx.FromAccountReconciledId = outboundSide.ReconciliationId != null
                 ? (int?)outboundSide.ReconciliationId
                 : null;
             uiTx.AccountName = outboundSide.AccountName;
             uiTx.FromAccountIsCleared = outboundSide.IsCleared == 1;
+            uiTx.ToRecordId = (long)inboundSide.Id;
             uiTx.ToAccountId = (int)inboundSide!.AccountId;
             uiTx.ToAccountReconciledId =
                 inboundSide.ReconciliationId != null ? (int?)inboundSide.ReconciliationId : null;
