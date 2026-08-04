@@ -62,6 +62,8 @@
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+        <converters:AmountToBrushConverter x:Key="AmountToBrushConverter" />
+
     </Window.Resources>
     
     <Grid Margin="10">
@@ -87,7 +89,6 @@
                       ItemsSource="{Binding ReconciliationTransactions}"
                       AutoGenerateColumns="False" 
                       CanUserAddRows="False" 
-                      IsReadOnly="True"
                       PreviewKeyDown="ReconciliationDataGrid_PreviewKeyDown" 
                       SelectionMode="Single"
                       >
@@ -99,44 +100,44 @@
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="TextAlignment" Value="Center" />
-                                <!-- <Setter Property="Padding" Value="0,0,8,0" />  -->
-                    
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
                     <DataGridTextColumn Header="Description"
                                         Binding="{Binding Description}" Width="*" />
-                    
-                    <!-- <DataGridTextColumn Header="From" Binding="{Binding AccountName}" -->
-                    <!--                     Width="100" /> -->
-                    <!-- <DataGridTextColumn Header="To" Binding="{Binding ToAccountName}" -->
-                    <!--                     Width="100" /> -->
                     <DataGridTextColumn Header="Amount"
                                         HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
-                                        Binding="{Binding Amount, StringFormat=C}"
+                                        Binding="{Binding SignedAmount, StringFormat=C}"
                                         Width="80" >
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="TextAlignment" Value="Right" />
-                            <Setter Property="Padding" Value="0,0,8,0" /> 
-                            <!-- <Setter Property="Foreground"  -->
-                            <!--         Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" /> -->
+                            <Setter Property="Padding" Value="0,0,8,0" />
+                            
+                            <Setter Property="Foreground"
+                                    Value="{Binding SignedAmount, Converter={StaticResource AmountToBrushConverter}}" />
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="Cleared" Width="75">
+                    <DataGridTemplateColumn>
+                        <DataGridTemplateColumn.HeaderTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                                    <TextBlock Text="Cleared" HorizontalAlignment="Center"/>
+                                    <CheckBox HorizontalAlignment="Center" 
+                                              IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.HeaderTemplate>
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <CheckBox
-                                    IsChecked="{Binding IsReconciled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                    IsEnabled="{Binding IsEnabled}"
-                                    Checked="HandleCheck" Unchecked="HandleUnchecked" 
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center" />
+                                <CheckBox HorizontalAlignment="Center" 
+                                          VerticalAlignment="Center"
+                                          Checked="HandleCheck" Unchecked="HandleUnchecked"
+                                          IsChecked="{Binding IsCleared, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    
                     <DataGridTextColumn Header="Balance"
                                         HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
                                         Binding="{Binding RunningBalance, StringFormat=C}"
@@ -145,8 +146,6 @@
                             <Style TargetType="TextBlock">
                                 <Setter Property="TextAlignment" Value="Right" />
                                 <Setter Property="Padding" Value="0,0,8,0" /> 
-                                <!-- <Setter Property="Foreground"  -->
-                                <!--         Value="{Binding RunningBalance, Converter={StaticResource AmountToBrushConverter}}" /> -->
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
@@ -161,19 +160,11 @@
                         Content="{Binding NewReconciledBalance}"
                         ContentStringFormat="{}{0:C2}"
                         Width="100" Margin="0,0" />
-                    
-                    <!-- <controls:NumericTextBox  -->
-                    <!--     Text="{Binding NewReconciledBalance, UpdateSourceTrigger=PropertyChanged}" -->
-                    <!--     Width="80" Margin="0,0" /> -->
                     <Label Content="Reconciled date:" Margin="0,0" />
                     <Label
                         Content="{Binding NewReconciledDate}"
                         ContentStringFormat="{}{0:d}"
                         Width="100" Margin="0,0" />
-                    <!-- <DatePicker Grid.Column="1" Grid.Row="0" -->
-                    <!--             SelectedDate="{Binding NewReconciledDate, UpdateSourceTrigger=PropertyChanged}" -->
-                    <!--             Width="80" Margin="0,0" /> -->
-                                        
                 </StackPanel>
                 <StackPanel Grid.Row="3" Margin="0,5"
             Orientation="Horizontal"

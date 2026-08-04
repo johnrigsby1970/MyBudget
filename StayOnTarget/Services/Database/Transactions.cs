@@ -241,19 +241,21 @@ public partial class BudgetService {
         try {
             if (transaction.AccountId.HasValue) {
                 await conn.ExecuteAsync(
-                    @"UPDATE Transactions SET ReconciliationId=@ReconciliationId WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
+                    @"UPDATE Transactions SET ReconciliationId=@ReconciliationId, IsCleared=@IsCleared WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
                     new {
                         AccountId = transaction.AccountId, ReconciliationId = transaction.FromAccountReconciledId,
-                        TransactionId = transaction.TransactionId.ToString()
+                        TransactionId = transaction.TransactionId.ToString(),
+                        IsCleared = transaction.FromAccountIsCleared
                     });
             }
 
             if (transaction.ToAccountId.HasValue) {
                 await conn.ExecuteAsync(
-                    @"UPDATE Transactions SET ReconciliationId=@ReconciliationId WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
+                    @"UPDATE Transactions SET ReconciliationId=@ReconciliationId, IsCleared=@IsCleared WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
                     new {
                         AccountId = transaction.ToAccountId, ReconciliationId = transaction.ToAccountReconciledId,
-                        TransactionId = transaction.TransactionId.ToString()
+                        TransactionId = transaction.TransactionId.ToString(),
+                        IsCleared = transaction.ToAccountIsCleared
                     });
             }
 
@@ -270,7 +272,7 @@ public partial class BudgetService {
     }
 
     public async Task<bool> UpdateTransactionForBankFitIdAsync(int accountId, string transactionId, string fitId,
-        string bankFitId, DateTime transactionDate, string description) {
+        string bankFitId, DateTime transactionDate, string description, bool isCleared) {
         using var conn = _db.GetConnection();
 
         await conn.OpenAsync();
@@ -278,10 +280,11 @@ public partial class BudgetService {
         try {
             //Description=@description, 
             await conn.ExecuteAsync(
-                @"UPDATE Transactions SET FitId=@bankFitId, TransactionDate=@transactionDate WHERE AccountId=@accountId AND TRANSACTIONID=@transactionId AND FITID=@fitId",
+                @"UPDATE Transactions SET FitId=@bankFitId, TransactionDate=@transactionDate, IsCleared=@isCleared WHERE AccountId=@accountId AND TRANSACTIONID=@transactionId AND FITID=@fitId",
                 new {
                     bankFitId,
                     transactionDate,
+                    isCleared,
                     accountId,
                     transactionId,
                     fitId
@@ -437,11 +440,11 @@ public partial class BudgetService {
             if (t.AccountId.HasValue) {
                 decimal amount = -Math.Abs(t.Amount);
                 if (t.FromRecordId.HasValue && t.FromRecordId > 0) {
-                    var p = GetUpdateParameters(t, t.AccountId, amount, t.FromAccountReconciledId, t.FromRecordId);
+                    var p = GetUpdateParameters(t, t.AccountId, amount, t.FromAccountReconciledId, t.FromRecordId, t.FromAccountIsCleared??false);
                     await conn.ExecuteAsync(GetUpdateSql(), p, tx);
                 }
                 else {
-                    var p = GetInsertParameters(t, t.AccountId, amount, t.FromAccountReconciledId);
+                    var p = GetInsertParameters(t, t.AccountId, amount, t.FromAccountReconciledId, t.FromAccountIsCleared??false);
                     t.FromRecordId = await conn.ExecuteScalarAsync<int>(insertWithIdSql, p, tx);
                 }
             }
@@ -457,11 +460,11 @@ public partial class BudgetService {
                 decimal amount = t.AccountId.HasValue ? Math.Abs(t.Amount) : t.Amount;
 
                 if (t.ToRecordId.HasValue && t.ToRecordId > 0) {
-                    var p = GetUpdateParameters(t, t.ToAccountId, amount, t.ToAccountReconciledId, t.ToRecordId);
+                    var p = GetUpdateParameters(t, t.ToAccountId, amount, t.ToAccountReconciledId, t.ToRecordId, t.ToAccountIsCleared??false);
                     await conn.ExecuteAsync(GetUpdateSql(), p, tx);
                 }
                 else {
-                    var p = GetInsertParameters(t, t.ToAccountId, amount, t.ToAccountReconciledId);
+                    var p = GetInsertParameters(t, t.ToAccountId, amount, t.ToAccountReconciledId, t.ToAccountIsCleared??false);
                     t.ToRecordId = await conn.ExecuteScalarAsync<int>(insertWithIdSql, p, tx);
                 }
             }
@@ -520,10 +523,13 @@ public partial class BudgetService {
 
                         int? interestReconciledId = null;
                         int? existingInterestId = null;
-
+                        bool interestIsCleared = false;
+   
                         if (existingInterest != null) {
                             existingInterestId = (int?)existingInterest.Id;
                             interestReconciledId = (int?)existingInterest.ReconciliationId;
+                            interestIsCleared = (bool)existingInterest.IsCleared;
+                            
                             if (interestReconciledId.HasValue) {
                                 await InvalidateReconciliationsAfterDateAsync(t.ToAccountId.Value, t.TransactionDate,
                                     tx);
@@ -538,17 +544,19 @@ public partial class BudgetService {
                             Amount = Math.Abs(interestAmount),
                             TransactionDate = t.TransactionDate,
                             PeriodDate = t.PeriodDate,
-                            IsInterestOnly = true
+                            IsInterestOnly = true,
+                            FromAccountIsCleared = false,
+                            ToAccountIsCleared = false
                         };
-
+                        
                         if (existingInterestId.HasValue) {
                             var intParam = GetUpdateParameters(interestTx, t.ToAccountId.Value,
-                                -Math.Abs(interestAmount), interestReconciledId, existingInterestId.Value);
+                                -Math.Abs(interestAmount), interestReconciledId, existingInterestId.Value, interestIsCleared);
                             await conn.ExecuteAsync(GetUpdateSql(), intParam, tx);
                         }
                         else {
                             var intParam = GetInsertParameters(interestTx, t.ToAccountId.Value,
-                                -Math.Abs(interestAmount), interestReconciledId);
+                                -Math.Abs(interestAmount), interestReconciledId, interestIsCleared);
                             await conn.ExecuteAsync(GetInsertSql(), intParam, tx);
                         }
                     }
@@ -674,11 +682,13 @@ public partial class BudgetService {
                 ? (int?)outboundSide.ReconciliationId
                 : null;
             uiTx.AccountName = outboundSide.AccountName;
+            uiTx.FromAccountIsCleared = outboundSide.IsCleared == 1;
             uiTx.ToAccountId = (int)inboundSide!.AccountId;
             uiTx.ToAccountReconciledId =
                 inboundSide.ReconciliationId != null ? (int?)inboundSide.ReconciliationId : null;
             uiTx.ToAccountName = inboundSide.AccountName;
-            uiTx.Amount = (decimal)uiTx.Amount;
+            uiTx.ToAccountIsCleared = inboundSide.IsCleared == 1;
+            uiTx.Amount = Math.Abs((decimal)uiTx.Amount);
         }
 
         return uiTx;
@@ -688,9 +698,11 @@ public partial class BudgetService {
         int? dbAccountId = row.AccountId != null ? (int?)row.AccountId : null;
         int? dbReconciledId = row.ReconciliationId != null ? (int?)row.ReconciliationId : null;
         decimal amount = (decimal)row.Amount;
-
+        
         int? uiAccountId = null;
         int? uiToAccountId = null;
+        bool? uiIsCleared = null;
+        bool? uiToIsCleared = null;
         long? uiRecordId = null;
         long? uiToRecordId = null;
         int? uiFromAccountReconciledId = null;
@@ -702,6 +714,8 @@ public partial class BudgetService {
             uiAccountId = dbAccountId;
             uiFromAccountReconciledId = dbReconciledId;
             uiRecordId = row.Id;
+            uiIsCleared = row.IsCleared == 1;
+            uiToIsCleared = null;
             uiToRecordId = null;
             uiToAccountId = null;
             uiToAccountReconciledId = null;
@@ -715,6 +729,8 @@ public partial class BudgetService {
                 uiFromAccountReconciledId = null;
                 uiRecordId = null;
                 uiToRecordId = row.Id;
+                uiIsCleared = null;
+                uiToIsCleared = row.IsCleared == 1;
                 uiToAccountId = dbAccountId;
                 uiToAccountReconciledId = dbReconciledId;
             }
@@ -722,6 +738,8 @@ public partial class BudgetService {
                 // Case 2: Outflow to Outside World (Purchase/Bill)
                 // Money is coming OUT of this account.
                 uiAccountId = dbAccountId;
+                uiIsCleared = row.IsCleared == 1;
+                uiToIsCleared = null;
                 uiToAccountId = null;
                 uiToAccountReconciledId = null;
                 uiRecordId = row.Id;
@@ -733,7 +751,7 @@ public partial class BudgetService {
             Description = row.Description,
             NormalizedDescription = row.NormalizedDescription,
             Memo = row.Memo,
-            Amount = amount,
+            Amount = Math.Abs(amount),
             TransactionDate = DateTime.Parse(row.TransactionDate),
             TransactionId = Guid.Parse(row.TransactionId.ToString()),
             FromRecordId = uiRecordId,
@@ -754,24 +772,26 @@ public partial class BudgetService {
             PaycheckOccurrenceDate =
                 row.PaycheckOccurrenceDate != null ? DateTime.Parse(row.PaycheckOccurrenceDate) : null,
             FromAccountReconciledId = uiFromAccountReconciledId,
-            ToAccountReconciledId = uiToAccountReconciledId
+            ToAccountReconciledId = uiToAccountReconciledId,
+            FromAccountIsCleared = uiIsCleared,
+            ToAccountIsCleared = uiToIsCleared,
         };
     }
 
     private string GetInsertSql() {
         return
-            @"INSERT INTO Transactions (TransactionId, Description, Memo, Amount, TransactionDate, AccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, IsInterestOnly, FitId, PaycheckId, PaycheckOccurrenceDate, ReconciliationId, NormalizedDescription)
-                 VALUES (@TransactionId, @Description, @Memo, @Amount, @TransactionDate, @AccountId, @BillId, @BucketId, @PeriodDate, @IsPrincipalOnly, @IsInterestOnly, @FitId, @PaycheckId, @PaycheckOccurrenceDate, @ReconciliationId, @NormalizedDescription)";
+            @"INSERT INTO Transactions (TransactionId, Description, Memo, Amount, TransactionDate, AccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, IsInterestOnly, FitId, PaycheckId, PaycheckOccurrenceDate, ReconciliationId, NormalizedDescription, IsCleared)
+                 VALUES (@TransactionId, @Description, @Memo, @Amount, @TransactionDate, @AccountId, @BillId, @BucketId, @PeriodDate, @IsPrincipalOnly, @IsInterestOnly, @FitId, @PaycheckId, @PaycheckOccurrenceDate, @ReconciliationId, @NormalizedDescription, @IsCleared)";
     }
 
     private string GetUpdateSql() {
         return
-            @"UPDATE Transactions SET TransactionId=@TransactionId, Description=@Description, Memo=@Memo, Amount=@Amount, TransactionDate=@TransactionDate, AccountId=@AccountId, BillId=@BillId, BucketId=@BucketId, PeriodDate=@PeriodDate, IsPrincipalOnly= @IsPrincipalOnly, IsInterestOnly=@IsInterestOnly, FitId=@FitId, PaycheckId=@PaycheckId, PaycheckOccurrenceDate=@PaycheckOccurrenceDate, ReconciliationId=@ReconciliationId, NormalizedDescription=@NormalizedDescription
+            @"UPDATE Transactions SET TransactionId=@TransactionId, Description=@Description, Memo=@Memo, Amount=@Amount, TransactionDate=@TransactionDate, AccountId=@AccountId, BillId=@BillId, BucketId=@BucketId, PeriodDate=@PeriodDate, IsPrincipalOnly= @IsPrincipalOnly, IsInterestOnly=@IsInterestOnly, FitId=@FitId, PaycheckId=@PaycheckId, PaycheckOccurrenceDate=@PaycheckOccurrenceDate, ReconciliationId=@ReconciliationId, NormalizedDescription=@NormalizedDescription, IsCleared=@IsCleared
                  WHERE Id=@Id";
     }
 
     private DynamicParameters GetInsertParameters(Transaction t, int? targetAccountId, decimal targetedAmount,
-        int? targetReconciliationId) {
+        int? targetReconciliationId, bool targetIsCleared) {
         var p = new DynamicParameters();
         p.Add("TransactionId", t.TransactionId.ToString());
         p.Add("Description", t.Description);
@@ -790,11 +810,12 @@ public partial class BudgetService {
         p.Add("PaycheckOccurrenceDate", t.PaycheckOccurrenceDate?.ToString("yyyy-MM-dd"));
         p.Add("ReconciliationId", targetReconciliationId);
         p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
+        p.Add("IsCleared", targetIsCleared);
         return p;
     }
 
     private DynamicParameters GetUpdateParameters(Transaction t, int? targetAccountId, decimal targetedAmount,
-        int? targetReconciliationId, long? id) {
+        int? targetReconciliationId, long? id, bool targetIsCleared) {
         var p = new DynamicParameters();
         p.Add("TransactionId", t.TransactionId.ToString());
         p.Add("Description", t.Description);
@@ -814,6 +835,7 @@ public partial class BudgetService {
         p.Add("ReconciliationId", targetReconciliationId);
         p.Add("Id", id);
         p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
+        p.Add("IsCleared", targetIsCleared);
         return p;
     }
 

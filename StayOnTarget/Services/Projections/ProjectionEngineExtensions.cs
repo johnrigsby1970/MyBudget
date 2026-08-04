@@ -307,11 +307,12 @@ public static class ProjectionEngineExtensions {
                 }
 
                 var item = new ProjectionItem {
+                    Type = e.Type,
                     ToAccountId = e.ToAccountId,
                     FromAccountId = e.FromAccountId,
                     TransactionDate = e.Date,
                     Description = e.Description,
-                    Amount = interest,
+                    Amount = Math.Abs(interest),
                     Balance = runningBalance,
                     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value)
                 };
@@ -402,11 +403,12 @@ public static class ProjectionEngineExtensions {
                                 }
 
                                 var sweepItem = new ProjectionItem {
+                                    Type = e.Type,
                                     TransactionDate = e.Date,
                                     Description = $"Min-Pay Sweep: {acc.Name}",
                                     FromAccountId = primaryChecking,
                                     ToAccountId = acc.Id,
-                                    Amount = -actualSweepAmount,
+                                    Amount =  Math.Abs(actualSweepAmount),//-actualSweepAmount,
                                     Balance = runningBalance,
                                     IsSynthetic = true,
                                     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
@@ -424,11 +426,12 @@ public static class ProjectionEngineExtensions {
                 dailyBalances.Clear();
 
                 var item = new ProjectionItem {
+                    Type = e.Type,
                     ToAccountId = e.ToAccountId,
                     FromAccountId = e.FromAccountId,
                     TransactionDate = e.Date,
                     Description = e.Description,
-                    Amount = totalInterest,
+                    Amount =  Math.Abs(totalInterest),
                     Balance = runningBalance,
                     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value)
                 };
@@ -596,7 +599,7 @@ public static class ProjectionEngineExtensions {
                             var paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";
 
                             var fromAccId = bucket.AccountId ?? primaryChecking;
-                            events.Add(new ProjectionGridItem(payPeriodEndDate, -amountToUse,
+                            events.Add(new ProjectionGridItem(payPeriodEndDate, amountToUse, //-amountToUse,
                                 $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
                                 bucket.Id, null, null, ProjectionEngine.ProjectionEventType.Bucket, false, false, false,
                                 false));
@@ -653,7 +656,7 @@ public static class ProjectionEngineExtensions {
                         var paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";
 
                         var fromAccId = bucket.AccountId ?? primaryChecking;
-                        events.Add(new ProjectionGridItem(occurrence.End, -amountToUse,
+                        events.Add(new ProjectionGridItem(occurrence.End, amountToUse, //-amountToUse,
                             $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
                             bucket.Id, null, null, ProjectionEngine.ProjectionEventType.Bucket, false, false, false,
                             false));

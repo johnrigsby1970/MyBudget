@@ -1,4 +1,6 @@
-﻿namespace StayOnTarget.ViewModels;
+﻿using StayOnTarget.Services.Projections;
+
+namespace StayOnTarget.ViewModels;
 
 public class ProjectionItem : ViewModelBase
 {
@@ -20,7 +22,30 @@ public class ProjectionItem : ViewModelBase
     public int? ToAccountId { get => _toAccountId; set => SetProperty(ref _toAccountId, value); }
     public int? FromAccountId { get => _fromAccountId; set => SetProperty(ref _fromAccountId, value); }
     public bool InOrOutOfMoneyAccount { get; set; }
+    public bool InMoneyAccount { get; set; }
+    public bool OutOfMoneyAccount { get; set; }
+    public bool InternalTransfer { get; set; }
+    
     public bool NeedsAttention { get => _paycheckId.HasValue;  }
+    
+    // Helper property for XAML DataTriggers
+    public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket;
+    
+    public bool IsSweep => Type == ProjectionEngine.ProjectionEventType.Sweep || Type == ProjectionEngine.ProjectionEventType.Snowball || Type == ProjectionEngine.ProjectionEventType.Roth;
+    
+    private ProjectionEngine.ProjectionEventType _type;
+    public ProjectionEngine.ProjectionEventType Type
+    {
+        get { return _type; }
+        set
+        {
+            if (_type != value) {
+                _type = value;
+                OnPropertyChanged("Type");
+            }
+        }
+    }
+    
     public decimal Amount 
     { 
         get => _amount; 

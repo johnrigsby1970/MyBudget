@@ -391,6 +391,26 @@ END;
             }
             
             columnExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='IsCleared'");
+
+            if (columnExists == 0) {
+                // If the table exists but the column doesn't, add it. 
+                // We check if table exists first.
+                var tableExists = connection.ExecuteScalar<int>(@"
+                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
+
+                if (tableExists > 0) {
+                    connection.Execute("ALTER TABLE Transactions ADD COLUMN IsCleared INTEGER DEFAULT 0");
+                    
+                    var transactions = connection.Query<(long Id, int? ReconciliationId)>("SELECT Id, ReconciliationId FROM Transactions");
+                    foreach (var tx in transactions) {
+                        var isCleared = tx.ReconciliationId.HasValue;
+                        connection.Execute("UPDATE Transactions SET IsCleared = @isCleared WHERE Id = @id", new { isCleared, id = tx.Id });
+                    }
+                }
+            }
+            
+            columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='IsInterestOnly'");
 
             if (columnExists == 0) {

@@ -5,7 +5,6 @@ using Serilog;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
 using StayOnTarget.ViewModels;
-using StayOnTarget.Views;
 
 namespace StayOnTarget;
 
@@ -22,11 +21,6 @@ public partial class ReconciliationWindow : Window {
 
     private async void OkButton_Click(object sender, RoutedEventArgs e) {
         try {
-            //MessageBoxResult messageBoxResult = MessageBox.Show(
-            //    $"I certify that there are no pending transactions on this account prior to {_viewModel.NewReconciledDate:MM/dd/yyyy} and that the balance is {_viewModel.NewReconciledBalance}?",
-            //    "Delete Confirmation", MessageBoxButton.YesNo);
-
-           // if (messageBoxResult == MessageBoxResult.Yes) {
                 _viewModel.SpinnerMessage = "Reconciling records...";
                 _viewModel.IsBusy = true; // Shows the overlay & starts spinner
                 // Yield back to UI thread to allow WPF to render the LoadingOverlay control
@@ -37,10 +31,6 @@ public partial class ReconciliationWindow : Window {
                 
                 _viewModel.IsBusy = false; // Hides spinner
                 DialogResult = true;
-           // }
-            //else {
-           //     MessageBox.Show("Reconciliation cancelled.");
-           // }
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during OkButton_Click.");
@@ -62,7 +52,6 @@ public partial class ReconciliationWindow : Window {
     public void HandleCheck(object sender, RoutedEventArgs e) {
         try {
             _viewModel.Reconcile();
-            _viewModel.UpdateTransactionEnabledState();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during HandleCheck.");
@@ -72,7 +61,6 @@ public partial class ReconciliationWindow : Window {
     public void HandleUnchecked(object sender, RoutedEventArgs e) {
         try {
             _viewModel.Reconcile();
-            _viewModel.UpdateTransactionEnabledState();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during HandleUnchecked.");
@@ -94,13 +82,12 @@ public partial class ReconciliationWindow : Window {
                 var grid = sender as DataGrid;
                 if (grid?.SelectedItem != null) {
                     // Access your specific transaction class
-                    var transaction = grid.SelectedItem as ReconciliationTransaction;
+                    var transaction = grid.SelectedItem as TransactionViewModel;
                     if (transaction != null) {
                         if (transaction.IsEnabled) {
                             // Toggle the property
-                            transaction.IsReconciled = !transaction.IsReconciled;
+                            transaction.IsCleared = !transaction.IsCleared;
                             _viewModel.Reconcile();
-                            _viewModel.UpdateTransactionEnabledState();
                         }
 
                         // Mark event as handled so the grid doesn't scroll

@@ -95,13 +95,67 @@
                               SelectionMode="Single"
                               RowDetailsVisibilityMode="Collapsed">
                         <DataGrid.Columns>
-                            <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}">
-                                <DataGridCheckBoxColumn.HeaderTemplate>
+                            <!-- <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"> -->
+                            <!--     <DataGridCheckBoxColumn.HeaderTemplate> -->
+                            <!--         <DataTemplate> -->
+                            <!--             <StackPanel Orientation="Vertical" HorizontalAlignment="Center"> -->
+                            <!--                 <TextBlock Text="Import" HorizontalAlignment="Center"/> -->
+                            <!--                 <CheckBox HorizontalAlignment="Center" Command="{Binding DataContext.ToggleSelectionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" /> -->
+                            <!--             </StackPanel> -->
+                            <!--         </DataTemplate> -->
+                            <!--     </DataGridCheckBoxColumn.HeaderTemplate> -->
+                            <!-- </DataGridCheckBoxColumn> -->
+                            <!-- <DataGridTemplateColumn Width="70"> -->
+                            <!--     <DataGridTemplateColumn.HeaderTemplate> -->
+                            <!--         <DataTemplate> -->
+                            <!--             <StackPanel Orientation="Vertical" HorizontalAlignment="Center"> -->
+                            <!--                 <TextBlock Text="Import" HorizontalAlignment="Center"/> -->
+                            <!--                 ~1~ Bind directly to IsAllSelected; no IsThreeState="True" needed on user click @1@ -->
+                            <!--                 <CheckBox HorizontalAlignment="Center"  -->
+                            <!--                           IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" /> -->
+                            <!--             </StackPanel> -->
+                            <!--         </DataTemplate> -->
+                            <!--     </DataGridTemplateColumn.HeaderTemplate> -->
+                            <!--     <DataGridTemplateColumn.CellTemplate> -->
+                            <!--         <DataTemplate> -->
+                            <!--             <CheckBox HorizontalAlignment="Center"  -->
+                            <!--                       VerticalAlignment="Center" -->
+                            <!--                       IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" /> -->
+                            <!--         </DataTemplate> -->
+                            <!--     </DataGridTemplateColumn.CellTemplate> -->
+                            <!-- </DataGridTemplateColumn> -->
+                            <DataGridTemplateColumn Width="70">
+                                <!-- Inherit default background, borders, and hover effects -->
+                                <DataGridTemplateColumn.HeaderStyle>
+                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                        <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                        <Setter Property="VerticalContentAlignment" Value="Center" />
+                                        <!-- <Setter Property="Padding" Value="0" /> -->
+                                        <!-- <Setter Property="Margin" Value="0" /> -->
+                                    </Style>
+                                </DataGridTemplateColumn.HeaderStyle>
+
+                                <DataGridTemplateColumn.HeaderTemplate>
                                     <DataTemplate>
-                                        <CheckBox Command="{Binding DataContext.ToggleSelectionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <TextBlock Text="Import" HorizontalAlignment="Center" Margin="0,0,0,2"/>
+                                            <CheckBox HorizontalAlignment="Center" 
+                                                      VerticalAlignment="Center"
+                                                      Margin="0"
+                                                      IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
                                     </DataTemplate>
-                                </DataGridCheckBoxColumn.HeaderTemplate>
-                            </DataGridCheckBoxColumn>
+                                </DataGridTemplateColumn.HeaderTemplate>
+
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox HorizontalAlignment="Center" 
+                                                  VerticalAlignment="Center"
+                                                  Margin="0"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=d}" Width="80" IsReadOnly="True" />
                             <DataGridTextColumn Header="Payee (Import)" Binding="{Binding Payee}" Width="*" IsReadOnly="True" />
                             <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=C}" Width="80" IsReadOnly="True" />

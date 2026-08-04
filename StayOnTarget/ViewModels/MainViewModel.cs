@@ -2091,7 +2091,7 @@ public class MainViewModel : ViewModelBase {
 
                         string json = JsonConvert.SerializeObject(transactions.ToList());
                         var reconciliationTransactions =
-                            JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
+                            JsonConvert.DeserializeObject<List<TransactionViewModel>>(json);
                         if (reconciliationTransactions != null) {
                             if (openingBalance.AccountId.HasValue) {
                                 await _reconciliationService.ReconcileAccountAsync(

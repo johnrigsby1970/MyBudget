@@ -73,13 +73,13 @@ public static class SnowballStrategyProcessor
                     runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
                         .Sum(a => accountBalances[a.Id]);
 
-                    projectionList.Add(new ProjectionItem
-                    {
+                    projectionList.Add(new ProjectionItem {
+                        Type = ProjectionEngine.ProjectionEventType.Snowball,
                         TransactionDate = sweepDate,
                         Description = $"Snowball: {accountNames[debt.Id]}",
                         FromAccountId = primaryCheckingId,
                         ToAccountId = debt.Id,
-                        Amount = -payAmount,
+                        Amount =  Math.Abs(payAmount),//-payAmount,
                         Balance = runningBalance,
                         IsSynthetic = true,
                         AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
@@ -120,13 +120,13 @@ public static class SnowballStrategyProcessor
                             runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
                                 .Sum(a => accountBalances[a.Id]);
 
-                            projectionList.Add(new ProjectionItem
-                            {
+                            projectionList.Add(new ProjectionItem {
+                                Type = ProjectionEngine.ProjectionEventType.Roth,
                                 TransactionDate = sweepDate,
                                 Description = $"Invest (Roth): {accountNames[roth.Id]}",
                                 FromAccountId = primaryCheckingId,
                                 ToAccountId = roth.Id,
-                                Amount = -investAmount,
+                                Amount =  Math.Abs(investAmount),//-investAmount,
                                 Balance = runningBalance,
                                 IsSynthetic = true,
                                 AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
@@ -158,13 +158,13 @@ public static class SnowballStrategyProcessor
                 runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
                     .Sum(a => accountBalances[a.Id]);
 
-                projectionList.Add(new ProjectionItem
-                {
+                projectionList.Add(new ProjectionItem {
+                    Type = ProjectionEngine.ProjectionEventType.Snowball,
                     TransactionDate = sweepDate,
                     Description = $"Invest: {accountNames[targetInvestment.Id]}",
                     FromAccountId = primaryCheckingId,
                     ToAccountId = targetInvestment.Id,
-                    Amount = -investAmount,
+                    Amount =  Math.Abs(investAmount),//-investAmount,
                     Balance = runningBalance,
                     IsSynthetic = true,
                     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),

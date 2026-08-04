@@ -112,6 +112,7 @@ public partial class BudgetService {
         };
 
         if (account.Id == 0) {
+            //balance is not being saved here
             account.Id = await conn.ExecuteScalarAsync<int>(
                 @"INSERT INTO Accounts (Name, BankName, Balance,  BalanceAsOf, AnnualGrowthRate, IncludeInTotal, Type, HexColor, IsPrimary) 
                            VALUES (@Name, @BankName, 0, @BalanceAsOf, @AnnualGrowthRate, @IncludeInTotal, @Type, @HexColor, @IsPrimary);

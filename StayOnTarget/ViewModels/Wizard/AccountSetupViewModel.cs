@@ -243,21 +243,10 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                     Log.Error(ex, "Error upserting transaction in Wizard.");
                 }
 
-                // List<Transaction> transactions = new List<Transaction>();
-                // if (openingBalance.AccountId.HasValue) {
-                //     transactions.AddRange(
-                //         await DatabaseInitializationContext.BudgetService.GetAccountTransactionsAsync(openingBalance.AccountId.Value));
-                // }
-                //
-                // if (openingBalance.ToAccountId.HasValue) {
-                //     transactions.AddRange(
-                //         await DatabaseInitializationContext.BudgetService.GetAccountTransactionsAsync(openingBalance.ToAccountId.Value));
-                // }
-
                 var reconciliationService = new ReconciliationService(DatabaseInitializationContext.BudgetService);
                 string json = JsonConvert.SerializeObject(new List<Transaction>(){openingBalance});
                 var reconciliationTransactions =
-                    JsonConvert.DeserializeObject<List<ReconciliationTransaction>>(json);
+                    JsonConvert.DeserializeObject<List<TransactionViewModel>>(json);
                 if (reconciliationTransactions != null) {
                     foreach (var reconciliationTransaction in reconciliationTransactions) {
                         reconciliationTransaction.IsReconciled = true;
@@ -266,7 +255,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                         await reconciliationService.ReconcileAccountAsync(
                             openingBalance.AccountId.Value,
                             reconciliationTransactions,
-                            openingBalance.Amount,
+                            isDebtAccount ? -1 * account.Balance: account.Balance,
                             openingBalance.TransactionDate);
                     }
                 
@@ -274,7 +263,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                         await reconciliationService.ReconcileAccountAsync(
                             openingBalance.ToAccountId.Value,
                             reconciliationTransactions,
-                            openingBalance.Amount,
+                            isDebtAccount ? -1 * account.Balance: account.Balance,
                             openingBalance.TransactionDate);
                     }
                 }
@@ -305,22 +294,6 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
             Log.Error(ex, "Error adding account");
         }
     }
-
-    // [RelayCommand]
-    // private async Task ImportStatementAsync(Account? account) {
-    //     if (account == null || DatabaseInitializationContext.BudgetService == null) return;
-    //     try {
-    //         var window = new ImportReconciliationWindow(account, DatabaseInitializationContext.BudgetService) {
-    //             Owner = Application.Current.MainWindow
-    //         };
-    //         window.ShowDialog();
-    //     }
-    //     catch (Exception ex) {
-    //         Log.Error(ex, "Error showing import window.");
-    //         MessageBox.Show("Failed to open import window. See log for details.", "Error", MessageBoxButton.OK,
-    //             MessageBoxImage.Error);
-    //     }
-    // }
     
     [RelayCommand]
     private async Task DeleteAccountAsync(Account? account) {

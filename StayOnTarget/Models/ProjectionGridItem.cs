@@ -38,6 +38,11 @@ public class ProjectionGridItem : ViewModelBase {
         TransactionId = transactionId;
         IsSynthetic = isSynthetic;
     }
+    
+    // Helper property for XAML DataTriggers
+    public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket;
+    public bool IsSweep => Type == ProjectionEngine.ProjectionEventType.Snowball ||  Type == ProjectionEngine.ProjectionEventType.Roth ||  Type == ProjectionEngine.ProjectionEventType.Sweep;
+
     private DateTime _date;
     public DateTime Date
     {
@@ -144,7 +149,7 @@ public class ProjectionGridItem : ViewModelBase {
             }
         }
     }
-    
+
     private ProjectionEngine.ProjectionEventType _type;
     public ProjectionEngine.ProjectionEventType Type
     {

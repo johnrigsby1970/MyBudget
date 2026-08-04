@@ -101,6 +101,8 @@
 
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
+
+        <converters:ProjectionAmountToBrushConverter x:Key="ProjectionAmountToBrushConverter" />
         <converters:ProjectionYearsLabelConverter x:Key="ProjectionYearsLabelConverter" />
         <converters:DoubleToDecimalConverter x:Key="DoubleToDecimalConverter" />
         <converters:AccountTypeToIconConverter x:Key="AccountIconConverter" />
@@ -2014,28 +2016,59 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True"
                                                 Width="150" />
+                            <!-- <DataGridTextColumn Header="Amount" -->
+                            <!--                     HeaderStyle="{StaticResource RightAlignedHeaderStyle}" -->
+                            <!--                     Binding="{Binding Amount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}" -->
+                            <!--                     Width="90" MinWidth="80"> -->
+                            <!--     ~1~ <DataGridTextColumn.ElementStyle> @1@ -->
+                            <!--     ~1~     <Style TargetType="TextBlock"> @1@ -->
+                            <!--     ~1~         <Setter Property="Foreground" Value="Black" /> @1@ -->
+                            <!--     ~1~         <Style.Triggers> @1@ -->
+                            <!--     ~1~             <DataTrigger @1@ -->
+                            <!--     ~1~                 Binding="{Binding Amount, Converter={StaticResource NegativeToRedConverter}}" @1@ -->
+                            <!--     ~1~                 Value="True"> @1@ -->
+                            <!--     ~1~                 <Setter Property="Foreground" Value="Red" /> @1@ -->
+                            <!--     ~1~             </DataTrigger> @1@ -->
+                            <!--     ~1~         </Style.Triggers> @1@ -->
+                            <!--     ~1~     </Style> @1@ -->
+                            <!--     ~1~ </DataGridTextColumn.ElementStyle> @1@ -->
+                            <!--      -->
+                            <!--     <DataGridTextColumn.ElementStyle> -->
+                            <!--         <Style TargetType="TextBlock"> -->
+                            <!--             <Setter Property="TextAlignment" Value="Right" /> -->
+                            <!--             <Setter Property="Padding" Value="0,0,8,0" /> -->
+                            <!--             <Setter Property="Foreground" -->
+                            <!--                     Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" /> -->
+                            <!--         </Style> -->
+                            <!--     </DataGridTextColumn.ElementStyle> -->
+                            <!-- </DataGridTextColumn> -->
+                           
                             <DataGridTextColumn Header="Amount"
                                                 HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
                                                 Binding="{Binding Amount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
                                                 Width="90" MinWidth="80">
-                                <!-- <DataGridTextColumn.ElementStyle> -->
-                                <!--     <Style TargetType="TextBlock"> -->
-                                <!--         <Setter Property="Foreground" Value="Black" /> -->
-                                <!--         <Style.Triggers> -->
-                                <!--             <DataTrigger -->
-                                <!--                 Binding="{Binding Amount, Converter={StaticResource NegativeToRedConverter}}" -->
-                                <!--                 Value="True"> -->
-                                <!--                 <Setter Property="Foreground" Value="Red" /> -->
-                                <!--             </DataTrigger> -->
-                                <!--         </Style.Triggers> -->
-                                <!--     </Style> -->
-                                <!-- </DataGridTextColumn.ElementStyle> -->
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextAlignment" Value="Right" />
                                         <Setter Property="Padding" Value="0,0,8,0" />
-                                        <Setter Property="Foreground"
+
+                                        <!-- Base Setter: Standard rows get Red/Green/Black from the converter -->
+                                        <Setter Property="Foreground" 
                                                 Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
+
+                                        <Style.Triggers>
+                                            <!-- 1. Bucket Rows: Soft Purple & Italic -->
+                                            <DataTrigger Binding="{Binding IsBucket}" Value="True">
+                                                <Setter Property="Foreground" Value="#6C5CE7" />
+                                                <Setter Property="FontStyle" Value="Italic" />
+                                            </DataTrigger>
+
+                                            <!-- 2. Auto-Sweep / Snowball Rows: Goldenrod & Italic -->
+                                            <DataTrigger Binding="{Binding IsSweep}" Value="True">
+                                                <Setter Property="Foreground" Value="Goldenrod" />
+                                                <Setter Property="FontStyle" Value="Italic" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
@@ -2048,7 +2081,7 @@
                                         <Setter Property="TextAlignment" Value="Right" />
                                         <Setter Property="Padding" Value="0,0,8,0" />
                                         <Setter Property="Foreground"
-                                                Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
+                                                Value="{Binding Balance, Converter={StaticResource AmountToBrushConverter}}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsWarning}" Value="True">
                                                 <Setter Property="Foreground" Value="Red" />
@@ -2211,19 +2244,48 @@
                                             <DataGridTextColumn Header="Description" Binding="{Binding Description}"
                                                                 IsReadOnly="True"
                                                                 Width="150" />
+                                            <!-- <DataGridTextColumn Header="Amount" -->
+                                            <!--                     HeaderStyle="{StaticResource RightAlignedHeaderStyle}" -->
+                                            <!--                     Binding="{Binding Amount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}" -->
+                                            <!--                     Width="90" MinWidth="80"> -->
+                                            <!--     <DataGridTextColumn.ElementStyle> -->
+                                            <!--         <Style TargetType="TextBlock"> -->
+                                            <!--             <Setter Property="TextAlignment" Value="Right" /> -->
+                                            <!--             <Setter Property="Padding" Value="0,0,8,0" /> -->
+                                            <!--             <Setter Property="Foreground" -->
+                                            <!--                     Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" /> -->
+                                            <!--         </Style> -->
+                                            <!--     </DataGridTextColumn.ElementStyle> -->
+                                            <!-- </DataGridTextColumn> -->
                                             <DataGridTextColumn Header="Amount"
-                                                                HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
-                                                                Binding="{Binding Amount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
-                                                                Width="90" MinWidth="80">
-                                                <DataGridTextColumn.ElementStyle>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="TextAlignment" Value="Right" />
-                                                        <Setter Property="Padding" Value="0,0,8,0" />
-                                                        <Setter Property="Foreground"
-                                                                Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
-                                                    </Style>
-                                                </DataGridTextColumn.ElementStyle>
-                                            </DataGridTextColumn>
+                                                HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
+                                                Binding="{Binding Amount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}"
+                                                Width="90" MinWidth="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextAlignment" Value="Right" />
+                                        <Setter Property="Padding" Value="0,0,8,0" />
+
+                                        <!-- Base Setter: Standard rows get Red/Green/Black from the converter -->
+                                        <Setter Property="Foreground" 
+                                                Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
+
+                                        <Style.Triggers>
+                                            <!-- 1. Bucket Rows: Soft Purple & Italic -->
+                                            <DataTrigger Binding="{Binding IsBucket}" Value="True">
+                                                <Setter Property="Foreground" Value="#6C5CE7" />
+                                                <Setter Property="FontStyle" Value="Italic" />
+                                            </DataTrigger>
+
+                                            <!-- 2. Auto-Sweep / Snowball Rows: Goldenrod & Italic -->
+                                            <DataTrigger Binding="{Binding IsSweep}" Value="True">
+                                                <Setter Property="Foreground" Value="Goldenrod" />
+                                                <Setter Property="FontStyle" Value="Italic" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
                                             <DataGridTextColumn Header="Total Balance"
                                                                 HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
                                                                 Binding="{Binding Balance, StringFormat=C}"
@@ -2233,7 +2295,7 @@
                                                         <Setter Property="TextAlignment" Value="Right" />
                                                         <Setter Property="Padding" Value="0,0,8,0" />
                                                         <Setter Property="Foreground"
-                                                                Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" />
+                                                                Value="{Binding Balance, Converter={StaticResource AmountToBrushConverter}}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsWarning}" Value="True">
                                                                 <Setter Property="Foreground" Value="Red" />

@@ -13,6 +13,13 @@
             set => SetProperty(ref _isReconciled, value);
         }
 
+        private bool _isCleared;
+
+        public bool IsCleared {
+            get => _isCleared;
+            set => SetProperty(ref _isCleared, value);
+        }
+        
         private string _status = "Unmatched";
 
         public string Status {
