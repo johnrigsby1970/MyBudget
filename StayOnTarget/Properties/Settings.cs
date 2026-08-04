@@ -17,6 +17,13 @@ namespace StayOnTarget.Properties
         // Your application preferences
         public bool UseWindowsHello { get; set; } = false;
 
+        // Path to the active SQLite database file
+        public string DatabasePath { get; set; } = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "StayOnTarget",
+            "StayOnTarget.db"
+        );
+        
         public static Settings Load()
         {
             try

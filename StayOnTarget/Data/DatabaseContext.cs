@@ -305,6 +305,11 @@ public class DatabaseContext {
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
             );
 
+CREATE TABLE IF NOT EXISTS AppSettings (
+    SettingKey TEXT PRIMARY KEY,
+    SettingValue TEXT
+);
+
 CREATE TABLE IF NOT EXISTS AccountSnapshots (
     SnapshotDate TEXT NOT NULL,    -- ISO8601 YYYY-MM-DD
     AccountID INTEGER NOT NULL,

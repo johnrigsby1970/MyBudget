@@ -146,6 +146,13 @@ public class Account : ViewModelBase, INotifyDataErrorInfo
         set => SetProperty(ref _isArchived, value);
     }
     
+    private bool _isExcludedInSnowball;
+    public bool IsExcludedInSnowball
+    {
+        get => _isExcludedInSnowball;
+        set => SetProperty(ref _isExcludedInSnowball, value);
+    }
+    
     public List<AccountAprHistory>? AccountAprHistory { get; set; }
     
     #region Error Validation

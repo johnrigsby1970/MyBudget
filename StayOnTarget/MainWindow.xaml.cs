@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using StayOnTarget.Models;
 using StayOnTarget.ViewModels;
@@ -269,6 +270,14 @@ public partial class MainWindow : Window {
             column.CellTemplate = template;
 
             SnowballGrid.Columns.Add(column);
+        }
+    }
+        
+    private void CloseOverlayOnBackdropClick(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is MainViewModel vm)
+        {
+            vm.CloseManageExcludedAccountsCommand.Execute(null);
         }
     }
 }

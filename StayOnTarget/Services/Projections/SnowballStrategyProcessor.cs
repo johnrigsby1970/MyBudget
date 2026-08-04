@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using StayOnTarget.Models;
+﻿using StayOnTarget.Models;
 using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Services.Projections;
@@ -23,32 +20,62 @@ public static class SnowballStrategyProcessor
         if (!options.EnableSnowball) return;
 
         decimal checkingBalance = accountBalances[primaryCheckingId];
-        decimal threshold = options.CheckingSafetyThresholdPct * checkingBalance;
+
+        // -------------------------------------------------------------
+        // Step 0: Calculate Available Sweep Pool Based on Strategy Options
+        // -------------------------------------------------------------
+        decimal threshold = options.CheckingSafetyBufferAmount;
+        if (options.CheckingSafetyThresholdPct > 0m)
+        {
+            decimal pctThreshold = options.CheckingSafetyThresholdPct * checkingBalance;
+            threshold = Math.Max(threshold, pctThreshold);
+        }
         if (threshold < 0) threshold = 0;
 
         decimal availableSurplus = checkingBalance - threshold;
         if (availableSurplus <= 0.01m) return;
 
-        decimal sweepPool = availableSurplus * options.SurplusSweepPercentage;
+        decimal sweepPool = 0m;
+
+        switch (options.SurplusMethod)
+        {
+            case SnowballStrategyOptions.SurplusCalculationMethod.FixedMonthlyAmount:
+                sweepPool = Math.Min(availableSurplus, options.FixedMonthlySurplusAmount);
+                break;
+
+            case SnowballStrategyOptions.SurplusCalculationMethod.Hybrid:
+                decimal pctSweep = availableSurplus * options.SurplusSweepPercentage;
+                sweepPool = Math.Min(pctSweep, options.FixedMonthlySurplusAmount);
+                break;
+
+            case SnowballStrategyOptions.SurplusCalculationMethod.PercentageOfChecking:
+            default:
+                sweepPool = availableSurplus * options.SurplusSweepPercentage;
+                break;
+        }
+
         if (sweepPool <= 0.01m) return;
 
+        // -------------------------------------------------------------
         // 1. Debt Snowball Execution
+        // -------------------------------------------------------------
         if (options.PrimaryTarget is SurplusAllocationTarget.PayDownDebt or SurplusAllocationTarget.Hybrid)
         {
             var debtAccounts = accounts.Where(a => a.IsLiability)
+                                       .Where(a => !options.ExcludedAccountIds.Contains(a.Id)) // Honor Excluded Accounts
                                        .Where(a => accountBalances[a.Id] < -0.01m)
                                        .ToList();
 
             if (options.DebtSortStrategy == SnowballSortStrategy.LowestBalanceFirst)
             {
-                // Closest to $0 balance means highest balance value since they are negative
+                // Closest to $0 balance first (balances are negative)
                 debtAccounts = debtAccounts.OrderByDescending(a => accountBalances[a.Id]).ToList();
             }
             else // HighestInterestFirst (Avalanche)
             {
                 debtAccounts = debtAccounts.OrderByDescending(a => {
                     decimal rate = 0;
-                    if ((a.IsLoanAccount) && a.MortgageDetails != null) 
+                    if (a.IsLoanAccount && a.MortgageDetails != null) 
                         rate = a.MortgageDetails.InterestRate;
                     else if (a.AccountAprHistory != null && a.AccountAprHistory.Any())
                         rate = a.AccountAprHistory.OrderByDescending(h => h.AsOfDate).First().AnnualPercentageRate;
@@ -59,7 +86,7 @@ public static class SnowballStrategyProcessor
 
             foreach (var debt in debtAccounts)
             {
-                if (sweepPool <= 0) break;
+                if (sweepPool <= 0.01m) break;
 
                 decimal currentDebtBalance = -accountBalances[debt.Id];
                 decimal payAmount = Math.Min(sweepPool, currentDebtBalance);
@@ -79,7 +106,7 @@ public static class SnowballStrategyProcessor
                         Description = $"Snowball: {accountNames[debt.Id]}",
                         FromAccountId = primaryCheckingId,
                         ToAccountId = debt.Id,
-                        Amount =  Math.Abs(payAmount),//-payAmount,
+                        Amount = Math.Abs(payAmount),
                         Balance = runningBalance,
                         IsSynthetic = true,
                         AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
@@ -89,24 +116,33 @@ public static class SnowballStrategyProcessor
             }
         }
 
+        // -------------------------------------------------------------
         // 2. Investment Allocation Execution
+        // -------------------------------------------------------------
         if (sweepPool > 0.01m && options.PrimaryTarget is SurplusAllocationTarget.InvestSurplus or SurplusAllocationTarget.Hybrid)
         {
-            var investmentAccounts = accounts.Where(a => a.Type is AccountType.Brokerage or AccountType.Retirement401k or AccountType.Investment)
+            // Expand filter to capture all investment/retirement account types
+            var investmentAccounts = accounts.Where(a => a.Type is AccountType.Brokerage 
+                                                        or AccountType.Retirement401k 
+                                                        or AccountType.Roth401k
+                                                        or AccountType.Investment 
+                                                        or AccountType.IRA 
+                                                        or AccountType.RothIRA)
+                                             .Where(a => !options.ExcludedAccountIds.Contains(a.Id))
                                              .ToList();
 
             // Roth Prioritization
             if (options.InvestmentStrategy == InvestmentStrategy.PrioritizeRothLimits)
             {
-                var rothAccounts = investmentAccounts.Where(a => a.Name.Contains("Roth", StringComparison.OrdinalIgnoreCase)).ToList();
+                var rothAccounts = investmentAccounts.Where(a => a.Type == AccountType.RothIRA).ToList();
                 foreach (var roth in rothAccounts)
                 {
-                    if (sweepPool <= 0) break;
+                    if (sweepPool <= 0.01m) break;
 
                     int year = sweepDate.Year;
                     if (!rothContributionsByYear.ContainsKey(year)) rothContributionsByYear[year] = 0;
 
-                    decimal remainingLimit = options.AnnualRothContributionLimit - rothContributionsByYear[year];
+                    decimal remainingLimit = options.AnnualRothIraContributionLimit - rothContributionsByYear[year];
                     if (remainingLimit > 0)
                     {
                         decimal investAmount = Math.Min(sweepPool, remainingLimit);
@@ -126,7 +162,7 @@ public static class SnowballStrategyProcessor
                                 Description = $"Invest (Roth): {accountNames[roth.Id]}",
                                 FromAccountId = primaryCheckingId,
                                 ToAccountId = roth.Id,
-                                Amount =  Math.Abs(investAmount),//-investAmount,
+                                Amount = Math.Abs(investAmount),
                                 Balance = runningBalance,
                                 IsSynthetic = true,
                                 AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
@@ -141,7 +177,7 @@ public static class SnowballStrategyProcessor
             if (sweepPool > 0.01m && investmentAccounts.Any())
             {
                 var nonRothInvestmentAccounts = investmentAccounts
-                    .Where(a => !a.Name.Contains("Roth", StringComparison.OrdinalIgnoreCase))
+                    .Where(a => a.Type != AccountType.RothIRA && a.Type != AccountType.Roth401k)
                     .ToList();
 
                 var targetInvestment = (nonRothInvestmentAccounts.Any() ? nonRothInvestmentAccounts : investmentAccounts)
@@ -152,7 +188,6 @@ public static class SnowballStrategyProcessor
                 accountBalances[primaryCheckingId] -= investAmount;
                 accountBalances[targetInvestment.Id] += investAmount;
                 
-                // IMPORTANT: Consume the pool so it's not reused or reported incorrectly
                 sweepPool = 0; 
 
                 runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
@@ -164,7 +199,7 @@ public static class SnowballStrategyProcessor
                     Description = $"Invest: {accountNames[targetInvestment.Id]}",
                     FromAccountId = primaryCheckingId,
                     ToAccountId = targetInvestment.Id,
-                    Amount =  Math.Abs(investAmount),//-investAmount,
+                    Amount = Math.Abs(investAmount),
                     Balance = runningBalance,
                     IsSynthetic = true,
                     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),

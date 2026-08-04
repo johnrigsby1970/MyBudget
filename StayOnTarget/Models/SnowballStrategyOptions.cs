@@ -54,11 +54,11 @@ public class SnowballStrategyOptions : ObservableObject
     }
     
     // Account Limits
-    private decimal _annualRothContributionLimit = 7000m;
-    public decimal AnnualRothContributionLimit
+    private decimal _annualRothIraContributionLimit = 7000m;
+    public decimal AnnualRothIraContributionLimit
     {
-        get => _annualRothContributionLimit;
-        set => SetProperty(ref _annualRothContributionLimit, value);
+        get => _annualRothIraContributionLimit;
+        set => SetProperty(ref _annualRothIraContributionLimit, value);
     }
 
     private Dictionary<int, decimal> _currentYearRothContributions = new();
@@ -66,5 +66,35 @@ public class SnowballStrategyOptions : ObservableObject
     {
         get => _currentYearRothContributions;
         set => SetProperty(ref _currentYearRothContributions, value);
+    }
+    
+    private HashSet<int> _excludedAccountIds = new();
+    public HashSet<int> ExcludedAccountIds
+    {
+        get => _excludedAccountIds;
+        set => SetProperty(ref _excludedAccountIds, value);
+    }
+    
+    public enum SurplusCalculationMethod { PercentageOfChecking, FixedMonthlyAmount, Hybrid }
+
+    private SurplusCalculationMethod _surplusMethod = SurplusCalculationMethod.PercentageOfChecking;
+    public SurplusCalculationMethod SurplusMethod
+    {
+        get => _surplusMethod;
+        set => SetProperty(ref _surplusMethod, value);
+    }
+
+    private decimal _fixedMonthlySurplusAmount = 0m;
+    public decimal FixedMonthlySurplusAmount
+    {
+        get => _fixedMonthlySurplusAmount;
+        set => SetProperty(ref _fixedMonthlySurplusAmount, value);
+    }
+    
+    private decimal _checkingSafetyBufferAmount = 0m;
+    public decimal CheckingSafetyBufferAmount
+    {
+        get => _checkingSafetyBufferAmount;
+        set => SetProperty(ref _checkingSafetyBufferAmount, value);
     }
 }

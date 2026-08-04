@@ -289,7 +289,7 @@ public class SnowballStrategyTests
             EnableSnowball = true,
             PrimaryTarget = SurplusAllocationTarget.InvestSurplus,
             InvestmentStrategy = InvestmentStrategy.PrioritizeRothLimits,
-            AnnualRothContributionLimit = 7000m,
+            AnnualRothIraContributionLimit = 7000m,
             SurplusSweepPercentage = 1.0m,
             CheckingSafetyThresholdPct = 0.25m // Keep 25% in checking
         };
