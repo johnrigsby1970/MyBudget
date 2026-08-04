@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using CommunityToolkit.Mvvm.Input;
+using StayOnTarget.DataAnnotation;
 using StayOnTarget.Helpers;
 using StayOnTarget.Services;
 using StayOnTarget.Views.Wizard;
@@ -25,6 +26,7 @@ public partial class DatabaseNameViewModel : ViewModelBase, IWizardStepViewModel
     [Required(ErrorMessage = "Database name is required.")]
     [MinLength(1, ErrorMessage = "Database name must be at least 1 characters.")]
     [MaxLength(64, ErrorMessage = "Database name can be no longer than 64 characters.")]
+    [DatabaseNameValidation]
     public string DatabaseName {
         get => _databaseName;
         set {
@@ -107,18 +109,25 @@ public partial class DatabaseNameViewModel : ViewModelBase, IWizardStepViewModel
             // Success path
             ErrorMessage = string.Empty;
 
-            string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                @"AppData\Local\StayOnTarget", DatabaseName);
+            StayOnTarget.Properties.Settings.Default.DatabaseName = DatabaseName;
+            string dbPath = StayOnTarget.Properties.Settings.Default.DatabasePath();
+            // string dbPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            //     @"AppData\Local\StayOnTarget", DatabaseName);
 
             // In a real app, we might want to let the user pick the path, 
             // but for now we follow the pattern in DatabaseContext.
 
             var budgetService = new BudgetService(dbPath, Password);
             DatabaseInitializationContext.BudgetService = budgetService;
-
-            // Save settings
-            StayOnTarget.Properties.Settings.Default.UseWindowsHello = UseWindowsHello;
-            StayOnTarget.Properties.Settings.Default.Save();
+            
+            try {
+                // Save settings
+                StayOnTarget.Properties.Settings.Default.UseWindowsHello = UseWindowsHello;
+                StayOnTarget.Properties.Settings.Default.Save();
+            }
+            catch (Exception ex) {
+                Serilog.Log.Error(ex, "Error during database name save attempt.");
+            }
 
             if (UseWindowsHello) {
                 VaultManager.SaveDatabaseKey(Password, "MasterKey"); //DatabaseName);
@@ -126,7 +135,7 @@ public partial class DatabaseNameViewModel : ViewModelBase, IWizardStepViewModel
             else {
                 VaultManager.RemoveDatabaseKey( "MasterKey"); //DatabaseName);
             }
-
+            
             DatabaseInitialized = true;
         }
         catch (Exception ex) {

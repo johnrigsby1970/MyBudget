@@ -28,7 +28,18 @@ public partial class App : Application {
         // STEP 1: Tell WPF not to shut down just because a window closes
         Current.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-        string dbPath = DatabaseContext.GetDefaultDbPath();
+        string dbPath = StayOnTarget.Properties.Settings.Default.DatabasePath();//DatabaseContext.GetDefaultDbPath();
+        
+        // try {
+        //     string savedPath = StayOnTarget.Properties.Settings.Default.DatabasePath();
+        //     if (!string.IsNullOrEmpty(savedPath) && File.Exists(savedPath)) {
+        //         dbPath = savedPath;
+        //     }
+        // }
+        // catch (Exception ex) {
+        //     Log.Error(ex, "Error during Windows Hello unlock attempt.");
+        // }
+        
         Log.Information("Database path: {DbPath}", dbPath);
         bool dbExists = File.Exists(dbPath);
         string? password = null;

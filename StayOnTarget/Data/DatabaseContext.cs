@@ -47,10 +47,11 @@ public class SqliteNullableGuidHandler : SqlMapper.TypeHandler<Guid?> {
 
 public class DatabaseContext {
     private string _connectionString;
+    private string _dbPath;
 
     //private const string ProgramFolderName = "StayOnTarget";
-    private const string ProgramFolderName = @"AppData\Local\StayOnTarget";
-    private const string DatabaseName = "budget.db";
+    //private const string ProgramFolderName = @"AppData\Local\StayOnTarget";
+    // private const string DatabaseName = "budget.db";
 
     static DatabaseContext() {
         // // Call this once at application startup to register the encryption provider
@@ -67,17 +68,18 @@ public class DatabaseContext {
             Directory.CreateDirectory(directory);
         }
 
-        _connectionString = BuildConnectionString(dbPath, userPassword);
+        _dbPath = dbPath;
+        _connectionString = BuildConnectionString(_dbPath, userPassword);
 
         InitializeDatabase();
     }
 
     // Public helper to compute the default user profile path safely
-    public static string GetDefaultDbPath() {
-        var userProfileFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var dbFolder = Path.Combine(userProfileFolder, ProgramFolderName);
-        return Path.Combine(dbFolder, DatabaseName);
-    }
+    // public static string GetDefaultDbPath() {
+    //     var userProfileFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+    //     var dbFolder = Path.Combine(userProfileFolder, ProgramFolderName);
+    //     return Path.Combine(dbFolder, DatabaseName);
+    // }
 
     public string BuildConnectionString(string dbPath, string? password) {
         if (string.IsNullOrEmpty(password)) {
@@ -102,8 +104,8 @@ public class DatabaseContext {
 
     public string BackupDatabase(string? password) {
         var userProfileFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        var dbFolder = Path.Combine(userProfileFolder, ProgramFolderName);
-        var oldPath = Path.Combine(dbFolder, DatabaseName);
+        //var dbFolder = Path.Combine(userProfileFolder, ProgramFolderName);
+        var oldPath = _dbPath;//Path.Combine(dbFolder, DatabaseName);
         if (string.IsNullOrWhiteSpace(oldPath)) {
             MessageBox.Show("No file found to backup.");
             return string.Empty;

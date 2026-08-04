@@ -7,7 +7,7 @@ namespace StayOnTarget.Properties
     public class Settings
     {
         private static readonly string SettingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
             "StayOnTarget", 
             "user.config"
         );
@@ -18,11 +18,15 @@ namespace StayOnTarget.Properties
         public bool UseWindowsHello { get; set; } = false;
 
         // Path to the active SQLite database file
-        public string DatabasePath { get; set; } = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "StayOnTarget",
-            "StayOnTarget.db"
-        );
+        public string DatabasePath() {
+            return Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "StayOnTarget",
+                DatabaseName
+            );
+        }
+
+        public string DatabaseName { get; set; } = "budget.db";
         
         public static Settings Load()
         {

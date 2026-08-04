@@ -7,9 +7,9 @@ public partial class BudgetService
     private readonly DatabaseContext _db;
     private readonly string _password;
 
-    public BudgetService(string password) : this(DatabaseContext.GetDefaultDbPath(), password)
-    {
-    }
+    // public BudgetService(string password) : this(DatabaseContext.GetDefaultDbPath(), password)
+    // {
+    // }
 
     public BudgetService(string dbPath, string password)
     {
