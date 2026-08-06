@@ -638,7 +638,11 @@ public partial class BudgetService {
             // Check if there's an interest-only transaction in the group
             bool hasInterestOnly = list.Any(r => r.IsInterestOnly == 1);
 
-            if (list.Count() == 2) {
+            if (list.Any(r => r.TransactionId == "e70ed386-4b85-4b0f-a3bb-12ad97f6312b")) {
+                var s = "";
+            }
+            
+            if (list.Count() >= 2) {
                 if (hasInterestOnly) {
                     // If it's interest-only and has 2 rows, we need to decide what to do.
                     // The requirement says "ignore ... unless it is the from part ... and then there will be nothing to merge it with".

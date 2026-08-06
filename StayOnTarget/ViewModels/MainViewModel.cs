@@ -1784,10 +1784,13 @@ public class MainViewModel : ViewModelBase {
                 EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
             }
 
-            EditingTransactionClone = new Transaction {
+            var editTrans = new Transaction {
                 Description = "", Memo = "", Amount = 0, TransactionDate = DateTime.Today,
                 FitId = guid
             };
+            RefreshTransactionEditState(editTrans);
+            
+            EditingTransactionClone = editTrans;
             EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
             // EditingTransactionClone.PropertyChanged += (s, e) => {
             //     if (e.PropertyName == nameof(Transaction.AccountId) ||
@@ -1796,7 +1799,6 @@ public class MainViewModel : ViewModelBase {
             //     }
             // };
             SelectedTransaction = null;
-            RefreshTransactionEditState();
             IsEditingTransaction = true;
         }
         catch (Exception ex) {
@@ -1812,7 +1814,7 @@ public class MainViewModel : ViewModelBase {
                 EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
             }
 
-            EditingTransactionClone = new Transaction {
+            var editTrans = new Transaction {
                 Id = SelectedTransaction.Id,
                 Description = SelectedTransaction.Description,
                 Memo = SelectedTransaction.Memo,
@@ -1833,14 +1835,12 @@ public class MainViewModel : ViewModelBase {
                 FromAccountReconciledId = SelectedTransaction.FromAccountReconciledId,
                 ToAccountReconciledId = SelectedTransaction.ToAccountReconciledId
             };
+            
+            RefreshTransactionEditState(editTrans);
+            
+            EditingTransactionClone = editTrans;
             EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
-            // EditingTransactionClone.PropertyChanged += (s, e) => {
-            //     if (e.PropertyName == nameof(Transaction.AccountId) ||
-            //         e.PropertyName == nameof(Transaction.ToAccountId)) {
-            //         RefreshTransactionEditState();
-            //     }
-            // };
-            RefreshTransactionEditState();
+            
             IsEditingTransaction = true;
         }
         catch (Exception ex) {
@@ -1848,11 +1848,11 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private void RefreshTransactionEditState() {
-        if (EditingTransactionClone == null) return;
+    private void RefreshTransactionEditState(Transaction? source) {
+        if (source == null) return;
 
-        var fromAccount = Accounts.FirstOrDefault(a => a.Id == EditingTransactionClone.AccountId);
-        var toAccount = Accounts.FirstOrDefault(a => a.Id == EditingTransactionClone.ToAccountId);
+        var fromAccount = Accounts.FirstOrDefault(a => a.Id == source.AccountId);
+        var toAccount = Accounts.FirstOrDefault(a => a.Id == source.ToAccountId);
 
         bool fromArchived = fromAccount?.IsArchived ?? false;
         bool toArchived = toAccount?.IsArchived ?? false;
@@ -1861,27 +1861,26 @@ public class MainViewModel : ViewModelBase {
 
         // If fromAccount is NULL but AccountId is not 0, it means it's missing from the Accounts collection.
         // This shouldn't happen if LoadAccountDataAsync(true) works, but we should be safe.
-        if (fromAccount == null && EditingTransactionClone.AccountId != null &&
-            EditingTransactionClone.AccountId != 0) {
+        if (fromAccount == null && source.AccountId != null &&
+            source.AccountId != 0) {
             // We assume it might be archived if we can't find it in our current list (though our list SHOULD have archived)
             // To be safe, we disable editing if we can't find the account.
             IsEditingTransactionEnabled = false;
         }
 
-        if (toAccount == null && EditingTransactionClone.ToAccountId != null &&
-            EditingTransactionClone.ToAccountId != 0) {
+        if (toAccount == null && source.ToAccountId != null &&
+            source.ToAccountId != 0) {
             IsEditingTransactionEnabled = false;
         }
 
         // If editing is enabled, filter out archived accounts (except the ones already selected)
         // If editing is disabled (historical transaction with archived account), show ALL accounts so the archived ones are visible
         var filteredAccounts = IsEditingTransactionEnabled
-            ? Accounts.Where(a => !a.IsArchived || a.Id == EditingTransactionClone.AccountId).ToList()
+            ? Accounts.Where(a => !a.IsArchived || a.Id == source.AccountId).ToList()
             : Accounts.ToList();
 
         // If the transaction has an account that is NOT in the list (e.g. deleted or just missing), we should still show it if we can
-        if (EditingTransactionClone.AccountId != null && EditingTransactionClone.AccountId != 0 &&
-            !filteredAccounts.Any(a => a.Id == EditingTransactionClone.AccountId)) {
+        if (source.AccountId != null && source.AccountId != 0 && filteredAccounts.All(a => a.Id != source.AccountId)) {
             var missingAccount = fromAccount;
             if (missingAccount != null) {
                 filteredAccounts.Add(missingAccount);
@@ -1890,22 +1889,16 @@ public class MainViewModel : ViewModelBase {
 
         var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
         accountsWithNone.AddRange(filteredAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
-
-        var temp = new List<Account>(accountsWithNone.Count);
-        foreach (var b in accountsWithNone) {
-            temp.Add(b);
-        }
-
+        
         TransactionAccounts.Clear();
-        TransactionAccounts.AddRange(temp);
+        TransactionAccounts.AddRange(accountsWithNone);
 
         var filteredToAccounts = IsEditingTransactionEnabled
-            ? Accounts.Where(a => !a.IsArchived || a.Id == EditingTransactionClone.ToAccountId).ToList()
+            ? Accounts.Where(a => !a.IsArchived || a.Id == source.ToAccountId).ToList()
             : Accounts.ToList();
 
         // If the transaction has a to-account that is NOT in the list, we should still show it
-        if (EditingTransactionClone.ToAccountId != null && EditingTransactionClone.ToAccountId != 0 &&
-            !filteredToAccounts.Any(a => a.Id == EditingTransactionClone.ToAccountId)) {
+        if (source.ToAccountId != null && source.ToAccountId != 0 && filteredToAccounts.All(a => a.Id != source.ToAccountId)) {
             var missingAccount = toAccount;
             if (missingAccount != null) {
                 filteredToAccounts.Add(missingAccount);
@@ -1914,15 +1907,9 @@ public class MainViewModel : ViewModelBase {
 
         var toAccountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
         toAccountsWithNone.AddRange(filteredToAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
-
-
-        var tempTo = new List<Account>(toAccountsWithNone.Count);
-        foreach (var b in toAccountsWithNone) {
-            tempTo.Add(b);
-        }
-
+        
         TransactionToAccounts.Clear();
-        TransactionToAccounts.AddRange(tempTo);
+        TransactionToAccounts.AddRange(toAccountsWithNone);
     }
 
     private async Task SaveTransactionAsync() {
@@ -2383,7 +2370,7 @@ public class MainViewModel : ViewModelBase {
         if (affectedPaychecks.Any() || affectedBills.Any() || affectedBuckets.Any()) {
             var availableAccounts = Accounts.Where(a => a.Id != EditingAccountClone.Id && !a.IsArchived).ToList();
             var vm = new ReassignAccountDependenciesViewModel(affectedPaychecks, affectedBills, affectedBuckets,
-                availableAccounts, EditingAccountClone.Id);
+                availableAccounts, EditingAccountClone.Id!);
             var dialog = new ReassignAccountDependenciesDialog(vm) {
                 Owner = Application.Current.MainWindow
             };
@@ -3655,18 +3642,13 @@ public class MainViewModel : ViewModelBase {
         return null;
     }
 
-
     private async void EditingTransactionClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
         if (e.PropertyName == nameof(Transaction.SubCategoryId)) {
             ApplyDefaultBucketForSubCategory();
         }
-// Handle Description triggering SubCategoryId lookup
+        // Handle Description triggering SubCategoryId lookup
         else if (e.PropertyName == nameof(Transaction.Description)) {
             await TryAutoSuggestSubCategoryAsync();
-        }
-        else if (e.PropertyName == nameof(Transaction.AccountId) ||
-                 e.PropertyName == nameof(Transaction.ToAccountId)) {
-            RefreshTransactionEditState();
         }
     }
 
