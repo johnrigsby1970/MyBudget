@@ -95,43 +95,12 @@
                               SelectionMode="Single"
                               RowDetailsVisibilityMode="Collapsed">
                         <DataGrid.Columns>
-                            <!-- <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"> -->
-                            <!--     <DataGridCheckBoxColumn.HeaderTemplate> -->
-                            <!--         <DataTemplate> -->
-                            <!--             <StackPanel Orientation="Vertical" HorizontalAlignment="Center"> -->
-                            <!--                 <TextBlock Text="Import" HorizontalAlignment="Center"/> -->
-                            <!--                 <CheckBox HorizontalAlignment="Center" Command="{Binding DataContext.ToggleSelectionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" /> -->
-                            <!--             </StackPanel> -->
-                            <!--         </DataTemplate> -->
-                            <!--     </DataGridCheckBoxColumn.HeaderTemplate> -->
-                            <!-- </DataGridCheckBoxColumn> -->
-                            <!-- <DataGridTemplateColumn Width="70"> -->
-                            <!--     <DataGridTemplateColumn.HeaderTemplate> -->
-                            <!--         <DataTemplate> -->
-                            <!--             <StackPanel Orientation="Vertical" HorizontalAlignment="Center"> -->
-                            <!--                 <TextBlock Text="Import" HorizontalAlignment="Center"/> -->
-                            <!--                 ~1~ Bind directly to IsAllSelected; no IsThreeState="True" needed on user click @1@ -->
-                            <!--                 <CheckBox HorizontalAlignment="Center"  -->
-                            <!--                           IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" /> -->
-                            <!--             </StackPanel> -->
-                            <!--         </DataTemplate> -->
-                            <!--     </DataGridTemplateColumn.HeaderTemplate> -->
-                            <!--     <DataGridTemplateColumn.CellTemplate> -->
-                            <!--         <DataTemplate> -->
-                            <!--             <CheckBox HorizontalAlignment="Center"  -->
-                            <!--                       VerticalAlignment="Center" -->
-                            <!--                       IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" /> -->
-                            <!--         </DataTemplate> -->
-                            <!--     </DataGridTemplateColumn.CellTemplate> -->
-                            <!-- </DataGridTemplateColumn> -->
                             <DataGridTemplateColumn Width="70">
                                 <!-- Inherit default background, borders, and hover effects -->
                                 <DataGridTemplateColumn.HeaderStyle>
                                     <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                         <Setter Property="HorizontalContentAlignment" Value="Center" />
                                         <Setter Property="VerticalContentAlignment" Value="Center" />
-                                        <!-- <Setter Property="Padding" Value="0" /> -->
-                                        <!-- <Setter Property="Margin" Value="0" /> -->
                                     </Style>
                                 </DataGridTemplateColumn.HeaderStyle>
 
@@ -168,7 +137,7 @@
                                     <Style TargetType="ComboBox">
                                         <Setter Property="ItemsSource" Value="{Binding DataContext.BillsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsReconciled}" Value="True">
+                                            <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -178,14 +147,40 @@
                                     <Style TargetType="ComboBox">
                                         <Setter Property="ItemsSource" Value="{Binding DataContext.BillsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsReconciled}" Value="True">
+                                            <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </DataGridComboBoxColumn.EditingElementStyle>
                             </DataGridComboBoxColumn>
-                            <DataGridComboBoxColumn Header="Bucket" 
+                            <DataGridComboBoxColumn Header="Sub Category" 
+                                                    SelectedValueBinding="{Binding SubCategoryId, UpdateSourceTrigger=PropertyChanged}"
+                                                    SelectedValuePath="Id"
+                                                    DisplayMemberPath="Name"
+                                                    Width="120">
+                                <DataGridComboBoxColumn.ElementStyle>
+                                    <Style TargetType="ComboBox">
+                                        <Setter Property="ItemsSource" Value="{Binding DataContext.SubCategoriesWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMatched}" Value="True">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridComboBoxColumn.ElementStyle>
+                                <DataGridComboBoxColumn.EditingElementStyle>
+                                    <Style TargetType="ComboBox">
+                                        <Setter Property="ItemsSource" Value="{Binding DataContext.SubCategoriesWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMatched}" Value="True">
+                                                <Setter Property="IsEnabled" Value="False" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridComboBoxColumn.EditingElementStyle>
+                            </DataGridComboBoxColumn>
+                            <DataGridComboBoxColumn Header="Envelope" 
                                                     SelectedValueBinding="{Binding BucketId}"
                                                     SelectedValuePath="Id"
                                                     DisplayMemberPath="Name"
@@ -194,7 +189,7 @@
                                     <Style TargetType="ComboBox">
                                         <Setter Property="ItemsSource" Value="{Binding DataContext.BucketsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsReconciled}" Value="True">
+                                            <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -204,7 +199,7 @@
                                     <Style TargetType="ComboBox">
                                         <Setter Property="ItemsSource" Value="{Binding DataContext.BucketsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsReconciled}" Value="True">
+                                            <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
                                             </DataTrigger>
                                         </Style.Triggers>

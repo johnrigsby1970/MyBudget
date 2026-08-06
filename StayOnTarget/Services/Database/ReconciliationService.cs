@@ -27,21 +27,39 @@ public class ReconciliationService {
                 .ToList();
         }
     }
-    
-    public async Task<(decimal EndingBalance, DateTime? LastTransactionDate, decimal BeginningBalance)> CalculateRunningBalanceAsync(int accountId, IEnumerable<TransactionViewModel> transactions) {
+
+    public async
+        Task<(decimal EndingBalance, DateTime? LastTransactionDate, decimal BeginningBalance, bool
+            HasTransactionPriorToLastReconcile)> CalculateRunningBalanceAsync(int accountId,
+            IEnumerable<TransactionViewModel> transactions) {
+        var hasTransactionPriorToLastReconcile = false;
         var account = (await _budgetService.GetAllAccountsAsync()).FirstOrDefault(a => a.Id == accountId);
         if (account == null) {
-            return (0, null, 0);
+            return (0, null, 0, false);
         }
-var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsync(accountId);
+
+        var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsync(accountId);
         // Start with the latest reconciliation or the account balance
         var latestRecon = await _budgetService.GetLatestValidReconciliationAsync(accountId);
-        decimal balance = account.IsLiability ? -1* (latestRecon?.ReconciledBalance ?? account.Balance) : (latestRecon?.ReconciledBalance ?? account.Balance );
+        decimal balance = account.IsLiability
+            ? -1 * (latestRecon?.ReconciledBalance ?? account.Balance)
+            : (latestRecon?.ReconciledBalance ?? account.Balance);
         decimal beginningBalance = balance;
-        DateTime startDate = latestRecon?.ReconciledAsOfDate ?? (openingBalanceState.openingBalanceDate ?? account.BalanceAsOf);
+        DateTime startDate = latestRecon?.ReconciledAsOfDate ??
+                             (openingBalanceState.openingBalanceDate ?? account.BalanceAsOf);
+
+        var earliestTransaction = transactions.OrderBy(t => t.TransactionDate).FirstOrDefault();
+        if (earliestTransaction != null) {
+            if (earliestTransaction.TransactionDate < startDate) {
+                //there is a transaction in the mix earlier than the last reconciliation. Invalidate prior reconciliation?
+                startDate = earliestTransaction.TransactionDate;
+                hasTransactionPriorToLastReconcile = true;
+            }
+        }
 
         // Apply transactions after the reconciliation date
-        var orderedTransactions = transactions.Where(t => t.TransactionDate >= startDate).OrderBy(t => t.TransactionDate).ToList();
+        var orderedTransactions = transactions.Where(t => t.TransactionDate >= startDate)
+            .OrderBy(t => t.TransactionDate).ToList();
 
         foreach (var transaction in orderedTransactions) {
             decimal amount = Math.Abs(transaction.Amount);
@@ -91,7 +109,7 @@ var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsyn
                 else if (account.Type == AccountType.PersonalLoan) {
                     if (isPrincipalOnly)
                         balance -= amount;
-                        //balance += amount;
+                    //balance += amount;
                     else if (isRebalance)
                         balance += amount;
                     else
@@ -106,10 +124,11 @@ var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsyn
         }
 
         var lastTransactionDate = orderedTransactions.LastOrDefault()?.TransactionDate;
-        return (balance, lastTransactionDate, beginningBalance);
+        return (balance, lastTransactionDate, beginningBalance, hasTransactionPriorToLastReconcile);
     }
 
-    public async Task ReconcileAccountAsync(int accountId, List<TransactionViewModel> reconciledTransactions, decimal finalBalance,
+    public async Task ReconcileAccountAsync(int accountId, List<TransactionViewModel> reconciledTransactions,
+        decimal finalBalance,
         DateTime asOfDate) {
         bool reconciliationCompleted = false;
         // Create the reconciliation record
@@ -125,7 +144,7 @@ var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsyn
             await _budgetService.UpsertAccountReconciliationAsync(reconciliation);
             reconciliationCompleted = true;
         }
-        
+
 
         // Update transactions with the reconciliation ID
         foreach (var transaction in reconciledTransactions) {
@@ -139,15 +158,15 @@ var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsyn
                 }
             }
 
-                if (transaction.AccountId == accountId) {
-                    changed = transaction.FromAccountIsCleared != transaction.IsCleared;
-                    transaction.FromAccountIsCleared = transaction.IsCleared;
-                }
-                else if (transaction.ToAccountId == accountId) {
-                    changed = transaction.ToAccountIsCleared != transaction.IsCleared;
-                    transaction.ToAccountIsCleared = transaction.IsCleared;
-                }
-            
+            if (transaction.AccountId == accountId) {
+                changed = transaction.FromAccountIsCleared != transaction.IsCleared;
+                transaction.FromAccountIsCleared = transaction.IsCleared;
+            }
+            else if (transaction.ToAccountId == accountId) {
+                changed = transaction.ToAccountIsCleared != transaction.IsCleared;
+                transaction.ToAccountIsCleared = transaction.IsCleared;
+            }
+
 
             //no dates or amounts are changing.
             if (changed || transaction.IsReconciled) {

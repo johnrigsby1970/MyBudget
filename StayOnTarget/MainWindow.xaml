@@ -107,7 +107,7 @@
 
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
-        
+        <converters:NullOrZeroToVisibilityConverter  x:Key="NullOrZeroToVisibilityConverter" />
         <converters:SetContainsAccountIdConverter x:Key="SetContainsAccountIdConverter" />
         <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
         <converters:ProjectionAmountToBrushConverter x:Key="ProjectionAmountToBrushConverter" />
@@ -135,7 +135,7 @@
         <CollectionViewSource x:Key="SortedCurrentPeriodTransactions"
                               Source="{Binding CurrentPeriodTransactions}">
             <CollectionViewSource.SortDescriptions>
-                <scm:SortDescription PropertyName="Date" />
+                <scm:SortDescription PropertyName="TransactionDate" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
         <ObjectDataProvider x:Key="EnumFrequency"
@@ -460,6 +460,7 @@
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
                                                         <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
 
                                                     <Label Grid.Column="0" Grid.Row="0" Content="Date:" />
@@ -518,16 +519,24 @@
                                                               SelectedValue="{Binding EditingTransactionClone.BillId}"
                                                               SelectedValuePath="Id" DisplayMemberPath="Name"
                                                               Margin="5" />
+                                                    
+                                                    <Label Grid.Column="0" Grid.Row="5" Content="Sub Category:" />
+                                                    <ComboBox Grid.Column="1" Grid.Row="5"
+                                                              x:Name="SubCategoryComboBox"
+                                                              ItemsSource="{Binding SubCategoriesWithNone}"
+                                                              SelectedValue="{Binding EditingTransactionClone.SubCategoryId}"
+                                                              SelectedValuePath="Id" DisplayMemberPath="Name"
+                                                              Margin="5" />
 
-                                                    <Label Grid.Column="2" Grid.Row="4" Content="Bucket:" />
-                                                    <ComboBox Grid.Column="3" Grid.Row="4"
+                                                    <Label Grid.Column="2" Grid.Row="5" Content="Envelope:" />
+                                                    <ComboBox Grid.Column="3" Grid.Row="5"
                                                               x:Name="BucketComboBox"
                                                               ItemsSource="{Binding BucketsWithNone}"
                                                               SelectedValue="{Binding EditingTransactionClone.BucketId}"
                                                               SelectedValuePath="Id" DisplayMemberPath="Name"
                                                               Margin="5" />
 
-                                                    <Label Grid.Column="0" Grid.Row="5" Content="Paycheck:">
+                                                    <Label Grid.Column="0" Grid.Row="6" Content="Paycheck:">
                                                         <Label.Visibility>
                                                             <MultiBinding
                                                                 Converter="{StaticResource PaycheckFieldVisibilityConverter}"
@@ -537,7 +546,7 @@
                                                             </MultiBinding>
                                                         </Label.Visibility>
                                                     </Label>
-                                                    <ComboBox Grid.Column="1" Grid.Row="5"
+                                                    <ComboBox Grid.Column="1" Grid.Row="6"
                                                               ItemsSource="{Binding Paychecks}"
                                                               SelectedValue="{Binding EditingTransactionClone.PaycheckId}"
                                                               SelectedValuePath="Id" DisplayMemberPath="Name"
@@ -552,7 +561,7 @@
                                                         </ComboBox.Visibility>
                                                     </ComboBox>
 
-                                                    <Label Grid.Column="2" Grid.Row="5" Content="Payroll Date:">
+                                                    <Label Grid.Column="2" Grid.Row="6" Content="Payroll Date:">
                                                         <Label.Visibility>
                                                             <MultiBinding
                                                                 Converter="{StaticResource PaycheckFieldVisibilityConverter}"
@@ -562,7 +571,7 @@
                                                             </MultiBinding>
                                                         </Label.Visibility>
                                                     </Label>
-                                                    <DatePicker Grid.Column="3" Grid.Row="5"
+                                                    <DatePicker Grid.Column="3" Grid.Row="6"
                                                                 SelectedDate="{Binding EditingTransactionClone.PaycheckOccurrenceDate}"
                                                                 Margin="5">
                                                         <DatePicker.Visibility>
@@ -575,7 +584,7 @@
                                                         </DatePicker.Visibility>
                                                     </DatePicker>
 
-                                                    <StackPanel Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="4"
+                                                    <StackPanel Grid.Column="0" Grid.Row="7" Grid.ColumnSpan="4"
                                                                 Orientation="Horizontal" Margin="5">
                                                         <CheckBox Content="Principal Only (Mortgage/Loan Extra)"
                                                                   IsChecked="{Binding EditingTransactionClone.IsPrincipalOnly}"
@@ -2022,8 +2031,25 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True"
-                                                Width="150" />
+                            <!-- <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" -->
+                            <!--                     Width="150" /> -->
+                            
+                            <DataGridTemplateColumn Header="Description" Width="150">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Vertical" Margin="2">
+                                            <TextBlock Text="{Binding Description}" FontWeight="SemiBold" />
+    
+                                            <TextBlock Visibility="{Binding BillId, Converter={StaticResource NullOrZeroToVisibilityConverter}}" Margin="0,2,0,0">
+                                                <Hyperlink Command="{Binding DataContext.PayBillCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                           CommandParameter="{Binding}">
+                                                    Pay It
+                                                </Hyperlink>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <!-- <DataGridTextColumn Header="Amount" -->
                             <!--                     HeaderStyle="{StaticResource RightAlignedHeaderStyle}" -->
                             <!--                     Binding="{Binding Amount, StringFormat=C, UpdateSourceTrigger=PropertyChanged}" -->

@@ -547,12 +547,12 @@ public partial class ReconciliationViewModel : ViewModelBase {
 
                     await PromptForOpeningBalance(OpeningBalanceMaximumAsOf.Value);
 
-                    // 1. Alert the user
-                    MessageBox.Show(
-                        "This opening balance for this account should be older than any other transactions. There are reconciled transactions. You will need to fix the opening balance to proceed..",
-                        "Opening Balance Invalid",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                    // // 1. Alert the user
+                    // MessageBox.Show(
+                    //     "The opening balance for this account should be older than any other transactions. There are reconciled transactions older than the opening balance. You will need to fix the opening balance to proceed..",
+                    //     "Opening Balance Invalid",
+                    //     MessageBoxButton.OK,
+                    //     MessageBoxImage.Warning);
 
                     // 2. Set dialog result (if opened via ShowDialog) and close
                     // CanReconcile = false;
@@ -585,8 +585,11 @@ public partial class ReconciliationViewModel : ViewModelBase {
             }
 
             reconciliationTransactions = viewModels;
-
-            (EndingBalance, lastReconciledDate, beginningBalance) =
+            
+            // ReSharper disable once NotAccessedVariable
+            bool hasTransactionPriorToLastReconcile = false;
+            // ReSharper disable once RedundantAssignment
+            (EndingBalance, lastReconciledDate, beginningBalance, hasTransactionPriorToLastReconcile) =
                 await _reconciliationService.CalculateRunningBalanceAsync(_account.Id, reconciliationTransactions!);
             BeginningBalance = beginningBalance;
             LastReconciledDate = lastReconciledDate ?? DateTime.MinValue;
@@ -594,13 +597,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
 
             decimal? newReconciledBalance = null;
             DateTime? newReconciledDate = null;
-            bool hasNewReconciled = false;
-            bool notReconciledAfterLastReconciled = true;
-            const bool enforceCheckInOrder = false;
-            if (!enforceCheckInOrder) {
-                newReconciledBalance = beginningBalance;
-            }
-
+            
+            newReconciledBalance = beginningBalance;
+            
             foreach (var t in reconciliationTransactions!.OrderBy(b => b.TransactionDate)) {
                 if (t.AccountId == _account.Id) {
                     if (t.FromAccountIsCleared ?? false) {
@@ -614,7 +613,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
                 }
 
                 if (t.IsCleared) {
-                    if (!enforceCheckInOrder) {
+                 
                         if (t.AccountId == _account.Id) {
                             if (_account.IsLiability) {
                                 newReconciledBalance += t.Amount;
@@ -631,18 +630,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
                                 newReconciledBalance += t.Amount;
                             }
                         }
-                    }
-
-                    if (enforceCheckInOrder && !notReconciledAfterLastReconciled) {
-                        newReconciledBalance = t.RunningBalance;
-                        newReconciledDate = t.TransactionDate;
-                        hasNewReconciled = true;
-                    }
-                }
-                else {
-                    if (hasNewReconciled) {
-                        notReconciledAfterLastReconciled = true;
-                    }
+                    
                 }
             }
 
@@ -650,7 +638,6 @@ public partial class ReconciliationViewModel : ViewModelBase {
             NewReconciledDate = newReconciledDate;
             ReconciliationTransactions =
                 new ObservableCollection<TransactionViewModel>(reconciliationTransactions!);
-            //UpdateTransactionEnabledState();
         }
         catch (Exception ex) {
             // Must catch exceptions locally to prevent app crash!

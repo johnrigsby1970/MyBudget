@@ -15,6 +15,7 @@ public class Transaction : ViewModelBase {
     private DateTime? _paycheckOccurrenceDate; // The date of the projected paycheck occurrence being replaced
     private int? _billId; // For bill association
     private int? _bucketId; // For bucket association
+    private int? _subCategoryId; //For category association
     private DateTime _periodDate;
     private bool _isPrincipalOnly;
 
@@ -120,6 +121,12 @@ public class Transaction : ViewModelBase {
         get => _periodDate;
         set => SetProperty(ref _periodDate, value);
     }
+    
+    public int? SubCategoryId {
+        get => _subCategoryId;
+        set => SetProperty(ref _subCategoryId, value);
+    }
+
 
     public bool IsPrincipalOnly {
         get => _isPrincipalOnly;

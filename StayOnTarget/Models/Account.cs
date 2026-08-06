@@ -50,7 +50,7 @@ public class Account : ViewModelBase, INotifyDataErrorInfo
         get => _balance;
         set => SetProperty(ref _balance, value);
     }
-
+    
     public DateTime BalanceAsOf
     {
         get => _balanceAsOf;

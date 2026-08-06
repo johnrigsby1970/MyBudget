@@ -208,14 +208,8 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
 
             account.Id = await DatabaseInitializationContext.BudgetService.UpsertAccountAsync(account);
 
-            //var debtAccountTypes = new List<AccountType>()
-            //    { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan, AccountType.HELOC, AccountType.StudentLoan };
-            var isDebtAccount = account.IsLiability;//debtAccountTypes.Contains(account.Type);
-            // if (account.Balance > 0) {
-            //     isDebtAccount = false; //for purposes of initial balance, if the balance is positive,
-            //                            //it's not a debt account. It is one, but it is currently carrying
-            //                            //a positive balance.
-            // }
+            var isDebtAccount = account.IsLiability;
+
             var openingBalance = new Transaction() {
                 AccountId = isDebtAccount ? account.Id : null,
                 ToAccountId = isDebtAccount

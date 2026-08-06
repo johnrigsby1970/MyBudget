@@ -273,10 +273,23 @@ public class ProjectionEngine : IProjectionEngine {
                 paycheckDates = paycheckDates.OrderBy(d => d).ToList();
             }
 
-            futureEvents.Add(new ProjectionGridItem(finalDate.AddSeconds(1), 0, "Final Period Close", null, null, null,
-                null, null, ProjectionEventType.Sweep, false, false, false, false, null, true));
+            futureEvents.Add(new ProjectionGridItem(
+                transactionDate:finalDate.AddSeconds(1), 
+                amount:0, 
+                description:"Final Period Close", 
+                fromAccountId:null, 
+                toAccountId:null, 
+                bucketId:null,
+                paycheckId:null, paycheckOccurrenceDate:null,
+                type: ProjectionEventType.Sweep, 
+                isPrincipalOnly:false, 
+                isRebalance:false, 
+                isInterestAdjustment:false, 
+                isReconciled:false, 
+                transactionId:null, 
+                isSynthetic:true));
         }
-
+        
         futureEvents = futureEvents.OrderBy(e => e.Date).ToList();
 
         var nextPaycheckIndex = 0;
@@ -498,8 +511,12 @@ public class ProjectionEngine : IProjectionEngine {
                 PaycheckId = e.PaycheckId,
                 Amount = Math.Abs(currentEventAmount),
                 Balance = runningBalance,
-                AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value)
+                AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                BillId = e.BillId,
+                BucketId = e.BucketId,
+                SubCategoryId = e.SubCategoryId,
             };
+            
             if (
                 e.FromAccountId != null && moneyAccountIds.Contains(e.FromAccountId.Value) ||
                 (e.ToAccountId != null && moneyAccountIds.Contains(e.ToAccountId.Value)

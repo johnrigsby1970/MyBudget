@@ -264,7 +264,14 @@ public class DatabaseContext {
                 PaycheckOccurrenceDate TEXT,
                 BillId INTEGER REFERENCES Bills(Id),
                 ReconciliationId INTEGER REFERENCES AccountReconciliations(Id),
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
+                FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
+                
+                -- Optional budget/tracking links (preserve historical transactions if parent is deleted)
+    FOREIGN KEY(BucketId) REFERENCES Buckets(Id) ON DELETE SET NULL,
+    FOREIGN KEY(SubCategoryId) REFERENCES Subcategories(Id) ON DELETE SET NULL,
+    FOREIGN KEY(BillId) REFERENCES Bills(Id) ON DELETE SET NULL,
+    FOREIGN KEY(PaycheckId) REFERENCES Paychecks(Id) ON DELETE SET NULL,
+    FOREIGN KEY(ReconciliationId) REFERENCES AccountReconciliations(Id) ON DELETE SET NULL
             );
 
             CREATE TABLE IF NOT EXISTS Buckets (
@@ -318,6 +325,25 @@ CREATE TABLE IF NOT EXISTS AccountSnapshots (
     Balance REAL NOT NULL,
     PRIMARY KEY (SnapshotDate, AccountID),
     FOREIGN KEY (AccountID) REFERENCES Accounts(ID)
+);
+
+CREATE TABLE IF NOT EXISTS Categories (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name TEXT NOT NULL,
+    HexColor TEXT DEFAULT '#FF0000FF',
+    SortOrder INTEGER DEFAULT 0,
+    IsArchived INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS Subcategories (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+    CategoryId INTEGER NOT NULL,
+    DefaultBucketId INTEGER,
+    Name TEXT NOT NULL,
+    SortOrder INTEGER DEFAULT 0,
+    IsArchived INTEGER DEFAULT 0,
+    FOREIGN KEY(CategoryId) REFERENCES Categories(Id) ON DELETE CASCADE,
+    FOREIGN KEY(DefaultBucketId) REFERENCES Buckets(Id) ON DELETE SET NULL
 );
 
 -- 1. INSERT TRIGGER
@@ -375,7 +401,52 @@ END;
 
         ");
 
-                
+            var subcategoryColumnExists = connection.ExecuteScalar<int>(@"
+        SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='SubCategoryId'");      
+            
+            if (subcategoryColumnExists == 0)
+            {
+                var tableExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
+
+                if (tableExists > 0)
+                {
+                    // Add SubCategoryId foreign key column
+                    connection.Execute("ALTER TABLE Transactions ADD COLUMN SubCategoryId INTEGER REFERENCES Subcategories(Id)");
+
+                    // 3. Seed initial Categories and Subcategories from existing Buckets
+                    var existingBuckets = connection.Query<(long Id, string Name)>("SELECT Id, Name FROM Buckets");
+
+                    foreach (var bucket in existingBuckets)
+                    {
+                        // Create a matching Category for each Bucket
+                        var categoryId = connection.QuerySingle<long>(@"
+                    INSERT INTO Categories (Name) 
+                    VALUES (@Name);
+                    SELECT last_insert_rowid();", 
+                            new { Name = bucket.Name });
+
+                        // Create a default SubCategory under that Category linked to the Bucket
+                        var subCategoryId = connection.QuerySingle<long>(@"
+                    INSERT INTO Subcategories (CategoryId, DefaultBucketId, Name) 
+                    VALUES (@CategoryId, @DefaultBucketId, @Name);
+                    SELECT last_insert_rowid();", 
+                            new { 
+                                CategoryId = categoryId, 
+                                DefaultBucketId = bucket.Id, 
+                                Name = $"General {bucket.Name}" 
+                            });
+
+                        // 4. Backfill existing transactions that currently have this BucketId
+                        connection.Execute(@"
+                    UPDATE Transactions 
+                    SET SubCategoryId = @subCategoryId 
+                    WHERE BucketId = @bucketId", 
+                            new { subCategoryId, bucketId = bucket.Id });
+                    }
+                }
+            }
+            
             var columnExists = connection.ExecuteScalar<int>(@"
             SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='NormalizedDescription'");
 
@@ -540,39 +611,17 @@ END;
             if (hexColorExists == 0) {
                 connection.Execute("ALTER TABLE Accounts ADD COLUMN HexColor TEXT DEFAULT '#FF0000FF'");
             }
-
-            // // Check if FromAccountReconciledId exists in Transactions table
-            // var fromAccountReconciledIdExists = connection.ExecuteScalar<int>(@"
-            //     SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='FromAccountReconciledId'");
-            //
-            // if (fromAccountReconciledIdExists == 0) {
-            //     var tableExists = connection.ExecuteScalar<int>(@"
-            //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
-            //
-            //     if (tableExists > 0) {
-            //         connection.Execute(
-            //             "ALTER TABLE Transactions ADD COLUMN FromAccountReconciledId INTEGER REFERENCES AccountReconciliations(Id)");
-            //     }
-            // }
-            //
-            // // Check if ToAccountReconciledId exists in Transactions table
-            // var toAccountReconciledIdExists = connection.ExecuteScalar<int>(@"
-            //     SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='ToAccountReconciledId'");
-            //
-            // if (toAccountReconciledIdExists == 0) {
-            //     var tableExists = connection.ExecuteScalar<int>(@"
-            //         SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
-            //
-            //     if (tableExists > 0) {
-            //         connection.Execute(
-            //             "ALTER TABLE Transactions ADD COLUMN ToAccountReconciledId INTEGER REFERENCES AccountReconciliations(Id)");
-            //     }
-            // }
-
+            
             if (!connection.Query<dynamic>("PRAGMA table_info(MortgageDetails)").Any(x => x.name == "StatementDay")) {
                 connection.Execute("ALTER TABLE MortgageDetails ADD COLUMN StatementDay INTEGER NOT NULL DEFAULT 1;");
             }
 
+            CategorySeeder.SeedDefaultCategories(connection);
+
+            connection.Execute("PRAGMA foreign_keys = ON;");
+            
+            //TransactionTableMigration.FixTransactionForeignKeys(connection);
+            
             Log.Information("Database initialization and schema updates completed successfully.");
         }
         catch (Exception ex) {

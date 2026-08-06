@@ -125,6 +125,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
     public ObservableCollection<Bill> BillsWithNone { get; } = new();
     public ObservableCollection<BudgetBucket> BucketsWithNone { get; } = new();
+    
+    public ObservableCollection<SubCategory> SubCategoriesWithNone { get; } = new();
+    
     //public IRelayCommand ToggleSelectionCommand { get; }
 
     private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -194,51 +197,51 @@ public class ImportReconciliationViewModel : ViewModelBase {
         SaveCommand = new RelayCommand(SaveAsync);
 
         // Track changes to update header state automatically
+        // Single unified CollectionChanged handler
         ImportedTransactions.CollectionChanged += (s, e) =>
         {
             if (e.NewItems != null)
+            {
                 foreach (ImportedTransactionViewModel item in e.NewItems)
+                {
+                    // Assign subcategory lookup delegate
+                    item.GetDefaultBucketForSubCategory = (subCatId) =>
+                    {
+                        return SubCategoriesWithNone
+                            .FirstOrDefault(sub => sub.Id == subCatId)?
+                            .DefaultBucketId;
+                    };
+
                     item.PropertyChanged += Item_PropertyChanged;
+                }
+            }
 
             if (e.OldItems != null)
+            {
                 foreach (ImportedTransactionViewModel item in e.OldItems)
+                {
                     item.PropertyChanged -= Item_PropertyChanged;
+                }
+            }
 
             UpdateIsAllSelectedState();
         };
-        
-        // ToggleSelectionCommand = new RelayCommand(() => {
-        //     bool allSelected = ImportedTransactions.All(x => x.IsSelected);
-        //     bool allUnselected = ImportedTransactions.All(x => !x.IsSelected);
-        //
-        //     if (allSelected) {
-        //         foreach (var t in ImportedTransactions) t.IsSelected = false;
-        //     }
-        //     else if (allUnselected) {
-        //         foreach (var t in ImportedTransactions) t.IsSelected = true;
-        //     }
-        //     else {
-        //         foreach (var t in ImportedTransactions) {
-        //             if (!t.IsSelected) t.IsSelected = true;
-        //         }
-        //     }
-        // });
 
         // Use a lambda to capture the parameter (param) and call your method
         LinkTransactionsCommand = new RelayCommand(
             LinkTransactions,
-            () => SelectedImported != null && !SelectedImported.IsReconciled && SelectedManual != null &&
+            () => SelectedImported != null && !SelectedImported.IsMatched && SelectedManual != null &&
                   !SelectedManual.IsMatched
         );
 
         ImportAsNewCommand = new RelayCommand(
             ImportAsNew,
-            () => SelectedImported != null && !SelectedImported.IsReconciled
+            () => SelectedImported != null && !SelectedImported.IsMatched
         );
 
         ClearMatchCommand = new RelayCommand(
             ClearMatch,
-            () => SelectedImported != null && SelectedImported.IsReconciled
+            () => SelectedImported != null && SelectedImported.IsMatched
         );
 
         InitializeDataCommand = new AsyncRelayCommand(LoadDataAsync);
@@ -262,7 +265,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
             // Handled matched transactions
             foreach (var match in ImportedTransactions.Where(x =>
                          x.IsSelected &&
-                         x.IsReconciled && !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
+                         x.IsMatched && !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
                          x.MatchedManualTransactionDate != null && !string.IsNullOrEmpty(x.MatchedManualFitId))) {
                 if (string.IsNullOrEmpty(match.BankId)) continue;
                 if (string.IsNullOrEmpty(match.Payee)) continue;
@@ -279,7 +282,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
 
             // Handle new transactions that are checked but not matched
-            foreach (var newItem in ImportedTransactions.Where(x => x.IsSelected && !x.IsReconciled)) {
+            foreach (var newItem in ImportedTransactions.Where(x => x.IsSelected && !x.IsMatched)) {
                 if (string.IsNullOrEmpty(newItem.Payee)) continue;
                 if (string.IsNullOrEmpty(newItem.BankId)) continue;
                 var t = new Transaction {
@@ -291,6 +294,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
                     FitId = newItem.BankId,
                     BillId = newItem.BillId == 0 ? null : newItem.BillId,
                     BucketId = newItem.BucketId == 0 ? null : newItem.BucketId,
+                    SubCategoryId = newItem.SubCategoryId == 0 ? null : newItem.SubCategoryId,
                     FromAccountIsCleared = newItem.Amount > 0 ? null : newItem.IsCleared,
                     ToAccountIsCleared = newItem.Amount > 0 ?  newItem.IsCleared : null,
                 };
@@ -384,7 +388,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 }
 
                 decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out var amount);
-
+                
                 ImportedTransactions.Add(new ImportedTransactionViewModel {
                     BankId = bankId,
                     Date = date,
@@ -449,8 +453,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
             // Parse Amount safely
             decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amount);
-
-            ImportedTransactions.Add(new ImportedTransactionViewModel {
+            
+            ImportedTransactions.Add( new ImportedTransactionViewModel {
                 BankId = bankId,
                 Date = date,
                 Amount = amount,
@@ -567,7 +571,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
 
         // Set UI Selection defaults cleanly outside the loop execution window
-        var firstUnmatchedImport = ImportedTransactions.FirstOrDefault(x => !x.IsReconciled);
+        var firstUnmatchedImport = ImportedTransactions.FirstOrDefault(x => !x.IsMatched);
         if (firstUnmatchedImport != null) {
             SelectedImported = firstUnmatchedImport;
             SelectedManual = UnreconciledManualTransactions.FirstOrDefault(m =>
@@ -578,7 +582,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 // Clean helper parameterized explicitly to match your class definitions
     private void ApplyMatch(ImportedTransactionViewModel imported, ManualTransactionViewModel manual,
         string statusText) {
-        imported.IsReconciled = true;
+        imported.IsMatched = true;
         imported.IsCleared = true;
         imported.Status = statusText;
         imported.MatchedManualFitId = manual.FitId;
@@ -595,7 +599,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
     private void LinkTransactions() {
         if (SelectedImported == null || SelectedManual == null) return;
 
-        SelectedImported.IsReconciled = true;
+        SelectedImported.IsMatched = true;
         SelectedImported.IsCleared = true;
         SelectedImported.Status = $"Matched to Manual ({SelectedManual.Description} {SelectedManual.Amount:C})";
         SelectedImported.MatchedManualFitId = SelectedManual.FitId;
@@ -618,7 +622,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
             UnreconciledManualTransactions.SingleOrDefault(x => x.FitId == SelectedImported.MatchedManualFitId);
 
         if (manual != null) {
-            SelectedImported.IsReconciled = false;
+            SelectedImported.IsMatched = false;
             SelectedImported.IsCleared = false;
             SelectedImported.Status = $"Match removed";
             SelectedImported.MatchedManualFitId = null;
@@ -690,6 +694,12 @@ public class ImportReconciliationViewModel : ViewModelBase {
         BucketsWithNone.Add(new BudgetBucket { Id = 0, Name = "None" });
         foreach (var bucket in await _budgetService.GetAllBucketsAsync()) {
             BucketsWithNone.Add(bucket);
+        }
+        
+        SubCategoriesWithNone.Clear();
+        SubCategoriesWithNone.Add(new SubCategory { Id = 0, Name = "None" });
+        foreach (var subCategory in await _budgetService.GetAllSubCategoriesAsync()) {
+            SubCategoriesWithNone.Add(subCategory);
         }
     }
 }

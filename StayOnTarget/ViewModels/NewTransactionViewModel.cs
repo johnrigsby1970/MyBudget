@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Windows;
 using StayOnTarget.Models;
@@ -51,6 +52,10 @@ public class NewTransactionViewModel : ViewModelBase {
             return; // Abort remaining initialization
         }
         
+        if (EditingTransactionClone != null) {
+            EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
+        }
+        
         EditingTransactionClone = new Transaction {
             Description = selectedImported.Payee??"",
             Memo = "",
@@ -62,7 +67,9 @@ public class NewTransactionViewModel : ViewModelBase {
             ToAccountId = selectedImported.Amount > 0 ? _account.Id : null,
             ToAccountName = selectedImported.Amount > 0 ? _account.Name : null
         };
-
+        
+        EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
+        
         _ =  LoadPaychecksAsync();
 
         Loaded = true;
@@ -108,6 +115,13 @@ public class NewTransactionViewModel : ViewModelBase {
         set => SetProperty(ref _bucketsWithNone, value);
     }
 
+    private ObservableCollection<SubCategory> _subCategoriesWithNone = new();
+
+    public ObservableCollection<SubCategory> SubCategoriesWithNone {
+        get => _subCategoriesWithNone;
+        set => SetProperty(ref _subCategoriesWithNone, value);
+    }
+        
     private ObservableCollection<Bill> _bills = new();
 
     public ObservableCollection<Bill> Bills {
@@ -215,6 +229,13 @@ public class NewTransactionViewModel : ViewModelBase {
             var bucketsWithNone = new List<BudgetBucket> { new BudgetBucket { Id = 0, Name = "(None)" } };
             bucketsWithNone.AddRange(buckets.Where(b => !b.IsArchived));
             BucketsWithNone = new ObservableCollection<BudgetBucket>(bucketsWithNone);
+            
+            var subCategories = await _budgetService.GetAllSubCategoriesAsync(true);
+            subCategories = subCategories.OrderBy(b => b.Name).ToList();
+            
+            var subCategoriesWithNone = new List<SubCategory> { new SubCategory { Id = 0, Name = "(None)" } };
+            subCategoriesWithNone.AddRange(subCategories.Where(b => !b.IsArchived));
+            SubCategoriesWithNone = new ObservableCollection<SubCategory>(subCategoriesWithNone);
         }
         catch (Exception ex) {
             Debug.WriteLine("Failure while loading data: " + ex.Message);
@@ -371,12 +392,67 @@ public class NewTransactionViewModel : ViewModelBase {
 
         _closeCallback?.Invoke(this, true);
   
+        if (EditingTransactionClone != null) {
+            EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
+        }
+        
         EditingTransactionClone = null;
     }
 
     private void OnCancel() {
+        if (EditingTransactionClone != null) {
+            EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
+        }
         EditingTransactionClone = null;
         // Tell the parent to close us, passing 'false' because they cancelled
         _closeCallback?.Invoke(this, false);
+    }
+    
+    private async void EditingTransactionClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        if (e.PropertyName == nameof(Transaction.SubCategoryId)) {
+            ApplyDefaultBucketForSubCategory();
+        }
+// Handle Description triggering SubCategoryId lookup
+        else if (e.PropertyName == nameof(Transaction.Description)) {
+            await TryAutoSuggestSubCategoryAsync();
+        }
+    }
+    
+    private void ApplyDefaultBucketForSubCategory() {
+        // 1. Only auto-fill if it's a NEW transaction (Id == 0)
+        // 2. AND a SubCategoryId is selected
+        // 3. AND the user hasn't already picked a Bucket
+        if (EditingTransactionClone.Id == 0 &&
+            EditingTransactionClone.SubCategoryId.HasValue &&
+            !EditingTransactionClone.BucketId.HasValue) {
+            // Find the matching SubCategory from your collection
+            var selectedSub = SubCategoriesWithNone?
+                .FirstOrDefault(s => s.Id == EditingTransactionClone.SubCategoryId.Value);
+
+            // If the subcategory has a default bucket set, auto-assign it
+            if (selectedSub != null && selectedSub.DefaultBucketId.HasValue) {
+                EditingTransactionClone.BucketId = selectedSub.DefaultBucketId.Value;
+            }
+        }
+    }
+
+    private async Task TryAutoSuggestSubCategoryAsync() {
+        // Conditions:
+        // 1. Must be a NEW transaction (Id == 0)
+        // 2. SubCategoryId must not already be selected by the user
+        // 3. Description must have actual text
+        if (EditingTransactionClone.Id == 0 &&
+            !EditingTransactionClone.SubCategoryId.HasValue &&
+            !string.IsNullOrWhiteSpace(EditingTransactionClone.Description)) {
+            var suggestedSubId = await _budgetService.GetSuggestedSubCategoryIdAsync(
+                EditingTransactionClone.Description,
+                EditingTransactionClone.TransactionDate);
+
+            if (suggestedSubId.HasValue) {
+                // Setting SubCategoryId will trigger PropertyChanged for SubCategoryId,
+                // which automatically triggers ApplyDefaultBucketForSubCategory() above!
+                EditingTransactionClone.SubCategoryId = suggestedSubId.Value;
+            }
+        }
     }
 }

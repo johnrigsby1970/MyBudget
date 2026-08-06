@@ -724,10 +724,20 @@ public static class ProjectionEngineExtensions {
                                     false, false));
                             }
                             else {
-                                events.Add(new ProjectionGridItem(dueDate, -amountToUse,
-                                    $"Bill: {bill.Name}{paidSuffix}",
-                                    fromAccId, null, null, null,
-                                    null, ProjectionEngine.ProjectionEventType.Bill, bill.IsPrincipalOnly, false, false, false));
+                                events.Add(new ProjectionGridItem(transactionDate:dueDate,amount: -amountToUse,
+                                    description:$"Bill: {bill.Name}{paidSuffix}",
+                                    fromAccountId:fromAccId, 
+                                    toAccountId:null, 
+                                    bucketId:null, 
+                                    paycheckId:null,
+                                    paycheckOccurrenceDate:null,
+                                    type: ProjectionEngine.ProjectionEventType.Bill, 
+                                    isPrincipalOnly:bill.IsPrincipalOnly, 
+                                    isRebalance:false, 
+                                    isInterestAdjustment:false, 
+                                    isReconciled:false , 
+                                    billId:bill.Id));
+
                             }
                         }
                     }

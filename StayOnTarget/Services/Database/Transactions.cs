@@ -13,10 +13,12 @@ public partial class BudgetService {
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
             LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id
             WHERE t.TransactionDate >= @periodStart AND t.TransactionDate < @periodEnd",
             new {
                 periodStart = periodStart.ToString("yyyy-MM-dd"),
@@ -32,10 +34,12 @@ public partial class BudgetService {
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id")).ToList();
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
@@ -43,9 +47,11 @@ public partial class BudgetService {
         await using var conn = _db.GetConnection();
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a.Name as AccountName, b.Name as BucketName
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a ON t.AccountId = a.Id
-            LEFT JOIN Buckets b ON t.BucketId = b.Id")).ToList();
+            LEFT JOIN Buckets b ON t.BucketId = b.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id")).ToList();
 
         return dbRows.Select(row => (Transaction)MapDynamicToTransaction(row, isTransferSide: false)).ToList();
     }
@@ -56,10 +62,12 @@ public partial class BudgetService {
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id  WHERE t.AccountId=@accountId",
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id  WHERE t.AccountId=@accountId",
             new { accountId })).ToList();
 
         // var dbRows = (await conn
@@ -85,10 +93,12 @@ public partial class BudgetService {
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.PaycheckId IS NOT NULL")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id WHERE t.PaycheckId IS NOT NULL")).ToList();
 
         return MergeDbRowsToUiTransactions(dbRows);
     }
@@ -102,10 +112,12 @@ public partial class BudgetService {
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.BillId IS NOT NULL")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id WHERE t.BillId IS NOT NULL")).ToList();
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
@@ -118,10 +130,12 @@ public partial class BudgetService {
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.BucketId IS NOT NULL")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id WHERE t.BucketId IS NOT NULL")).ToList();
 
         return MergeDbRowsToUiTransactions(dbRows);
     }
@@ -145,10 +159,12 @@ public partial class BudgetService {
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName 
             FROM Transactions t
             LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id WHERE t.ReconciliationId IS NULL")).ToList();
+            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id WHERE t.ReconciliationId IS NULL")).ToList();
 
         return MergeDbRowsToUiTransactions(dbRows);
     }
@@ -158,11 +174,13 @@ public partial class BudgetService {
         await using var conn = _db.GetConnection();
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a.Name as AccountName, 
-                   Bills.Name as BillName, Buckets.Name as BucketName , d.MinDate 
+                   Bills.Name as BillName, Buckets.Name as BucketName 
+            , SubCategories.Name as SubCategoryName , d.MinDate 
             FROM Accounts a
             JOIN Transactions t ON t.AccountId = a.Id
             LEFT JOIN Bills ON t.BillId = Bills.Id
             LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id
             INNER JOIN (
                 SELECT a.Id, IfNull(ar.MaxDate, a.BalanceAsOf) AS MinDate 
                 FROM Accounts a
@@ -781,6 +799,7 @@ public partial class BudgetService {
             BillId = row.BillId != null ? (int)row.BillId : null,
             BillName = row.BillName,
             BucketId = row.BucketId != null ? (int)row.BucketId : null,
+            SubCategoryId = row.SubCategoryId != null ? (int)row.SubCategoryId : null,
             BucketName = row.BucketName,
             IsPrincipalOnly = row.IsPrincipalOnly == 1,
             IsInterestOnly = row.IsInterestOnly == 1,
@@ -797,13 +816,13 @@ public partial class BudgetService {
 
     private string GetInsertSql() {
         return
-            @"INSERT INTO Transactions (TransactionId, Description, Memo, Amount, TransactionDate, AccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, IsInterestOnly, FitId, PaycheckId, PaycheckOccurrenceDate, ReconciliationId, NormalizedDescription, IsCleared)
-                 VALUES (@TransactionId, @Description, @Memo, @Amount, @TransactionDate, @AccountId, @BillId, @BucketId, @PeriodDate, @IsPrincipalOnly, @IsInterestOnly, @FitId, @PaycheckId, @PaycheckOccurrenceDate, @ReconciliationId, @NormalizedDescription, @IsCleared)";
+            @"INSERT INTO Transactions (TransactionId, Description, Memo, Amount, TransactionDate, AccountId, BillId, BucketId, PeriodDate, IsPrincipalOnly, IsInterestOnly, FitId, PaycheckId, PaycheckOccurrenceDate, ReconciliationId, NormalizedDescription, IsCleared, SubCategoryId)
+                 VALUES (@TransactionId, @Description, @Memo, @Amount, @TransactionDate, @AccountId, @BillId, @BucketId, @PeriodDate, @IsPrincipalOnly, @IsInterestOnly, @FitId, @PaycheckId, @PaycheckOccurrenceDate, @ReconciliationId, @NormalizedDescription, @IsCleared, @SubCategoryId)";
     }
 
     private string GetUpdateSql() {
         return
-            @"UPDATE Transactions SET TransactionId=@TransactionId, Description=@Description, Memo=@Memo, Amount=@Amount, TransactionDate=@TransactionDate, AccountId=@AccountId, BillId=@BillId, BucketId=@BucketId, PeriodDate=@PeriodDate, IsPrincipalOnly= @IsPrincipalOnly, IsInterestOnly=@IsInterestOnly, FitId=@FitId, PaycheckId=@PaycheckId, PaycheckOccurrenceDate=@PaycheckOccurrenceDate, ReconciliationId=@ReconciliationId, NormalizedDescription=@NormalizedDescription, IsCleared=@IsCleared
+            @"UPDATE Transactions SET TransactionId=@TransactionId, Description=@Description, Memo=@Memo, Amount=@Amount, TransactionDate=@TransactionDate, AccountId=@AccountId, BillId=@BillId, BucketId=@BucketId, PeriodDate=@PeriodDate, IsPrincipalOnly= @IsPrincipalOnly, IsInterestOnly=@IsInterestOnly, FitId=@FitId, PaycheckId=@PaycheckId, PaycheckOccurrenceDate=@PaycheckOccurrenceDate, ReconciliationId=@ReconciliationId, NormalizedDescription=@NormalizedDescription, IsCleared=@IsCleared, SubCategoryId=@SubCategoryId
                  WHERE Id=@Id";
     }
 
@@ -828,6 +847,7 @@ public partial class BudgetService {
         p.Add("ReconciliationId", targetReconciliationId);
         p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
         p.Add("IsCleared", targetIsCleared);
+        p.Add("SubCategoryId", t.SubCategoryId);
         return p;
     }
 
@@ -853,6 +873,7 @@ public partial class BudgetService {
         p.Add("Id", id);
         p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
         p.Add("IsCleared", targetIsCleared);
+        p.Add("SubCategoryId", t.SubCategoryId);
         return p;
     }
 

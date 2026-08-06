@@ -20,7 +20,9 @@ public class ProjectionGridItem : ViewModelBase {
         bool isInterestAdjustment,
         bool isReconciled,
         int? transactionId = null,
-        bool isSynthetic = false
+        bool isSynthetic = false,
+        int? billId = null,
+        int? subCategoryId = null
         ) {
         Date = transactionDate;
         Amount = amount;
@@ -37,6 +39,8 @@ public class ProjectionGridItem : ViewModelBase {
         IsReconciled = isReconciled;
         TransactionId = transactionId;
         IsSynthetic = isSynthetic;
+        BillId = billId;
+        SubCategoryId = subCategoryId;
     }
     
     // Helper property for XAML DataTriggers
@@ -120,6 +124,32 @@ public class ProjectionGridItem : ViewModelBase {
             if (_bucketId != value) {
                 _bucketId = value;
                 OnPropertyChanged("BucketId");
+            }
+        }
+    }
+    
+    private int? _billId;
+    public int? BillId
+    {
+        get { return _billId; }
+        set
+        {
+            if (_billId != value) {
+                _billId = value;
+                OnPropertyChanged("BillId");
+            }
+        }
+    }
+    
+    private int? _subCategoryId;
+    public int? SubCategoryId
+    {
+        get { return _subCategoryId; }
+        set
+        {
+            if (_subCategoryId != value) {
+                _subCategoryId = value;
+                OnPropertyChanged("SubCategoryId");
             }
         }
     }

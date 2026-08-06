@@ -12,6 +12,9 @@ public class ProjectionItem : ViewModelBase
     private decimal? _periodNet;
     private int? _paycheckId;
     private int? _toAccountId;
+    private int? _billId;
+    private int? _bucketId;
+    private int? _subCategoryId;
     private int? _fromAccountId;
     private Dictionary<string, decimal> _accountBalances = new();
     private bool _isSynthetic;
@@ -21,6 +24,9 @@ public class ProjectionItem : ViewModelBase
     public int? PaycheckId { get => _paycheckId; set => SetProperty(ref _paycheckId, value); }
     public int? ToAccountId { get => _toAccountId; set => SetProperty(ref _toAccountId, value); }
     public int? FromAccountId { get => _fromAccountId; set => SetProperty(ref _fromAccountId, value); }
+    public int? BillId { get => _billId; set => SetProperty(ref _billId, value); }
+    public int? BucketId { get => _bucketId; set => SetProperty(ref _bucketId, value); }
+    public int? SubCategoryId { get => _subCategoryId; set => SetProperty(ref _subCategoryId, value); }
     public bool InOrOutOfMoneyAccount { get; set; }
     public bool InMoneyAccount { get; set; }
     public bool OutOfMoneyAccount { get; set; }
