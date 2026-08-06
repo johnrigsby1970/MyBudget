@@ -182,9 +182,9 @@ public partial class DatabaseNameViewModel : ViewModelBase, IWizardStepViewModel
     public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
 
     public IEnumerable GetErrors(string? propertyName) {
-        if (string.IsNullOrEmpty(propertyName) || !_errors.ContainsKey(propertyName))
-            return null;
-        return _errors[propertyName];
+        if (string.IsNullOrEmpty(propertyName) || !_errors.TryGetValue(propertyName, out var errors))
+            return Array.Empty<object>();
+        return errors;
     }
 
     public void AddError(string propertyName, string error) {

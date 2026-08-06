@@ -57,7 +57,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
         }
     }
     
-    private void SubscribeToAccountEvents(Account account)
+    private void SubscribeToAccountEvents(Account? account)
     {
         if (account == null) return;
 
@@ -75,7 +75,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
             account.MortgageDetails.PropertyChanged += OnEditingAccountPropertyChanged;
     }
 
-    private void UnsubscribeFromAccountEvents(Account account)
+    private void UnsubscribeFromAccountEvents(Account? account)
     {
         if (account == null) return;
 
@@ -88,7 +88,7 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
             account.MortgageDetails.PropertyChanged -= OnEditingAccountPropertyChanged;
     }
     
-    private void OnEditingAccountPropertyChanged(object sender, PropertyChangedEventArgs e)
+    private void OnEditingAccountPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         // 1. If the Account Type dropdown changed, initialize child details & wire up events
         if (e.PropertyName == nameof(Account.Type))
@@ -342,9 +342,12 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
     
     public IEnumerable GetErrors(string? propertyName)
     {
-        if (string.IsNullOrEmpty(propertyName) || !_errors.ContainsKey(propertyName))
-            return null;
-        return _errors[propertyName];
+        if (!string.IsNullOrEmpty(propertyName) && _errors.TryGetValue(propertyName, out var errors))
+        {
+            return errors;
+        }
+
+        return Enumerable.Empty<object>();
     }
     
     public void AddError(string propertyName, string error)

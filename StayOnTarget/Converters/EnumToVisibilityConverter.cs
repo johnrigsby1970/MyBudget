@@ -1,5 +1,4 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
@@ -7,13 +6,10 @@ namespace StayOnTarget.Converters;
 
 public class EnumToVisibilityConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value == null || parameter == null)
+        if (value?.ToString() is not { } checkValue || parameter?.ToString() is not { } targetValue)
             return Visibility.Collapsed;
-
-        string checkValue = value.ToString();
-        string targetValue = parameter.ToString();
 
         // Support pipe-separated parameters for multiple matches e.g. "FixedMonthlyAmount|Hybrid"
         string[] targets = targetValue.Split('|');
@@ -27,7 +23,7 @@ public class EnumToVisibilityConverter : IValueConverter
         return Visibility.Collapsed;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotImplementedException();
     }

@@ -419,6 +419,7 @@ public class NewTransactionViewModel : ViewModelBase {
     }
     
     private void ApplyDefaultBucketForSubCategory() {
+        if (EditingTransactionClone == null) return;
         // 1. Only auto-fill if it's a NEW transaction (Id == 0)
         // 2. AND a SubCategoryId is selected
         // 3. AND the user hasn't already picked a Bucket
@@ -437,6 +438,7 @@ public class NewTransactionViewModel : ViewModelBase {
     }
 
     private async Task TryAutoSuggestSubCategoryAsync() {
+        if (EditingTransactionClone == null) return;
         // Conditions:
         // 1. Must be a NEW transaction (Id == 0)
         // 2. SubCategoryId must not already be selected by the user

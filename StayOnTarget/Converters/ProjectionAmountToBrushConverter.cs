@@ -7,13 +7,13 @@ using StayOnTarget.Services.Projections;
 namespace StayOnTarget.Converters;
 
 public class ProjectionAmountToBrushConverter: IValueConverter {
-    public SolidColorBrush BucketBrush { get; set; } = (SolidColorBrush)new BrushConverter().ConvertFrom("#6C5CE7"); // Soft Purple
+    public SolidColorBrush BucketBrush { get; set; } = Brushes.MediumPurple; // Soft Purple
     public SolidColorBrush RedBrush { get; set; } = Brushes.Red;
     public SolidColorBrush GreenBrush { get; set; } = Brushes.Green;
     public SolidColorBrush DefaultBrush { get; set; } = Brushes.Black;
     public SolidColorBrush SweepBrush { get; set; } = Brushes.Goldenrod;
 
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is ProjectionGridItem item)
         {

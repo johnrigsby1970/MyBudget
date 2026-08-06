@@ -439,45 +439,48 @@ public class ProjectionEngine : IProjectionEngine {
             // Handle ToAccountId balance update
             if (e.ToAccountId.HasValue && accountBalances.ContainsKey(e.ToAccountId.Value)) {
                 var toAcc = accounts.FirstOrDefault(a => a.Id == e.ToAccountId.Value);
-                var amountChange = Math.Abs(currentEventAmount);
-                var isDebt = toAcc != null && toAcc.IsLiability;
-                var isPrincipalOnly = e.IsPrincipalOnly;
-                var isRebalance = e.IsRebalance;
-                var isInterestAdjustment = (e.Type == ProjectionEventType.Transaction && e.IsInterestAdjustment);
-                var isInterestOrRebalance = isDebt && (isRebalance || isInterestAdjustment);
+                if (toAcc != null) {
+                    var amountChange = Math.Abs(currentEventAmount);
+                    var isDebt = toAcc.IsLiability;
+                    var isPrincipalOnly = e.IsPrincipalOnly;
+                    var isRebalance = e.IsRebalance;
+                    var isInterestAdjustment = (e.Type == ProjectionEventType.Transaction && e.IsInterestAdjustment);
+                    var isInterestOrRebalance = isDebt && (isRebalance || isInterestAdjustment);
 
-                // 1. Interest charges or rebalances increase negative debt (push further into negative)
-                if (isInterestOrRebalance) {
-                    accountBalances[e.ToAccountId.Value] -= amountChange;
-                }
-                // 2. Loans / Mortgages (Payment coming in moves negative balance closer to $0.00)
-                else if (toAcc?.IsLoanAccount == true) {
-                    var principal = amountChange;
-                    if (!isPrincipalOnly && toAcc.MortgageDetails != null) {
-                        var escrowAndInsurance = toAcc.MortgageDetails.Escrow + toAcc.MortgageDetails.MortgageInsurance;
-                        principal = Math.Max(0, amountChange - escrowAndInsurance);
+                    // 1. Interest charges or rebalances increase negative debt (push further into negative)
+                    if (isInterestOrRebalance) {
+                        accountBalances[e.ToAccountId.Value] -= amountChange;
+                    }
+                    // 2. Loans / Mortgages (Payment coming in moves negative balance closer to $0.00)
+                    else if (toAcc.IsLoanAccount == true) {
+                        var principal = amountChange;
+                        if (!isPrincipalOnly && toAcc.MortgageDetails != null) {
+                            var escrowAndInsurance =
+                                toAcc.MortgageDetails.Escrow + toAcc.MortgageDetails.MortgageInsurance;
+                            principal = Math.Max(0, amountChange - escrowAndInsurance);
 
-                        // Using Math.Abs to safely compare remaining debt magnitude
-                        if (Math.Abs(accountBalances[e.ToAccountId.Value]) <= principal) {
-                            principal = Math.Abs(accountBalances[e.ToAccountId.Value]);
-                            mortgagePaidOff[e.ToAccountId.Value] = true;
-                            currentEventAmount = (principal + escrowAndInsurance);
+                            // Using Math.Abs to safely compare remaining debt magnitude
+                            if (Math.Abs(accountBalances[e.ToAccountId.Value]) <= principal) {
+                                principal = Math.Abs(accountBalances[e.ToAccountId.Value]);
+                                mortgagePaidOff[e.ToAccountId.Value] = true;
+                                currentEventAmount = (principal + escrowAndInsurance);
+                            }
+                        }
+
+                        accountBalances[e.ToAccountId.Value] += principal; // + brings -$347,000 closer to $0.00
+                    }
+                    // 3. Credit Cards, Personal Loans, & General Liabilities (Payments move balance closer to $0.00)
+                    else if (isDebt) {
+                        accountBalances[e.ToAccountId.Value] += amountChange; // + brings -$3,000 closer to $0.00
+
+                        if (toAcc.Type == AccountType.CreditCard && ccPaidThisCycle.ContainsKey(e.ToAccountId.Value)) {
+                            ccPaidThisCycle[e.ToAccountId.Value] += amountChange;
                         }
                     }
-
-                    accountBalances[e.ToAccountId.Value] += principal; // + brings -$347,000 closer to $0.00
-                }
-                // 3. Credit Cards, Personal Loans, & General Liabilities (Payments move balance closer to $0.00)
-                else if (isDebt) {
-                    accountBalances[e.ToAccountId.Value] += amountChange; // + brings -$3,000 closer to $0.00
-
-                    if (toAcc.Type == AccountType.CreditCard && ccPaidThisCycle.ContainsKey(e.ToAccountId.Value)) {
-                        ccPaidThisCycle[e.ToAccountId.Value] += amountChange;
+                    // 4. Asset Accounts (Checking, Savings, Cash): Inflows increase positive balance
+                    else {
+                        accountBalances[e.ToAccountId.Value] += amountChange;
                     }
-                }
-                // 4. Asset Accounts (Checking, Savings, Cash): Inflows increase positive balance
-                else {
-                    accountBalances[e.ToAccountId.Value] += amountChange;
                 }
             }
             

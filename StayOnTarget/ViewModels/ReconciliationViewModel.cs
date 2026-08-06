@@ -114,7 +114,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
         }
     }
     
-    private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
+    private void Item_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(TransactionViewModel.IsCleared))
         {
@@ -578,13 +578,12 @@ public partial class ReconciliationViewModel : ViewModelBase {
             await Task.Delay(10);
 
             string json = JsonConvert.SerializeObject(transactions.ToList());
-            var reconciliationTransactions = JsonConvert.DeserializeObject<List<TransactionViewModel>>(json);
-            List<TransactionViewModel> viewModels = new();
-            foreach (var x in reconciliationTransactions) {
-                viewModels.Add(new TransactionViewModel(x, Account));
-            }
+            var clonedTransactions = JsonConvert.DeserializeObject<List<Transaction>>(json) ?? new();
 
-            reconciliationTransactions = viewModels;
+            // 2. Map the cloned models directly into ViewModels
+            var reconciliationTransactions = clonedTransactions
+                .Select(x => new TransactionViewModel(x, Account))
+                .ToList();
             
             // ReSharper disable once NotAccessedVariable
             bool hasTransactionPriorToLastReconcile = false;

@@ -227,10 +227,16 @@ public class Transaction : ViewModelBase {
         get => _bucketName;
         set => SetProperty(ref _bucketName, value);
     }
+    
+    public Transaction Clone()
+    {
+        return (Transaction)this.MemberwiseClone();
+    }
 }
 
+
 public class TransactionViewModel : Transaction {
-    private readonly Account _viewingAccount;
+    private readonly Account? _viewingAccount;
     
     // Default constructor for Newtonsoft.Json / Deserialization
     public TransactionViewModel() { }
@@ -252,7 +258,7 @@ public class TransactionViewModel : Transaction {
     }
 
     // Perspective-calculated property ready for XAML binding
-    public decimal? SignedAmount => _viewingAccount != null ? SignedAmount(_viewingAccount) : Amount;
+    public new decimal? SignedAmount => _viewingAccount != null ? SignedAmount(_viewingAccount) : Amount;
 
     private decimal _runningBalance;
 

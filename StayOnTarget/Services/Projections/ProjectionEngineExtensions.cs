@@ -298,7 +298,7 @@ public static class ProjectionEngineExtensions {
 
         if (e is { Type: ProjectionEngine.ProjectionEventType.Interest, FromAccountId: not null }) {
             var acc = accounts.FirstOrDefault(a => a.Id == e.FromAccountId.Value);
-            if ((acc.IsLoanAccount) && acc.MortgageDetails != null ) {
+            if (acc is { IsLoanAccount: true, MortgageDetails: not null } ) {
                 var monthlyRate = (acc.MortgageDetails.InterestRate / 100m) / 12m;
                 var interest = Math.Round(accountBalances[acc.Id] * monthlyRate, 2);
                 accountBalances[acc.Id] += interest;

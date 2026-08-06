@@ -14,7 +14,7 @@ public partial class BudgetService
 
     public async Task UpsertSubCategoryAsync(SubCategory subCategory)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         if (subCategory.Id == 0)
         {
             await conn.ExecuteAsync(@"INSERT INTO SubCategories (CategoryId, DefaultBucketId, Name, SortOrder, IsArchived) 

@@ -14,7 +14,7 @@ public partial class BudgetService
 
     public async Task UpsertBucketAsync(BudgetBucket bucket)
     {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
         if (bucket.Id == 0)
         {
             await conn.ExecuteAsync(@"INSERT INTO Buckets (Name, ExpectedAmount, AccountId, PaycheckId) 

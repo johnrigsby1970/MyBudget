@@ -167,11 +167,13 @@ public class Account : ViewModelBase, INotifyDataErrorInfo
 
     private readonly Dictionary<string, List<string>> _errors = new();
     public bool HasErrors => _errors.Any();
-    public event EventHandler<DataErrorsChangedEventArgs> ErrorsChanged;
+    public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
 
-    public IEnumerable GetErrors(string propertyName)
+    public IEnumerable GetErrors(string? propertyName)
     {
-        return _errors.ContainsKey(propertyName) ? _errors[propertyName] : null;
+        return !string.IsNullOrEmpty(propertyName) && _errors.TryGetValue(propertyName, out var errors)
+            ? errors
+            : Enumerable.Empty<object>();
     }
 
     private void ValidateProperty(string propertyName, object value)
@@ -183,7 +185,7 @@ public class Account : ViewModelBase, INotifyDataErrorInfo
 
         if (results.Any())
         {
-            _errors[propertyName] = results.Select(r => r.ErrorMessage).ToList();
+            _errors[propertyName] = results.Where(r=> !string.IsNullOrEmpty(r.ErrorMessage)).Select(r => r.ErrorMessage!).ToList();
         }
         else
         {

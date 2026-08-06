@@ -211,12 +211,6 @@ public partial class BudgetService {
 
             if (oldRows.Any()) {
                 //its already reconciled and with a different id
-                // MessageBoxResult result = MessageBox.Show(
-                //     $"This change will invalidate reconciliations for {transaction.AccountName}. You will need to redo your reconciliation request after first reverting prior reconciliation. Revert prior reconciliation?",
-                //     "Confirmation",
-                //     MessageBoxButton.YesNo, MessageBoxImage.Question);
-                //
-                // if (result != MessageBoxResult.Yes) return false;
 
                 // Execute historical drops
                 await InvalidateReconciliationsAfterDateAsync(transaction.AccountId.Value, transaction.TransactionDate);
@@ -237,12 +231,6 @@ public partial class BudgetService {
 
             if (oldRows.Any()) {
                 //its already reconciled and with a different id
-                MessageBoxResult result = MessageBox.Show(
-                    $"This change will invalidate reconciliations for {transaction.ToAccountName}. You will need to redo your reconciliation request after first reverting prior reconciliation. Revert prior reconciliation?",
-                    "Confirmation",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-                if (result != MessageBoxResult.Yes) return false;
 
                 // Execute historical drops
                 await InvalidateReconciliationsAfterDateAsync(transaction.ToAccountId.Value,
@@ -264,7 +252,7 @@ public partial class BudgetService {
                         AccountId = transaction.AccountId, ReconciliationId = transaction.FromAccountReconciledId,
                         TransactionId = transaction.TransactionId.ToString(),
                         IsCleared = transaction.FromAccountIsCleared
-                    });
+                    }, tx);
             }
 
             if (transaction.ToAccountId.HasValue) {
@@ -274,7 +262,7 @@ public partial class BudgetService {
                         AccountId = transaction.ToAccountId, ReconciliationId = transaction.ToAccountReconciledId,
                         TransactionId = transaction.TransactionId.ToString(),
                         IsCleared = transaction.ToAccountIsCleared
-                    });
+                    }, tx);
             }
 
             tx.Commit();
@@ -291,7 +279,7 @@ public partial class BudgetService {
 
     public async Task<bool> UpdateTransactionForBankFitIdAsync(int accountId, string transactionId, string fitId,
         string bankFitId, DateTime transactionDate, string description, bool isCleared) {
-        using var conn = _db.GetConnection();
+        await using var conn = _db.GetConnection();
 
         await conn.OpenAsync();
         await using var tx = conn.BeginTransaction();
@@ -418,14 +406,6 @@ public partial class BudgetService {
                     }
 
                     if (fromImpacted || toImpacted) {
-                        // MessageBoxResult result = showConfirmationOfImpactToExistingReconciliations
-                        //     ? MessageBox.Show("This change will invalidate reconciliations. Proceed?",
-                        //         "Confirmation",
-                        //         MessageBoxButton.YesNo, MessageBoxImage.Question)
-                        //     : MessageBoxResult.Yes;
-                        //
-                        // if (result != MessageBoxResult.Yes) return false;
-
                         if (fromImpacted && t.AccountId.HasValue)
                             await InvalidateReconciliationsAfterDateAsync(t.AccountId.Value, effectiveDate);
                         if (oldFromAccountId.HasValue && fromAccountChanged)
@@ -561,7 +541,7 @@ public partial class BudgetService {
                         if (existingInterest != null) {
                             existingInterestId = (int?)existingInterest.Id;
                             interestReconciledId = (int?)existingInterest.ReconciliationId;
-                            interestIsCleared = (bool)existingInterest.IsCleared;
+                            interestIsCleared = (bool)(existingInterest.IsCleared == 1);
                             
                             if (interestReconciledId.HasValue) {
                                 await InvalidateReconciliationsAfterDateAsync(t.ToAccountId.Value, t.TransactionDate,
@@ -637,10 +617,6 @@ public partial class BudgetService {
 
             // Check if there's an interest-only transaction in the group
             bool hasInterestOnly = list.Any(r => r.IsInterestOnly == 1);
-
-            if (list.Any(r => r.TransactionId == "e70ed386-4b85-4b0f-a3bb-12ad97f6312b")) {
-                var s = "";
-            }
             
             if (list.Count() >= 2) {
                 if (hasInterestOnly) {
@@ -707,22 +683,27 @@ public partial class BudgetService {
 
     private Transaction MergeRows(IEnumerable<dynamic> group) {
         var groupList = group.ToList();
-        var outboundSide = groupList.FirstOrDefault(r => (double)r.Amount < 0);
-        var inboundSide = groupList.FirstOrDefault(r => (double)r.Amount >= 0);
 
+        var outboundSide = groupList.FirstOrDefault(r => r != null && (double)r!.Amount < 0);
+        var inboundSide = groupList.FirstOrDefault(r => r != null && (double)r!.Amount >= 0);
+        
         var primaryRow = outboundSide ?? inboundSide;
+        if (primaryRow == null) {
+            throw new InvalidOperationException("Cannot merge an empty group of transaction rows.");
+        }
+        
         var uiTx = MapDynamicToTransaction(primaryRow, isTransferSide: true);
 
         if (outboundSide != null && inboundSide != null) {
-            uiTx.FromRecordId = (long)outboundSide.Id;
-            uiTx.AccountId = (int)outboundSide!.AccountId;
+            uiTx.FromRecordId = (long)outboundSide!.Id;
+            uiTx.AccountId = (int)outboundSide.AccountId;
             uiTx.FromAccountReconciledId = outboundSide.ReconciliationId != null
                 ? (int?)outboundSide.ReconciliationId
                 : null;
             uiTx.AccountName = outboundSide.AccountName;
             uiTx.FromAccountIsCleared = outboundSide.IsCleared == 1;
-            uiTx.ToRecordId = (long)inboundSide.Id;
-            uiTx.ToAccountId = (int)inboundSide!.AccountId;
+            uiTx.ToRecordId = (long)inboundSide!.Id;
+            uiTx.ToAccountId = (int)inboundSide.AccountId;
             uiTx.ToAccountReconciledId =
                 inboundSide.ReconciliationId != null ? (int?)inboundSide.ReconciliationId : null;
             uiTx.ToAccountName = inboundSide.AccountName;

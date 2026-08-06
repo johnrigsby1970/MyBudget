@@ -18,7 +18,6 @@ public class MainViewModel : ViewModelBase {
     private readonly BudgetService _budgetService;
     private readonly ReconciliationService _reconciliationService;
     private readonly IProjectionEngine _projectionEngine;
-    private RangeObservableCollection<Account> _accounts = new();
     private RangeObservableCollection<PeriodBill> _currentPeriodBills = new();
     private RangeObservableCollection<PeriodBucket> _currentPeriodBuckets = new();
     private int _pastDueCount;
@@ -37,7 +36,6 @@ public class MainViewModel : ViewModelBase {
     private bool _isEditingPeriodBill;
     private bool _isEditingAccount;
     private bool _isEditingTransaction;
-    private bool _isCalculatingProjections;
     private bool _isBillDescriptionExpanded;
     private bool _isBucketDescriptionExpanded;
     private Bill? _editingBillClone;
@@ -102,9 +100,7 @@ public class MainViewModel : ViewModelBase {
     }
 
     public RangeObservableCollection<ProjectionItem> SnowballProjections { get; } = new();
-
-    public bool IsCalculatingProjections => _isCalculatingProjections;
-
+    
     public bool IsBucketDescriptionExpanded {
         get => _isBucketDescriptionExpanded;
         set => SetProperty(ref _isBucketDescriptionExpanded, value);
@@ -442,19 +438,21 @@ public class MainViewModel : ViewModelBase {
 
     public RangeObservableCollection<Paycheck> PaychecksWithNone { get; } = new();
 
+    private RangeObservableCollection<Account> _accounts = new();
     public RangeObservableCollection<Account> Accounts {
         get => _accounts;
         set {
-            if (_accounts != null) {
-                _accounts.CollectionChanged -= OnAccountsCollectionChanged;
-            }
+            // Unhook previous non-null collection
+            _accounts.CollectionChanged -= OnAccountsCollectionChanged;
 
             if (SetProperty(ref _accounts, value)) {
-                if (_accounts != null) {
-                    _accounts.CollectionChanged += OnAccountsCollectionChanged;
-                }
-
+                // Hook up new non-null collection
+                _accounts.CollectionChanged += OnAccountsCollectionChanged;
                 RefreshExcludableAccounts();
+            }
+            else {
+                // Re-hook if SetProperty returned false (value was identical)
+                _accounts.CollectionChanged += OnAccountsCollectionChanged;
             }
         }
     }
@@ -1161,7 +1159,7 @@ public class MainViewModel : ViewModelBase {
 // Filtered list of accounts eligible for exclusion (Liabilities & Investments)
     public RangeObservableCollection<Account> ExcludableAccounts { get; } = new();
 
-    private void OnAccountsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) {
+    private void OnAccountsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) {
         RefreshExcludableAccounts();
     }
 
@@ -1814,27 +1812,29 @@ public class MainViewModel : ViewModelBase {
                 EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
             }
 
-            var editTrans = new Transaction {
-                Id = SelectedTransaction.Id,
-                Description = SelectedTransaction.Description,
-                Memo = SelectedTransaction.Memo,
-                Amount = SelectedTransaction.Amount,
-                TransactionDate = SelectedTransaction.TransactionDate,
-                AccountId = SelectedTransaction.AccountId,
-                ToAccountId = SelectedTransaction.ToAccountId,
-                BucketId = SelectedTransaction.BucketId,
-                SubCategoryId = SelectedTransaction.SubCategoryId,
-                IsPrincipalOnly = SelectedTransaction.IsPrincipalOnly,
-                IsRebalance = SelectedTransaction.IsRebalance,
-                PaycheckId = SelectedTransaction.PaycheckId,
-                BillId = SelectedTransaction.BillId,
-                BillName = SelectedTransaction.BillName,
-                PaycheckOccurrenceDate = SelectedTransaction.PaycheckOccurrenceDate,
-                FitId = SelectedTransaction.FitId,
-                TransactionId = SelectedTransaction.TransactionId,
-                FromAccountReconciledId = SelectedTransaction.FromAccountReconciledId,
-                ToAccountReconciledId = SelectedTransaction.ToAccountReconciledId
-            };
+            // var editTrans = new Transaction {
+            //     Id = SelectedTransaction.Id,
+            //     Description = SelectedTransaction.Description,
+            //     Memo = SelectedTransaction.Memo,
+            //     Amount = SelectedTransaction.Amount,
+            //     TransactionDate = SelectedTransaction.TransactionDate,
+            //     AccountId = SelectedTransaction.AccountId,
+            //     ToAccountId = SelectedTransaction.ToAccountId,
+            //     BucketId = SelectedTransaction.BucketId,
+            //     SubCategoryId = SelectedTransaction.SubCategoryId,
+            //     IsPrincipalOnly = SelectedTransaction.IsPrincipalOnly,
+            //     IsRebalance = SelectedTransaction.IsRebalance,
+            //     PaycheckId = SelectedTransaction.PaycheckId,
+            //     BillId = SelectedTransaction.BillId,
+            //     BillName = SelectedTransaction.BillName,
+            //     PaycheckOccurrenceDate = SelectedTransaction.PaycheckOccurrenceDate,
+            //     FitId = SelectedTransaction.FitId,
+            //     TransactionId = SelectedTransaction.TransactionId,
+            //     FromAccountReconciledId = SelectedTransaction.FromAccountReconciledId,
+            //     ToAccountReconciledId = SelectedTransaction.ToAccountReconciledId,
+            //     IsBalanceTransfer = SelectedTransaction.IsBalanceTransfer
+            // };
+            var editTrans = SelectedTransaction.Clone();
             
             RefreshTransactionEditState(editTrans);
             
@@ -3653,6 +3653,8 @@ public class MainViewModel : ViewModelBase {
     }
 
     private void ApplyDefaultBucketForSubCategory() {
+        if (EditingTransactionClone == null) return;
+        
         // 1. Only auto-fill if it's a NEW transaction (Id == 0)
         // 2. AND a SubCategoryId is selected
         // 3. AND the user hasn't already picked a Bucket
@@ -3671,6 +3673,7 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task TryAutoSuggestSubCategoryAsync() {
+        if (EditingTransactionClone == null) return;
         // Conditions:
         // 1. Must be a NEW transaction (Id == 0)
         // 2. SubCategoryId must not already be selected by the user
@@ -3690,7 +3693,7 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private async Task PayBillAsync(ProjectionItem projection) {
+    private async Task PayBillAsync(ProjectionItem? projection) {
         if (projection == null || projection.Type != ProjectionEngine.ProjectionEventType.Bill) return;
 
         try {
