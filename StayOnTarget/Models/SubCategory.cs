@@ -7,12 +7,38 @@ public class SubCategory : ViewModelBase
     private bool _isArchived;
     private int _sortOrder;
     
-    public int Id { get; set; }
-    public int CategoryId { get; set; }
-    public string Name { get; set; } = string.Empty; // e.g., "Groceries"
-    
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+
+    private int _categoryId;
+    public int CategoryId 
+    {
+        get => _id;
+        set => SetProperty(ref _categoryId, value);
+    }
+
+    private string _name
+        = string.Empty; // e.g., "Groceries"
+    public string Name  
+    {
+        get => _name;
+        set => SetProperty(ref _name, value);
+    }
+
     // The key link:
-    public int? DefaultBucketId { get; set; } 
+
+
+    private int? _defaultBucketId;
+    public int?  DefaultBucketId  
+    {
+        get => _defaultBucketId;
+        set => SetProperty(ref _defaultBucketId, value);
+    }
+    
    // public BudgetBucket DefaultBucket { get; set; } = null!;
     
    public int SortOrder

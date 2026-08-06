@@ -11,9 +11,20 @@ public class PeriodBill : ViewModelBase
     private decimal _transactionAmount;
     private bool _isPaid;
 
-    public int Id { get; set; }
-    public Guid FitId { get; set; } = Guid.NewGuid();
-
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+    
+    private Guid _fitId = Guid.NewGuid();
+    public Guid FitId 
+    {
+        get => _fitId;
+        set => SetProperty(ref _fitId, value);
+    }
+    
     public int BillId
     {
         get => _billId;
@@ -71,5 +82,11 @@ public class PeriodBill : ViewModelBase
     }
 
     // Helper for UI
-    public string? BillName { get; set; }
+    
+    private string? _billName;
+    public string? BillName 
+    {
+        get => _billName;
+        set => SetProperty(ref _billName, value);
+    }
 }

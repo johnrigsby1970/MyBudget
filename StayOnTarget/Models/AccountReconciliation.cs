@@ -10,7 +10,12 @@ public class AccountReconciliation : ViewModelBase
     private DateTime _reconciledOnDate = DateTime.Today;
     private bool _isInvalidated;
 
-    public int Id { get; set; }
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
 
     public int AccountId
     {
@@ -43,5 +48,10 @@ public class AccountReconciliation : ViewModelBase
     }
 
     // Helper for UI
-    public string? AccountName { get; set; }
+    private string? _accountName;
+    public string? AccountName 
+    {
+        get => _accountName;
+        set => SetProperty(ref _accountName, value);
+    }
 }

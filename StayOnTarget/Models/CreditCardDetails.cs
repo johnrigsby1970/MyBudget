@@ -10,8 +10,19 @@ public class CreditCardDetails : ViewModelBase
     private bool _payPreviousMonthBalanceInFull = true;
     private bool _graceActive = true;
 
-    public int Id { get; set; }
-    public int AccountId { get; set; }
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+    
+    private int _accountId;
+    public int AccountId 
+    {
+        get => _accountId;
+        set => SetProperty(ref _accountId, value);
+    }
     
     public decimal MinPayFloor
     {

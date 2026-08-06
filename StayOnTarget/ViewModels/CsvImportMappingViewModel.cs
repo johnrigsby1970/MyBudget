@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using CsvHelper;
 using System.Globalization;
+using StayOnTarget.Helpers;
 
 namespace StayOnTarget.ViewModels;
 
@@ -10,7 +11,7 @@ public class CsvImportMappingViewModel : ViewModelBase {
     public string FilePath { get; }
     public List<string> Headers { get; private set; } = new();
     private List<Dictionary<string, string>> _rawPreviewData = new();
-    public ObservableCollection<ImportedTransactionViewModel> PreviewRows { get; } = new();
+    public RangeObservableCollection<ImportedTransactionViewModel> PreviewRows { get; } = new();
 
     public ObservableCollection<string?> AvailableHeaders { get; } = new();
 
@@ -99,9 +100,11 @@ public class CsvImportMappingViewModel : ViewModelBase {
 
     private void RefreshPreview() {
         PreviewRows.Clear();
+        var tempRows = new List<ImportedTransactionViewModel>(_rawPreviewData.Count);
+
         foreach (var rawRow in _rawPreviewData) {
             var tx = new ImportedTransactionViewModel();
-            
+        
             if (!string.IsNullOrEmpty(DateHeader) && rawRow.TryGetValue(DateHeader, out var dateStr)) {
                 if (DateTime.TryParse(dateStr, CultureInfo.CurrentCulture, DateTimeStyles.None, out var d))
                     tx.Date = d;
@@ -122,8 +125,11 @@ public class CsvImportMappingViewModel : ViewModelBase {
                 tx.BankId = "Preview";
             }
 
-            PreviewRows.Add(tx);
+            tempRows.Add(tx);
         }
+
+        // Fires ONE single Reset notification to the DataGrid for the entire batch
+        PreviewRows.AddRange(tempRows);
     }
 
     private void AutoDetectHeaders() {

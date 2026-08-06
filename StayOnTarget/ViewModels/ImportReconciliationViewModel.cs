@@ -23,8 +23,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
     }
 
-    public ObservableCollection<ImportedTransactionViewModel> ImportedTransactions { get; set; } = new();
-    public ObservableCollection<ManualTransactionViewModel> UnreconciledManualTransactions { get; set; } = new();
+    public RangeObservableCollection<ImportedTransactionViewModel> ImportedTransactions { get; set; } = new();
+    public RangeObservableCollection<ManualTransactionViewModel> UnreconciledManualTransactions { get; set; } = new();
 
     private ImportedTransactionViewModel? _selectedImported;
 
@@ -123,38 +123,33 @@ public class ImportReconciliationViewModel : ViewModelBase {
     public IAsyncRelayCommand ConfirmCsvImportCommand { get; }
     public IRelayCommand CancelCsvImportCommand { get; }
 
-    public ObservableCollection<Bill> BillsWithNone { get; } = new();
-    public ObservableCollection<BudgetBucket> BucketsWithNone { get; } = new();
-    
-    public ObservableCollection<SubCategory> SubCategoriesWithNone { get; } = new();
-    
+    public RangeObservableCollection<Bill> BillsWithNone { get; } = new();
+    public RangeObservableCollection<BudgetBucket> BucketsWithNone { get; } = new();
+
+    public RangeObservableCollection<SubCategory> SubCategoriesWithNone { get; } = new();
+
     //public IRelayCommand ToggleSelectionCommand { get; }
 
-    private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(ImportedTransactionViewModel.IsSelected))
-        {
+    private void Item_PropertyChanged(object sender, PropertyChangedEventArgs e) {
+        if (e.PropertyName == nameof(ImportedTransactionViewModel.IsSelected)) {
             UpdateIsAllSelectedState();
         }
     }
 
     private bool? _isAllSelected;
-    public bool? IsAllSelected
-    {
+
+    public bool? IsAllSelected {
         get => _isAllSelected;
-        set
-        {
+        set {
             // Resolves null clicks (from indeterminate state) to false so it unchecks all
             bool targetState = value ?? false;
 
-            if (_isAllSelected != targetState)
-            {
+            if (_isAllSelected != targetState) {
                 _isAllSelected = targetState;
                 OnPropertyChanged(nameof(IsAllSelected));
 
                 // Bulk toggle all rows
-                foreach (var item in ImportedTransactions)
-                {
+                foreach (var item in ImportedTransactions) {
                     item.PropertyChanged -= Item_PropertyChanged;
                     item.IsSelected = targetState;
                     item.PropertyChanged += Item_PropertyChanged;
@@ -163,28 +158,23 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
     }
 
-    private void UpdateIsAllSelectedState()
-    {
-        if (ImportedTransactions == null || !ImportedTransactions.Any())
-        {
+    private void UpdateIsAllSelectedState() {
+        if (ImportedTransactions == null || !ImportedTransactions.Any()) {
             _isAllSelected = false;
         }
-        else if (ImportedTransactions.All(x => x.IsSelected))
-        {
+        else if (ImportedTransactions.All(x => x.IsSelected)) {
             _isAllSelected = true; // Fully checked
         }
-        else if (ImportedTransactions.All(x => !x.IsSelected))
-        {
+        else if (ImportedTransactions.All(x => !x.IsSelected)) {
             _isAllSelected = false; // Fully unchecked
         }
-        else
-        {
+        else {
             _isAllSelected = null; // Partial selection (Square dash)
         }
 
         OnPropertyChanged(nameof(IsAllSelected));
     }
-    
+
     public ImportReconciliationViewModel(Account account, BudgetService budgetService) {
         _account = account;
         _budgetService = budgetService;
@@ -198,15 +188,11 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         // Track changes to update header state automatically
         // Single unified CollectionChanged handler
-        ImportedTransactions.CollectionChanged += (s, e) =>
-        {
-            if (e.NewItems != null)
-            {
-                foreach (ImportedTransactionViewModel item in e.NewItems)
-                {
+        ImportedTransactions.CollectionChanged += (s, e) => {
+            if (e.NewItems != null) {
+                foreach (ImportedTransactionViewModel item in e.NewItems) {
                     // Assign subcategory lookup delegate
-                    item.GetDefaultBucketForSubCategory = (subCatId) =>
-                    {
+                    item.GetDefaultBucketForSubCategory = (subCatId) => {
                         return SubCategoriesWithNone
                             .FirstOrDefault(sub => sub.Id == subCatId)?
                             .DefaultBucketId;
@@ -216,10 +202,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 }
             }
 
-            if (e.OldItems != null)
-            {
-                foreach (ImportedTransactionViewModel item in e.OldItems)
-                {
+            if (e.OldItems != null) {
+                foreach (ImportedTransactionViewModel item in e.OldItems) {
                     item.PropertyChanged -= Item_PropertyChanged;
                 }
             }
@@ -256,7 +240,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         try {
             var fixDate = false;
-            
+
             IsBusy = true;
 
             // Yield back to UI thread to allow WPF to render the LoadingOverlay control
@@ -296,14 +280,14 @@ public class ImportReconciliationViewModel : ViewModelBase {
                     BucketId = newItem.BucketId == 0 ? null : newItem.BucketId,
                     SubCategoryId = newItem.SubCategoryId == 0 ? null : newItem.SubCategoryId,
                     FromAccountIsCleared = newItem.Amount > 0 ? null : newItem.IsCleared,
-                    ToAccountIsCleared = newItem.Amount > 0 ?  newItem.IsCleared : null,
+                    ToAccountIsCleared = newItem.Amount > 0 ? newItem.IsCleared : null,
                 };
                 await Task.Delay(10);
                 await _budgetService.UpsertTransactionAsync(t);
             }
-            
+
             await Task.Delay(50);
-            
+
             // 4. Now these run sequentially on the UI thread with accurate database states
             await LoadDataAsync();
 
@@ -343,7 +327,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
         }
     }
-    
+
     private async Task ConfirmCsvImportAsync() {
         if (CsvMapping == null || !CsvMapping.CanImport) return;
 
@@ -359,19 +343,27 @@ public class ImportReconciliationViewModel : ViewModelBase {
         LastImportAsQfx = false;
 
         ImportedTransactions.Clear();
-        var processedBankIds = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id);
+
+        // 1. Convert to HashSet for O(1) lookup speed
+        var processedBankIdsList = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id);
+        var processedBankIds = new HashSet<string>(processedBankIdsList, StringComparer.OrdinalIgnoreCase);
+
+        // Temporary lists to collect batch mutations off the UI thread
+        var newImportedList = new List<ImportedTransactionViewModel>();
+        var manualRecordsToRemove = new List<ManualTransactionViewModel>();
 
         using (var reader = new StreamReader(filePath))
         using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture)) {
             await csv.ReadAsync();
             csv.ReadHeader();
+
             while (await csv.ReadAsync()) {
                 string bankId = csv.GetField(CsvMapping.BankIdHeader!) ?? Guid.NewGuid().ToString();
 
                 if (processedBankIds.Contains(bankId)) {
                     var rec = UnreconciledManualTransactions.SingleOrDefault(x => x.FitId == bankId);
                     if (rec != null) {
-                        UnreconciledManualTransactions.Remove(rec);
+                        manualRecordsToRemove.Add(rec);
                     }
 
                     continue;
@@ -388,8 +380,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 }
 
                 decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out var amount);
-                
-                ImportedTransactions.Add(new ImportedTransactionViewModel {
+
+                newImportedList.Add(new ImportedTransactionViewModel {
                     BankId = bankId,
                     Date = date,
                     Amount = amount,
@@ -400,6 +392,24 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
         }
 
+        // 2. Remove already-reconciled manual transactions safely outside the parsing loop
+        foreach (var rec in manualRecordsToRemove) {
+            UnreconciledManualTransactions.Remove(rec);
+        }
+
+        // 3. Populate ImportedTransactions in a single pass
+        if (ImportedTransactions is RangeObservableCollection<ImportedTransactionViewModel> rangeCollection) {
+            // Fires 1 single layout notification for the entire CSV import
+            rangeCollection.AddRange(newImportedList);
+        }
+        else {
+            // Fallback if standard ObservableCollection
+            foreach (var item in newImportedList) {
+                ImportedTransactions.Add(item);
+            }
+        }
+
+        // 4. Auto-match pass
         AutoMatchTransactions();
     }
 
@@ -453,8 +463,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
             // Parse Amount safely
             decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amount);
-            
-            ImportedTransactions.Add( new ImportedTransactionViewModel {
+
+            ImportedTransactions.Add(new ImportedTransactionViewModel {
                 BankId = bankId,
                 Date = date,
                 Amount = amount,
@@ -488,7 +498,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         return value.Trim();
     }
-    
+
     private void AutoMatchTransactions() {
         // FIX 1: Track matches using string HashSet to align with your string? TransactionId type
         var matchedManualIds = new HashSet<string>();
@@ -669,13 +679,14 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
     private async Task LoadDataAsync() {
         // Mocking manual records currently in your DB
-        var unreconciledTransactions = await _budgetService.GetAllUnreconciledTransactionsAsync();
+        var unreconciledTransactions = (await _budgetService.GetAllUnreconciledTransactionsAsync()).ToList();
         unreconciledTransactions = unreconciledTransactions
             .Where(x => x.AccountId == _account.Id || x.ToAccountId == _account.Id).ToList();
 
         UnreconciledManualTransactions.Clear();
+        var temp = new List<ManualTransactionViewModel>(unreconciledTransactions.Count);
         foreach (var transaction in unreconciledTransactions) {
-            UnreconciledManualTransactions.Add(new ManualTransactionViewModel {
+            temp.Add(new ManualTransactionViewModel {
                 FitId = transaction.FitId, TransactionDate = transaction.TransactionDate,
                 Amount = transaction.Amount,
                 Description = transaction.Description, TransactionId = transaction.TransactionId.ToString(),
@@ -684,22 +695,42 @@ public class ImportReconciliationViewModel : ViewModelBase {
             });
         }
 
+        UnreconciledManualTransactions.AddRange(temp);
+
+        var billsFromDb = (await _budgetService.GetAllBillsAsync()).ToList();
+
+        // Pre-allocate space for "None" (+1) plus all DB items
+        var billsTemp = new List<Bill>(billsFromDb.Count + 1) {
+            new Bill { Id = 0, Name = "None" }
+        };
+
+        billsTemp.AddRange(billsFromDb);
+
         BillsWithNone.Clear();
-        BillsWithNone.Add(new Bill { Id = 0, Name = "None" });
-        foreach (var bill in await _budgetService.GetAllBillsAsync()) {
-            BillsWithNone.Add(bill);
-        }
+        BillsWithNone.AddRange(billsTemp);
+        
+        var bucketsFromDb = (await _budgetService.GetAllBucketsAsync()).ToList();
+
+        // Pre-allocate space for "None" (+1) plus all DB items
+        var bucketsTemp = new List<BudgetBucket>(bucketsFromDb.Count + 1) {
+            new BudgetBucket { Id = 0, Name = "None" }
+        };
+
+        bucketsTemp.AddRange(bucketsFromDb);
 
         BucketsWithNone.Clear();
-        BucketsWithNone.Add(new BudgetBucket { Id = 0, Name = "None" });
-        foreach (var bucket in await _budgetService.GetAllBucketsAsync()) {
-            BucketsWithNone.Add(bucket);
-        }
+        BucketsWithNone.AddRange(bucketsTemp);
         
+        var subCategoriesFromDb = (await _budgetService.GetAllSubCategoriesAsync()).ToList();
+
+        // Pre-allocate space for "None" (+1) plus all DB items
+        var subCategoriesTemp = new List<SubCategory>(subCategoriesFromDb.Count + 1) {
+            new SubCategory { Id = 0, Name = "None" }
+        };
+
+        subCategoriesTemp.AddRange(subCategoriesFromDb);
+
         SubCategoriesWithNone.Clear();
-        SubCategoriesWithNone.Add(new SubCategory { Id = 0, Name = "None" });
-        foreach (var subCategory in await _budgetService.GetAllSubCategoriesAsync()) {
-            SubCategoriesWithNone.Add(subCategory);
-        }
+        SubCategoriesWithNone.AddRange(subCategoriesTemp);
     }
 }

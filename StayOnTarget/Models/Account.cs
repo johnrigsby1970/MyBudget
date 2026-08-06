@@ -20,7 +20,13 @@ public class Account : ViewModelBase, INotifyDataErrorInfo
     private bool _isPrimary;
     private bool _isArchived;
 
-    public int Id { get; set; }
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+
     
     [Required(ErrorMessage = "Account name is required.")]
     [MinLength(1, ErrorMessage = "Account name cannot be empty.")]

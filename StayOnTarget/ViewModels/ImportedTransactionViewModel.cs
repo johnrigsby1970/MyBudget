@@ -4,11 +4,29 @@
         // Delegate assigned by ImportReconciliationViewModel's CollectionChanged handler
         public Func<int, int?>? GetDefaultBucketForSubCategory { get; set; }
 
-        public string? BankId { get; set; } // The FITID from the QFX
-        public DateTime? Date { get; set; }
-        public decimal Amount { get; set; }
-        public string? Payee { get; set; }
+        private string? _bankId;
+        public string? BankId {
+            get => _bankId;
+            set => SetProperty(ref _bankId, value);
+        }
 
+        private DateTime? _date;
+        public DateTime? Date {
+            get => _date;
+            set => SetProperty(ref _date, value);
+        }
+
+        private decimal _amount;
+        public decimal Amount {
+            get => _amount;
+            set => SetProperty(ref _amount, value);
+        }
+
+        private string? _payee;
+        public string? Payee {
+            get => _payee;
+            set => SetProperty(ref _payee, value);
+        }
         private bool _isMatched;
         
         public bool IsMatched {
@@ -30,9 +48,23 @@
             set => SetProperty(ref _status, value);
         }
 
-        public string? MatchedManualFitId { get; set; }
-        public DateTime? MatchedManualTransactionDate { get; set; }
-        public string? MatchedManualTransactionId { get; set; }
+        private string? _matchedManualFitId;
+        public string? MatchedManualFitId {
+            get => _matchedManualFitId;
+            set => SetProperty(ref _matchedManualFitId, value);
+        }
+
+        private DateTime? _matchedManualTransactionDate;
+        public DateTime? MatchedManualTransactionDate {
+            get => _matchedManualTransactionDate;
+            set => SetProperty(ref _matchedManualTransactionDate, value);
+        }
+
+        private string? _matchedManualTransactionId;
+        public string? MatchedManualTransactionId {
+            get => _matchedManualTransactionId;
+            set => SetProperty(ref _matchedManualTransactionId, value);
+        }
 
         private int? _bucketId;
         public int? BucketId {
@@ -64,16 +96,16 @@
         }
         
         private void ApplyDefaultBucket() {
-            // 1. Skip matched transactions (reconciled data takes precedence)
-            // 2. Ignore SubCategoryId if empty or set to 0 ("None")
-            // 3. Only auto-fill if BucketId is currently unassigned or 0 ("None")
+            // 1. Skip if already matched (matched transactions maintain their existing mappings)
+            // 2. Skip if SubCategory is empty or 0 ("None")
+            // 3. Only auto-fill if BucketId is currently unset or 0 ("None")
             if (!IsMatched && 
                 SubCategoryId.HasValue && 
                 SubCategoryId.Value != 0 && 
                 (!BucketId.HasValue || BucketId == 0)) {
 
                 var defaultBucket = GetDefaultBucketForSubCategory?.Invoke(SubCategoryId.Value);
-            
+
                 if (defaultBucket.HasValue && defaultBucket.Value != 0) {
                     BucketId = defaultBucket.Value;
                 }

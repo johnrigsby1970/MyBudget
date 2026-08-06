@@ -10,7 +10,12 @@ public class BudgetBucket : ViewModelBase
     private int? _paycheckId;
     private bool _isArchived;
     
-    public int Id { get; set; }
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
 
     public string Name
     {

@@ -11,9 +11,20 @@ public class MortgageDetails : ViewModelBase
     private DateTime _paymentDate = DateTime.Today;
     private int _statementDay = 1;
 
-    public int Id { get; set; }
-    public int AccountId { get; set; }
-
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+    
+    private int _accountId;
+    public int AccountId 
+    {
+        get => _accountId;
+        set => SetProperty(ref _accountId, value);
+    }
+    
     public int StatementDay
     {
         get => _statementDay;

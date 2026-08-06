@@ -18,27 +18,13 @@ public class MainViewModel : ViewModelBase {
     private readonly BudgetService _budgetService;
     private readonly ReconciliationService _reconciliationService;
     private readonly IProjectionEngine _projectionEngine;
-    private ObservableCollection<Account> _accounts = new();
-    private ObservableCollection<Account> _visibleAccounts = new();
-    private ObservableCollection<Account> _accountsWithNone = new();
-    private ObservableCollection<Bill> _bills = new();
-    private ObservableCollection<Bill> _billsWithNone = new();
-    private ObservableCollection<Paycheck> _paychecks = new();
-    private ObservableCollection<Paycheck> _paychecksWithNone = new();
-    private ObservableCollection<ProjectionItem> _projections = new();
-    private ObservableCollection<PeriodBill> _currentPeriodBills = new();
-    private ObservableCollection<BudgetBucket> _buckets = new();
-    private ObservableCollection<BudgetBucket> _bucketsWithNone = new();
-    private ObservableCollection<SubCategory> _subCategories = new();
-    private ObservableCollection<SubCategory> _subCategoriesWithNone = new();
-    private ObservableCollection<PeriodBucket> _currentPeriodBuckets = new();
-    private ObservableCollection<Transaction> _currentPeriodTransactions = new();
+    private RangeObservableCollection<Account> _accounts = new();
+    private RangeObservableCollection<PeriodBill> _currentPeriodBills = new();
+    private RangeObservableCollection<PeriodBucket> _currentPeriodBuckets = new();
     private int _pastDueCount;
     private int _upcomingCount;
     private int _budgetExceededCount;
     private int _envelopeNearingFullCount;
-    private ObservableCollection<PeriodBill> _unpaidPastDueBills = new();
-    private ObservableCollection<PeriodBucket> _budgetBustedBuckets = new();
     private Bill? _selectedBill;
     private BudgetBucket? _selectedBucket;
     private PeriodBill? _selectedPeriodBill;
@@ -61,13 +47,10 @@ public class MainViewModel : ViewModelBase {
     private Account? _editingAccountClone;
     private Transaction? _editingTransactionClone;
     private bool _isEditingTransactionEnabled = true;
-    private ObservableCollection<Account> _transactionAccounts = new();
-    private ObservableCollection<Account> _transactionToAccounts = new();
     private Paycheck? _editingPaycheckClone;
     private DateTime _currentPeriodDate = DateTime.MinValue;
     private bool _showByMonth;
     private int _selectedPeriodPaycheckId;
-    private ObservableCollection<Paycheck> _periodPaychecks = new();
     private ObservableCollection<ToastViewModel> _toasts = new();
     private bool _isEditingPaycheck;
     private Paycheck? _selectedPaycheck;
@@ -79,7 +62,6 @@ public class MainViewModel : ViewModelBase {
     private int _selectedInnerTabIndex;
     private int _selectedProjectionTabIndex;
     private SnowballStrategyOptions _snowballOptions = new();
-    private ObservableCollection<ProjectionItem> _snowballProjections = new();
 
     #region Properties
 
@@ -119,10 +101,7 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    public ObservableCollection<ProjectionItem> SnowballProjections {
-        get => _snowballProjections;
-        set => SetProperty(ref _snowballProjections, value);
-    }
+    public RangeObservableCollection<ProjectionItem> SnowballProjections { get; } = new();
 
     public bool IsCalculatingProjections => _isCalculatingProjections;
 
@@ -456,24 +435,14 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _showSnowballAnalysis, value);
     }
 
-    private ObservableCollection<Account> _activeAccountsWithNone = new();
+    public RangeObservableCollection<Bill> Bills { get; } = new();
 
-    public ObservableCollection<Bill> Bills {
-        get => _bills;
-        set => SetProperty(ref _bills, value);
-    }
 
-    public ObservableCollection<Paycheck> Paychecks {
-        get => _paychecks;
-        set => SetProperty(ref _paychecks, value);
-    }
+    public RangeObservableCollection<Paycheck> Paychecks { get; } = new();
 
-    public ObservableCollection<Paycheck> PaychecksWithNone {
-        get => _paychecksWithNone;
-        set => SetProperty(ref _paychecksWithNone, value);
-    }
+    public RangeObservableCollection<Paycheck> PaychecksWithNone { get; } = new();
 
-    public ObservableCollection<Account> Accounts {
+    public RangeObservableCollection<Account> Accounts {
         get => _accounts;
         set {
             if (_accounts != null) {
@@ -490,49 +459,25 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    public ObservableCollection<Account> VisibleAccounts {
-        get => _visibleAccounts;
-        set => SetProperty(ref _visibleAccounts, value);
-    }
+    public RangeObservableCollection<Account> VisibleAccounts { get; } = new();
 
     public AccountType[] AccountTypes => (AccountType[])Enum.GetValues(typeof(AccountType));
 
-    public ObservableCollection<Account> ActiveAccountsWithNone {
-        get => _activeAccountsWithNone;
-        set => SetProperty(ref _activeAccountsWithNone, value);
-    }
+    public RangeObservableCollection<Account> ActiveAccountsWithNone { get; } = new();
 
-    public ObservableCollection<Account> AccountsWithNone {
-        get => _accountsWithNone;
-        set => SetProperty(ref _accountsWithNone, value);
-    }
+    public RangeObservableCollection<Account> AccountsWithNone { get; } = new();
 
-    public ObservableCollection<Bill> BillsWithNone {
-        get => _billsWithNone;
-        set => SetProperty(ref _billsWithNone, value);
-    }
+    public RangeObservableCollection<Bill> BillsWithNone { get; } = new();
 
-    public ObservableCollection<BudgetBucket> BucketsWithNone {
-        get => _bucketsWithNone;
-        set => SetProperty(ref _bucketsWithNone, value);
-    }
+    public RangeObservableCollection<BudgetBucket> BucketsWithNone { get; } = new();
 
-    public ObservableCollection<SubCategory> SubCategories {
-        get => _subCategories;
-        set => SetProperty(ref _subCategories, value);
-    }
+    public RangeObservableCollection<SubCategory> SubCategories { get; } = new();
 
-    public ObservableCollection<SubCategory> SubCategoriesWithNone {
-        get => _subCategoriesWithNone;
-        set => SetProperty(ref _subCategoriesWithNone, value);
-    }
+    public RangeObservableCollection<SubCategory> SubCategoriesWithNone { get; } = new();
 
-    public ObservableCollection<ProjectionItem> Projections {
-        get => _projections;
-        set => SetProperty(ref _projections, value);
-    }
+    public RangeObservableCollection<ProjectionItem> Projections { get; } = new();
 
-    public ObservableCollection<PeriodBill> CurrentPeriodBills {
+    public RangeObservableCollection<PeriodBill> CurrentPeriodBills {
         get => _currentPeriodBills;
         set {
             if (SetProperty(ref _currentPeriodBills, value)) {
@@ -551,10 +496,7 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _upcomingCount, value);
     }
 
-    public ObservableCollection<PeriodBill> UnpaidPastDueBills {
-        get => _unpaidPastDueBills;
-        set => SetProperty(ref _unpaidPastDueBills, value);
-    }
+    public RangeObservableCollection<PeriodBill> UnpaidPastDueBills { get; } = new();
 
     private void UpdateWarningMetrics() {
         var today = DateTime.Today;
@@ -567,12 +509,15 @@ public class MainViewModel : ViewModelBase {
 
         PastDueCount = pastDue.Count;
         UpcomingCount = upcoming.Count;
-        
-        UnpaidPastDueBills.Clear();
-        foreach (var b in pastDue)
-        {
-            UnpaidPastDueBills.Add(b);
+
+        var temp = new List<PeriodBill>(pastDue.Count);
+        foreach (var b in pastDue) {
+            temp.Add(b);
         }
+
+        UnpaidPastDueBills.Clear();
+        UnpaidPastDueBills.AddRange(temp);
+
         OnPropertyChanged(nameof(ShowWarningWidget));
     }
 
@@ -590,10 +535,7 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _envelopeNearingFullCount, value);
     }
 
-    public ObservableCollection<PeriodBucket> BudgetBustedBuckets {
-        get => _budgetBustedBuckets;
-        set => SetProperty(ref _budgetBustedBuckets, value);
-    }
+    public RangeObservableCollection<PeriodBucket> BudgetBustedBuckets { get; } = new();
 
     private void UpdateBucketWarningMetrics() {
         var exceeded = CurrentPeriodBuckets.Where(pb =>
@@ -608,18 +550,23 @@ public class MainViewModel : ViewModelBase {
         if (nearingfull.Count > 0) {
             var myList = exceeded;
             myList.AddRange(nearingfull);
-            BudgetBustedBuckets.Clear();
-            foreach (var b in myList)
-            {
-                BudgetBustedBuckets.Add(b);
+
+            var temp = new List<PeriodBucket>(myList.Count);
+            foreach (var b in myList) {
+                temp.Add(b);
             }
+
+            BudgetBustedBuckets.Clear();
+            BudgetBustedBuckets.AddRange(temp);
         }
         else {
-            BudgetBustedBuckets.Clear();
-            foreach (var b in exceeded)
-            {
-                BudgetBustedBuckets.Add(b);
+            var temp = new List<PeriodBucket>(exceeded.Count);
+            foreach (var b in exceeded) {
+                temp.Add(b);
             }
+
+            BudgetBustedBuckets.Clear();
+            BudgetBustedBuckets.AddRange(temp);
         }
 
         OnPropertyChanged(nameof(ShowEnvelopeWarningWidget));
@@ -629,12 +576,9 @@ public class MainViewModel : ViewModelBase {
 
     #endregion
 
-    public ObservableCollection<BudgetBucket> Buckets {
-        get => _buckets;
-        set => SetProperty(ref _buckets, value);
-    }
+    public RangeObservableCollection<BudgetBucket> Buckets { get; } = new();
 
-    public ObservableCollection<PeriodBucket> CurrentPeriodBuckets {
+    public RangeObservableCollection<PeriodBucket> CurrentPeriodBuckets {
         get => _currentPeriodBuckets;
         set {
             if (SetProperty(ref _currentPeriodBuckets, value)) {
@@ -642,11 +586,8 @@ public class MainViewModel : ViewModelBase {
             }
         }
     }
-
-    public ObservableCollection<Transaction> CurrentPeriodTransactions {
-        get => _currentPeriodTransactions;
-        set => SetProperty(ref _currentPeriodTransactions, value);
-    }
+    
+    public RangeObservableCollection<Transaction> CurrentPeriodTransactions { get; } = new();
 
     public string ToggleReconciliationText {
         get => _toggleReconciliationText;
@@ -743,10 +684,7 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    public ObservableCollection<Paycheck> PeriodPaychecks {
-        get => _periodPaychecks;
-        set => SetProperty(ref _periodPaychecks, value);
-    }
+    public RangeObservableCollection<Paycheck> PeriodPaychecks { get; } = new();
 
     public ObservableCollection<ToastViewModel> Toasts {
         get => _toasts;
@@ -1093,15 +1031,9 @@ public class MainViewModel : ViewModelBase {
         private set => SetProperty(ref _isEditingTransactionEnabled, value);
     }
 
-    public ObservableCollection<Account> TransactionAccounts {
-        get => _transactionAccounts;
-        private set => SetProperty(ref _transactionAccounts, value);
-    }
+    public RangeObservableCollection<Account> TransactionAccounts { get; } = new();
 
-    public ObservableCollection<Account> TransactionToAccounts {
-        get => _transactionToAccounts;
-        private set => SetProperty(ref _transactionToAccounts, value);
-    }
+    public RangeObservableCollection<Account> TransactionToAccounts { get; } = new();
 
     public Paycheck? EditingPaycheckClone {
         get => _editingPaycheckClone;
@@ -1227,28 +1159,30 @@ public class MainViewModel : ViewModelBase {
     }
 
 // Filtered list of accounts eligible for exclusion (Liabilities & Investments)
-    public ObservableCollection<Account> ExcludableAccounts { get; } = new();
+    public RangeObservableCollection<Account> ExcludableAccounts { get; } = new();
 
     private void OnAccountsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) {
         RefreshExcludableAccounts();
     }
 
     public void RefreshExcludableAccounts() {
-        ExcludableAccounts.Clear();
-        if (Accounts == null) return;
-
-        var filtered = Accounts
+        var filtered = (Accounts
             .Where(a => a.IsLiability || a.Type is AccountType.Brokerage
                 or AccountType.Investment
                 or AccountType.IRA
                 or AccountType.RothIRA)
-            .Where(a => !a.IsArchived);
+            .Where(a => !a.IsArchived)).ToList();
+
+        var temp = new List<Account>(filtered.Count);
 
         foreach (var account in filtered) {
             // Sync the checkbox state from the HashSet
             account.IsExcludedInSnowball = SnowballOptions.ExcludedAccountIds.Contains(account.Id);
-            ExcludableAccounts.Add(account);
+            temp.Add(account);
         }
+
+        ExcludableAccounts.Clear();
+        ExcludableAccounts.AddRange(temp);
     }
 
 // Commands
@@ -1956,12 +1890,14 @@ public class MainViewModel : ViewModelBase {
 
         var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
         accountsWithNone.AddRange(filteredAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
-        
-        TransactionAccounts.Clear();
-        foreach (var b in accountsWithNone)
-        {
-            TransactionAccounts.Add(b);
+
+        var temp = new List<Account>(accountsWithNone.Count);
+        foreach (var b in accountsWithNone) {
+            temp.Add(b);
         }
+
+        TransactionAccounts.Clear();
+        TransactionAccounts.AddRange(temp);
 
         var filteredToAccounts = IsEditingTransactionEnabled
             ? Accounts.Where(a => !a.IsArchived || a.Id == EditingTransactionClone.ToAccountId).ToList()
@@ -1978,13 +1914,15 @@ public class MainViewModel : ViewModelBase {
 
         var toAccountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
         toAccountsWithNone.AddRange(filteredToAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
-        
-        TransactionToAccounts.Clear();
 
-        foreach (var b in toAccountsWithNone)
-        {
-            TransactionToAccounts.Add(b);
+
+        var tempTo = new List<Account>(toAccountsWithNone.Count);
+        foreach (var b in toAccountsWithNone) {
+            tempTo.Add(b);
         }
+
+        TransactionToAccounts.Clear();
+        TransactionToAccounts.AddRange(tempTo);
     }
 
     private async Task SaveTransactionAsync() {
@@ -2678,20 +2616,23 @@ public class MainViewModel : ViewModelBase {
             if (cancellationToken.IsCancellationRequested) return;
 
             // Apply results to UI collections safely
-            Projections.Clear();
 
-            foreach (var b in resultList)
-            {
-                Projections.Add(b);
+            var temp = new List<ProjectionItem>(resultList.Count);
+            foreach (var b in resultList) {
+                temp.Add(b);
+            }
+
+            Projections.Clear();
+            Projections.AddRange(temp);
+
+            var tempSnowball = new List<ProjectionItem>(snowballList.Count);
+            foreach (var b in snowballList) {
+                tempSnowball.Add(b);
             }
 
             SnowballProjections.Clear();
+            SnowballProjections.AddRange(tempSnowball);
 
-            foreach (var b in snowballList)
-            {
-                SnowballProjections.Add(b);
-            }
-            
             if (snowballOptions?.EnableSnowball == true) {
                 UpdateSnowballAnalysis(resultList, snowballList);
             }
@@ -2720,7 +2661,7 @@ public class MainViewModel : ViewModelBase {
             }
         }
     }
-    
+
     public void ShowToast(string message) {
         Application.Current.Dispatcher.Invoke(() => {
             // Avoid duplicate toasts with the same message
@@ -2936,30 +2877,41 @@ public class MainViewModel : ViewModelBase {
             // 2. Clear all collections cleanly
             Accounts.Clear();
             VisibleAccounts.Clear();
-            AccountsWithNone.Clear();
-            ActiveAccountsWithNone.Clear();
 
-            // 3. Re-populate Accounts & VisibleAccounts
+            // Prepare temporary lists off the UI thread
+            var visibleList = new List<Account>(accounts.Count);
+
             foreach (var a in accounts) {
                 a.PropertyChanged += Item_PropertyChanged;
-                Accounts.Add(a);
-
                 if (!a.IsArchived) {
-                    VisibleAccounts.Add(a);
+                    visibleList.Add(a);
                 }
             }
 
+            // Batch update both collections (1 layout pass per collection)
+            Accounts.AddRange(accounts);
+            VisibleAccounts.AddRange(visibleList);
+
             // 4. Re-populate AccountsWithNone
-            AccountsWithNone.Add(new Account { Id = 0, Name = "(None)" });
-            foreach (var a in accounts) {
-                AccountsWithNone.Add(a);
-            }
+            AccountsWithNone.Clear();
+
+            var accountsWithNoneList = new List<Account>(accounts.Count + 1) {
+                new Account { Id = 0, Name = "(None)" }
+            };
+            accountsWithNoneList.AddRange(accounts);
+            AccountsWithNone.AddRange(accountsWithNoneList);
+
 
             // 5. Re-populate ActiveAccountsWithNone
-            ActiveAccountsWithNone.Add(new Account { Id = 0, Name = "(None)" });
-            foreach (var a in accounts.Where(a => !a.IsArchived)) {
-                ActiveAccountsWithNone.Add(a);
-            }
+
+            ActiveAccountsWithNone.Clear();
+
+            var filtered = accounts.Where(a => !a.IsArchived).ToList();
+            var activeAccountsWithNoneList = new List<Account>(filtered.Count + 1) {
+                new Account { Id = 0, Name = "(None)" }
+            };
+            activeAccountsWithNoneList.AddRange(filtered);
+            ActiveAccountsWithNone.AddRange(activeAccountsWithNoneList);
 
             if (Accounts.Any(x => x.Type == AccountType.Checking && x.IsPrimary) &&
                 Accounts.Any(x => x.Type == AccountType.CreditCard)) {
@@ -2984,36 +2936,42 @@ public class MainViewModel : ViewModelBase {
         Log.Information("Loading bill data.");
         _isLoadingBillData = true;
         try {
-            // 1. Unsubscribe old items to prevent memory leaks
+            // 1. Unsubscribe old items from both collections to prevent memory leaks
             foreach (var item in Bills) {
                 item.PropertyChanged -= Item_PropertyChanged;
             }
 
-            // 2. Clear current list
+            foreach (var item in BillsWithNone) {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
+
+            // 2. Clear both collections
             Bills.Clear();
-
-            // 3. Query and order new items
-            var bills = (await _budgetService.GetAllBillsAsync(true))
-                .OrderBy(b => b.DueDay)
-                .ThenBy(b => b.Name);
-
-            // 4. Attach event and add back into the existing collection
-            foreach (var b in bills) {
-                b.PropertyChanged += Item_PropertyChanged;
-                Bills.Add(b);
-            }
-
             BillsWithNone.Clear();
-            var billsWithNone = new List<Bill> { new Bill { Id = 0, Name = "(None)" } };
-            billsWithNone.AddRange(bills.Where(b => !b.IsArchived));
 
-            foreach (var b in billsWithNone) {
+            // 3. Query and order new items into a concrete list
+            var billsList = (await _budgetService.GetAllBillsAsync(true))
+                .OrderBy(b => b.DueDay)
+                .ThenBy(b => b.Name)
+                .ToList();
+
+            // 4. Attach event handlers to all loaded bills
+            foreach (var b in billsList) {
                 b.PropertyChanged += Item_PropertyChanged;
-                BillsWithNone.Add(b);
             }
 
-            Log.Information("Bill data loaded successfully. Bills: {BillCount}",
-                Bills.Count);
+            // 5. Prepare the "None" list (pre-allocated capacity)
+            var unarchivedBills = billsList.Where(b => !b.IsArchived).ToList();
+            var billsWithNoneList = new List<Bill>(unarchivedBills.Count + 1) {
+                new Bill { Id = 0, Name = "(None)" }
+            };
+            billsWithNoneList.AddRange(unarchivedBills);
+
+            // 6. Batch add using RangeObservableCollection (fires 1 layout update per collection)
+            Bills.AddRange(billsList);
+            BillsWithNone.AddRange(billsWithNoneList);
+
+            Log.Information("Bill data loaded successfully. Bills: {BillCount}", Bills.Count);
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load bill data.");
@@ -3029,30 +2987,41 @@ public class MainViewModel : ViewModelBase {
         Log.Information("Loading all bucket data.");
         _isLoadingBucketData = true;
         try {
+            // 1. Unsubscribe old items from both collections to prevent memory leaks
             foreach (var item in Buckets) {
                 item.PropertyChanged -= Item_PropertyChanged;
             }
 
+            foreach (var item in BucketsWithNone) {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
+
+            // 2. Clear both collections
             Buckets.Clear();
-
-
-            var buckets = (await _budgetService.GetAllBucketsAsync(true)).ToList();
-            buckets = buckets.OrderBy(b => b.Name).ToList();
-
-            foreach (var b in buckets) {
-                b.PropertyChanged += Item_PropertyChanged;
-                Buckets.Add(b);
-            }
-
             BucketsWithNone.Clear();
-            var bucketsWithNone = new List<BudgetBucket> { new BudgetBucket { Id = 0, Name = "(None)" } };
-            bucketsWithNone.AddRange(buckets.Where(b => !b.IsArchived));
-            foreach (var b in bucketsWithNone) {
-                BucketsWithNone.Add(b);
+
+            // 3. Query and order new items into a concrete list
+            var bucketsList = (await _budgetService.GetAllBucketsAsync(true))
+                .OrderBy(b => b.Name)
+                .ToList();
+
+            // 4. Attach event handlers to all loaded buckets
+            foreach (var b in bucketsList) {
+                b.PropertyChanged += Item_PropertyChanged;
             }
 
-            Log.Information("Bucket data loaded successfully. Accounts: {BucketCount}",
-                Buckets.Count);
+            // 5. Prepare the "None" list (pre-allocated capacity)
+            var unarchivedBuckets = bucketsList.Where(b => !b.IsArchived).ToList();
+            var bucketsWithNoneList = new List<BudgetBucket>(unarchivedBuckets.Count + 1) {
+                new BudgetBucket { Id = 0, Name = "(None)" }
+            };
+            bucketsWithNoneList.AddRange(unarchivedBuckets);
+
+            // 6. Batch add using RangeObservableCollection (fires 1 layout update per collection)
+            Buckets.AddRange(bucketsList);
+            BucketsWithNone.AddRange(bucketsWithNoneList);
+
+            Log.Information("Bucket data loaded successfully. Buckets: {BucketCount}", Buckets.Count);
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load bucket data.");
@@ -3068,25 +3037,39 @@ public class MainViewModel : ViewModelBase {
         Log.Information("Loading all sub category data.");
         _isLoadingSubCategoryData = true;
         try {
+            // 1. Unsubscribe old items from both collections to prevent memory leaks
             foreach (var item in SubCategories) {
                 item.PropertyChanged -= Item_PropertyChanged;
             }
 
+            foreach (var item in SubCategoriesWithNone) {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
+
+            // 2. Clear both collections
             SubCategories.Clear();
-
-            var subCategories = (await _budgetService.GetAllSubCategoriesAsync(true)).ToList();
-            subCategories = subCategories.OrderBy(b => b.Name).ToList();
-            foreach (var b in subCategories) {
-                b.PropertyChanged += Item_PropertyChanged;
-                SubCategories.Add(b);
-            }
-
             SubCategoriesWithNone.Clear();
-            var subCategoriesWithNone = new List<SubCategory> { new SubCategory { Id = 0, Name = "(None)" } };
-            subCategoriesWithNone.AddRange(subCategories.Where(b => !b.IsArchived));
-            foreach (var b in subCategoriesWithNone) {
-                SubCategoriesWithNone.Add(b);
+
+            // 3. Query and order new items into a concrete list
+            var subCategoriesList = (await _budgetService.GetAllSubCategoriesAsync(true))
+                .OrderBy(b => b.Name)
+                .ToList();
+
+            // 4. Attach event handlers to all loaded subcategories
+            foreach (var b in subCategoriesList) {
+                b.PropertyChanged += Item_PropertyChanged;
             }
+
+            // 5. Prepare the "None" list (pre-allocated capacity)
+            var unarchivedSubCategories = subCategoriesList.Where(b => !b.IsArchived).ToList();
+            var subCategoriesWithNoneList = new List<SubCategory>(unarchivedSubCategories.Count + 1) {
+                new SubCategory { Id = 0, Name = "(None)" }
+            };
+            subCategoriesWithNoneList.AddRange(unarchivedSubCategories);
+
+            // 6. Batch add using RangeObservableCollection (fires 1 layout update per collection)
+            SubCategories.AddRange(subCategoriesList);
+            SubCategoriesWithNone.AddRange(subCategoriesWithNoneList);
 
             Log.Information("Sub Category data loaded successfully. SubCategories: {SubCategoryCount}",
                 SubCategories.Count);
@@ -3105,29 +3088,40 @@ public class MainViewModel : ViewModelBase {
         Log.Information("Loading Paycheck data.");
         _isLoadingPaycheckData = true;
         try {
+            // 1. Unsubscribe old items from both collections to prevent memory leaks
             foreach (var item in Paychecks) {
                 item.PropertyChanged -= Item_PropertyChanged;
             }
 
+            foreach (var item in PaychecksWithNone) {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
+
+            // 2. Clear both collections
             Paychecks.Clear();
-
-            var paychecks = await _budgetService.GetAllPaychecksAsync();
-            paychecks = paychecks.OrderBy(b => b.Name).ToList();
-            foreach (var b in paychecks) {
-                b.PropertyChanged += Item_PropertyChanged;
-                Paychecks.Add(b);
-            }
-
             PaychecksWithNone.Clear();
-            var paychecksWithNone = new List<Paycheck> { new Paycheck { Id = 0, Name = "(None)" } };
-            paychecksWithNone.AddRange(paychecks);
-            foreach (var b in paychecksWithNone) {
+
+            // 3. Query and order new items into a concrete list
+            var paychecksList = (await _budgetService.GetAllPaychecksAsync())
+                .OrderBy(b => b.Name)
+                .ToList();
+
+            // 4. Attach event handlers to all loaded paychecks
+            foreach (var b in paychecksList) {
                 b.PropertyChanged += Item_PropertyChanged;
-                PaychecksWithNone.Add(b);
             }
 
-            Log.Information("Paycheck data loaded successfully. Paychecks: {PaycheckCount}",
-                Paychecks.Count);
+            // 5. Prepare the "None" list (pre-allocated capacity)
+            var paychecksWithNoneList = new List<Paycheck>(paychecksList.Count + 1) {
+                new Paycheck { Id = 0, Name = "(None)" }
+            };
+            paychecksWithNoneList.AddRange(paychecksList);
+
+            // 6. Batch add using RangeObservableCollection (fires 1 layout update per collection)
+            Paychecks.AddRange(paychecksList);
+            PaychecksWithNone.AddRange(paychecksWithNoneList);
+
+            Log.Information("Paycheck data loaded successfully. Paychecks: {PaycheckCount}", Paychecks.Count);
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load Paycheck data.");
@@ -3147,10 +3141,13 @@ public class MainViewModel : ViewModelBase {
                 return;
             }
 
-            PeriodPaychecks.Clear();
+            var temp = new List<Paycheck>(allPaychecks.Count);
             foreach (var b in allPaychecks) {
-                PeriodPaychecks.Add(b);
+                temp.Add(b);
             }
+
+            PeriodPaychecks.Clear();
+            PeriodPaychecks.AddRange(temp);
 
             SetCurrentPeriodDate();
         }
@@ -3210,19 +3207,19 @@ public class MainViewModel : ViewModelBase {
             }
 
             projectedBillsForPeriod = projectedBillsForPeriod.OrderBy(pb => pb.DueDate).ToList();
-
-            foreach (var item in CurrentPeriodBills)
-            {
+            
+            foreach (var item in CurrentPeriodBills) {
                 item.PropertyChanged -= PeriodBill_PropertyChanged;
             }
+            
             CurrentPeriodBills.Clear();
             
-            foreach (var b in projectedBillsForPeriod)
-            {
+            foreach (var b in projectedBillsForPeriod) {
                 b.PropertyChanged += PeriodBill_PropertyChanged;
-                CurrentPeriodBills.Add(b);
             }
             
+            CurrentPeriodBills.AddRange(projectedBillsForPeriod);
+
             UpdateWarningMetrics();
         }
         catch (Exception ex) {
@@ -3251,18 +3248,21 @@ public class MainViewModel : ViewModelBase {
                 }
             }
 
+            
             foreach (var item in CurrentPeriodBuckets)
             {
-                item.PropertyChanged -= PeriodBucket_PropertyChanged;
+                item.PropertyChanged -= PeriodBill_PropertyChanged;
             }
-
+            
             CurrentPeriodBuckets.Clear();
             
             foreach (var b in pBuckets)
             {
-                b.PropertyChanged += PeriodBucket_PropertyChanged;
-                CurrentPeriodBuckets.Add(b);
+                b.PropertyChanged += PeriodBill_PropertyChanged;
             }
+
+            CurrentPeriodBuckets.AddRange(pBuckets);
+            
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period buckets.");
@@ -3300,10 +3300,15 @@ public class MainViewModel : ViewModelBase {
             var nextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
             var transactions = (await _budgetService.GetTransactionsAsync(CurrentPeriodDate, nextPeriodDate)).ToList();
             transactions = transactions.OrderBy(pb => pb.TransactionDate).ToList();
-            CurrentPeriodTransactions.Clear();
-            foreach (var tx in transactions) {
-                CurrentPeriodTransactions.Add(tx);
+            
+            var temp = new List<Transaction>(transactions.Count);
+            foreach (var b in transactions)
+            {
+                temp.Add(b);
             }
+
+            CurrentPeriodTransactions.Clear();
+            CurrentPeriodTransactions.AddRange(temp);
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period transactions.");
@@ -3436,12 +3441,15 @@ public class MainViewModel : ViewModelBase {
                 CurrentPeriodDate = DateTime.Today;
                 return;
             }
-            
-            PeriodPaychecks.Clear();
+
+            var temp = new List<Paycheck>(allPaychecks.Count);
             foreach (var b in allPaychecks)
             {
-                PeriodPaychecks.Add(b);
+                temp.Add(b);
             }
+
+            PeriodPaychecks.Clear();
+            PeriodPaychecks.AddRange(temp);
         }
         catch (Exception ex) {
             Log.Error(ex, "Error refreshing paychecks list.");

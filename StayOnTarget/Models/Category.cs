@@ -7,9 +7,27 @@ public class Category: ViewModelBase
     private bool _isArchived;
     private int _sortOrder;
     
-    public int Id { get; set; }
-    public int CategoryId { get; set; }
-    public string Name { get; set; } = string.Empty; // e.g., "Groceries"
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+    
+    private int _categoryId;
+    public int CategoryId 
+    {
+        get => _id;
+        set => SetProperty(ref _categoryId, value);
+    }
+    
+    private string _name
+        = string.Empty; // e.g., "Groceries"
+    public string Name  
+    {
+        get => _name;
+        set => SetProperty(ref _name, value);
+    }
     
     public int SortOrder
     {

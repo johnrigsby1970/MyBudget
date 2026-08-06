@@ -10,8 +10,19 @@ public class PeriodBucket : ViewModelBase
     private decimal _transactionAmount;
     private bool _isPaid;
 
-    public int Id { get; set; }
-    public Guid FitId { get; set; } = Guid.NewGuid();
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+        
+    }
+    private Guid _fitId = Guid.NewGuid();
+    public Guid FitId 
+    {
+        get => _fitId;
+        set => SetProperty(ref _fitId, value);
+    }
 
     public int BucketId
     {
@@ -64,5 +75,10 @@ public class PeriodBucket : ViewModelBase
     }
 
     // Helper for UI
-    public string? BucketName { get; set; }
+    private string? _bucketName;
+    public string? BucketName 
+    {
+        get => _bucketName;
+        set => SetProperty(ref _bucketName, value);
+    }
 }

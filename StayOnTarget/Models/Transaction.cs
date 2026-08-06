@@ -30,12 +30,43 @@ public class Transaction : ViewModelBase {
     private bool? _fromAccountIsCleared;
     private bool? _toAccountIsCleared;
 
-    public int Id { get; set; }
-    public long? FromRecordId { get; set; }
-    public long? ToRecordId { get; set; }
-    public string FitId { get; set; } = Guid.NewGuid().ToString();
-    public Guid TransactionId { get; set; } = Guid.NewGuid();
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+    
+    private long? _fromRecordId;
+    public long? FromRecordId 
+    {
+        get => _fromRecordId;
+        set => SetProperty(ref _fromRecordId, value);
+    }
 
+    private long? _toRecordId;
+    public long? ToRecordId 
+    {
+        get => _toRecordId;
+        set => SetProperty(ref _toRecordId, value);
+    }
+    
+    
+    private string _fitId = Guid.NewGuid().ToString();
+    public string FitId 
+    {
+        get => _fitId;
+        set => SetProperty(ref _fitId, value);
+    }
+
+        
+    private Guid _transactionId = Guid.NewGuid();
+    public Guid TransactionId 
+    {
+        get => _transactionId;
+        set => SetProperty(ref _transactionId, value);
+    }
+    
     public string Description {
         get => _description;
         set => SetProperty(ref _description, value);
@@ -54,12 +85,6 @@ public class Transaction : ViewModelBase {
             }
         }
     }
-
-    // public decimal? SignedAmount(int accountId) => accountId switch {
-    //     var id when id == AccountId => -Amount,
-    //     var id when id == ToAccountId => Amount,
-    //     _ => null
-    // };
     
     public decimal? SignedAmount(Account account)
     {
@@ -174,15 +199,38 @@ public class Transaction : ViewModelBase {
     }
 
     // Helper for UI
-    public string? AccountName { get; set; }
-    public string? ToAccountName { get; set; }
-    public string? BillName { get; set; }
-    public string? BucketName { get; set; }
+    
+    private string? _accountName;
+    public string? AccountName 
+    {
+        get => _accountName;
+        set => SetProperty(ref _accountName, value);
+    }
+    
+    private string? _toAccountName;
+    public string? ToAccountName 
+    {
+        get => _toAccountName;
+        set => SetProperty(ref _toAccountName, value);
+    }
+    
+    private string? _billName;
+    public string? BillName 
+    {
+        get => _billName;
+        set => SetProperty(ref _billName, value);
+    }
+    
+    private string? _bucketName;
+    public string? BucketName 
+    {
+        get => _bucketName;
+        set => SetProperty(ref _bucketName, value);
+    }
 }
 
 public class TransactionViewModel : Transaction {
     private readonly Account _viewingAccount;
-    private readonly bool _isLiability;
     
     // Default constructor for Newtonsoft.Json / Deserialization
     public TransactionViewModel() { }
@@ -192,10 +240,19 @@ public class TransactionViewModel : Transaction {
         PropertyCopier.CopyProperties(source, this);
 
         _viewingAccount = account;
+        
+        // Trigger SignedAmount notification whenever core transaction amounts/accounts shift
+        this.PropertyChanged += (s, e) => {
+            if (e.PropertyName == nameof(Amount) || 
+                e.PropertyName == nameof(AccountId) || 
+                e.PropertyName == nameof(ToAccountId)) {
+                OnPropertyChanged(nameof(SignedAmount));
+            }
+        };
     }
 
     // Perspective-calculated property ready for XAML binding
-    public decimal? SignedAmount => SignedAmount(_viewingAccount);
+    public decimal? SignedAmount => _viewingAccount != null ? SignedAmount(_viewingAccount) : Amount;
 
     private decimal _runningBalance;
 
@@ -246,9 +303,28 @@ public class Ledger : ViewModelBase {
     private bool _isCleared;
 
 
-    public int Id { get; set; }
-    public string FitId { get; set; } = Guid.NewGuid().ToString();
-    public Guid TransactionId { get; set; } = Guid.NewGuid();
+
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
+    
+    private string _fitId = Guid.NewGuid().ToString();
+    public string FitId 
+    {
+        get => _fitId;
+        set => SetProperty(ref _fitId, value);
+    }
+
+        
+    private Guid _transactionId = Guid.NewGuid();
+    public Guid TransactionId 
+    {
+        get => _transactionId;
+        set => SetProperty(ref _transactionId, value);
+    }
 
     public string Description {
         get => _description;

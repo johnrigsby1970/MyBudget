@@ -12,7 +12,12 @@ public class Paycheck : ViewModelBase
     private int? _accountId;
     private bool _isBalanced;
 
-    public int Id { get; set; }
+    private int _id;
+    public int Id 
+    {
+        get => _id;
+        set => SetProperty(ref _id, value);
+    }
 
     public string Name
     {
