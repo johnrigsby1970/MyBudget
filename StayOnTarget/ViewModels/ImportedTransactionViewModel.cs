@@ -4,6 +4,12 @@
         // Delegate assigned by ImportReconciliationViewModel's CollectionChanged handler
         public Func<int, int?>? GetDefaultBucketForSubCategory { get; set; }
 
+        private int? _id;
+        public int? Id {
+            get => _id;
+            set => SetProperty(ref _id, value);
+        }
+        
         private string? _bankId;
         public string? BankId {
             get => _bankId;

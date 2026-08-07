@@ -126,61 +126,64 @@ public class MainViewModel : ViewModelBase {
         //     SnowballOptions.PropertyChanged += OnSnowballOptionsPropertyChanged;
         // }
         // InitializeDataAsync handles loading from budgetService and attaching the listener.
-        ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => IsEditingAccount);
+        ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => CanEditAccount);
         ReconcileAccountCommand =
-            new AsyncRelayCommand(ReconcileAccountAsync, () => IsEditingAccount);
-        SaveBillCommand = new AsyncRelayCommand(SaveBillAsync, () => IsEditingBill);
-        DeleteBillCommand = new AsyncRelayCommand(DeleteBillAsync, () => IsEditingBill);
-        SavePeriodBillCommand =
-            new AsyncRelayCommand(SavePeriodBillAsync, () => IsEditingPeriodBill);
-        DeletePeriodBillCommand =
-            new AsyncRelayCommand(DeletePeriodBillAsync, () => IsEditingPeriodBill);
-        SaveBucketCommand = new AsyncRelayCommand(SaveBucketAsync, () => IsEditingBucket);
-        DeleteBucketCommand = new AsyncRelayCommand(DeleteBucketAsync);
-        SavePeriodBucketCommand =
-            new AsyncRelayCommand(SavePeriodBucketAsync, () => IsEditingPeriodBucket);
-        DeletePeriodBucketCommand =
-            new AsyncRelayCommand(DeletePeriodBucketAsync, () => IsEditingPeriodBucket);
-        SaveTransactionCommand =
-            new AsyncRelayCommand(_ => SaveTransactionAsync(), () => IsEditingTransaction);
-        DeleteTransactionCommand =
-            new AsyncRelayCommand(DeleteTransactionAsync, () => IsEditingTransaction);
-        SavePaycheckCommand = new AsyncRelayCommand(SavePaycheckAsync, () => IsEditingPaycheck);
-        DeletePaycheckCommand =
-            new AsyncRelayCommand(DeletePaycheckAsync, () => IsEditingPaycheck);
+            new AsyncRelayCommand(ReconcileAccountAsync, () => CanEditAccount);
+        
         SetAccountAprRatesCommand =
             new AsyncRelayCommand(SetAccountAprRatesAsync, () => IsEditingAccount);
-        SaveAccountCommand = new AsyncRelayCommand(SaveAccountAsync, () => IsEditingAccount);
-        DeleteAccountCommand = new AsyncRelayCommand(DeleteAccountAsync, () => IsEditingAccount);
+        
         NextPeriodCommand = new AsyncRelayCommand(() => NavigatePeriodAsync(1));
         PrevPeriodCommand = new AsyncRelayCommand(() => NavigatePeriodAsync(-1));
-
 
         AddBillCommand = new RelayCommand(AddBill, () => IsNotEditingBill);
         EditBillCommand = new RelayCommand(EditBill, () => CanEditBill);
         CancelBillCommand = new RelayCommand(CancelBill, () => IsEditingBill);
-
+        SaveBillCommand = new AsyncRelayCommand(SaveBillAsync, () => IsEditingBill);
+        DeleteBillCommand = new AsyncRelayCommand(DeleteBillAsync, () => IsEditingBill);
+        
         EditPeriodBillCommand = new RelayCommand(EditPeriodBill, () => CanEditPeriodBill);
         CancelPeriodBillCommand = new RelayCommand(CancelPeriodBill, () => IsEditingPeriodBill);
-
+        SavePeriodBillCommand =
+            new AsyncRelayCommand(SavePeriodBillAsync, () => IsEditingPeriodBill);
+        DeletePeriodBillCommand =
+            new AsyncRelayCommand(DeletePeriodBillAsync, () => IsEditingPeriodBill);
 
         AddBucketCommand = new RelayCommand(AddBucket, () => IsNotEditingBucket);
         EditBucketCommand = new RelayCommand(EditBucket, () => CanEditBucket);
         CancelBucketCommand = new RelayCommand(CancelBucket, () => IsEditingBucket);
-
+        SaveBucketCommand = new AsyncRelayCommand(SaveBucketAsync, () => IsEditingBucket);
+        DeleteBucketCommand = new AsyncRelayCommand(DeleteBucketAsync);
 
         EditPeriodBucketCommand = new RelayCommand(EditPeriodBucket, () => CanEditPeriodBucket);
         CancelPeriodBucketCommand =
             new RelayCommand(CancelPeriodBucket, () => IsEditingPeriodBucket);
+        SavePeriodBucketCommand =
+            new AsyncRelayCommand(SavePeriodBucketAsync, () => IsEditingPeriodBucket);
+        DeletePeriodBucketCommand =
+            new AsyncRelayCommand(DeletePeriodBucketAsync, () => IsEditingPeriodBucket);
+        
         AddTransactionCommand = new RelayCommand(AddTransaction, () => IsNotEditingTransaction);
         EditTransactionCommand = new RelayCommand(EditTransaction, () => CanEditTransaction);
         CancelTransactionCommand = new RelayCommand(CancelTransaction, () => IsEditingTransaction);
+        SaveTransactionCommand =
+            new AsyncRelayCommand(_ => SaveTransactionAsync(), () => IsEditingTransaction);
+        DeleteTransactionCommand =
+            new AsyncRelayCommand(DeleteTransactionAsync, () => IsEditingTransaction);
+        
         AddPaycheckCommand = new RelayCommand(AddPaycheck);
         EditPaycheckCommand = new RelayCommand(EditPaycheck, () => CanEditPaycheck);
         CancelPaycheckCommand = new RelayCommand(CancelPaycheck, () => IsEditingPaycheck);
+        SavePaycheckCommand = new AsyncRelayCommand(SavePaycheckAsync, () => IsEditingPaycheck);
+        DeletePaycheckCommand =
+            new AsyncRelayCommand(DeletePaycheckAsync, () => IsEditingPaycheck);
+        
         AddAccountCommand = new RelayCommand(AddAccount, () => IsNotEditingAccount);
         EditAccountCommand = new RelayCommand(EditAccount, () => CanEditAccount);
         CancelAccountCommand = new RelayCommand(CancelAccount, () => IsEditingAccount);
+        SaveAccountCommand = new AsyncRelayCommand(SaveAccountAsync, () => IsEditingAccount);
+        DeleteAccountCommand = new AsyncRelayCommand(DeleteAccountAsync, () => IsEditingAccount);
+        
         ShowAmortizationCommand =
             new RelayCommand<Account>(a => ShowAmortization(a as Account ?? throw new InvalidOperationException()));
         ShowAboutCommand = new RelayCommand(ShowAbout);
@@ -227,8 +230,12 @@ public class MainViewModel : ViewModelBase {
     /// </summary>
     public async void RequestProjectionRecalculation() {
 // 1. Cancel the previous pending delay/calculation
-        _recalculationCts?.Cancel();
-        _recalculationCts?.Dispose();
+
+        if (_recalculationCts != null) {
+            _recalculationCts.Cancel();
+            _recalculationCts.Dispose();
+        }
+        
         _recalculationCts = new CancellationTokenSource();
 
         var token = _recalculationCts.Token;
@@ -612,7 +619,11 @@ public class MainViewModel : ViewModelBase {
         IsProjecting = true;
 
         // Cancel any pending calculation from a previous rapid date change
-        _cts?.Cancel();
+        if (_cts != null) {
+            _cts.Cancel();
+            _cts.Dispose();
+        }
+        
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
@@ -633,21 +644,6 @@ public class MainViewModel : ViewModelBase {
             Log.Error(ex, "Failed to calculate projections.");
         }
     }
-
-    // private async void OnCalculateProjections() {
-    //     try {
-    //         // Ensure IsProjecting is set
-    //         IsProjecting = true;
-    //         
-    //         // Force WPF to process the visual rendering (hide chart, show spinner) BEFORE running the task setup
-    //         await Application.Current.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Render);
-    //         
-    //         await CalculateProjectionsAsync();
-    //     }
-    //     catch (Exception ex) {
-    //         Log.Error(ex, "Failed to calculate projections for {Date}", _currentPeriodDate);
-    //     }
-    // }
 
     public bool ShowByMonth {
         get => _showByMonth;
@@ -828,6 +824,8 @@ public class MainViewModel : ViewModelBase {
             if (SetProperty(ref _selectedAccount, value)) {
                 OnPropertyChanged(nameof(CanEditAccount));
                 EditAccountCommand.NotifyCanExecuteChanged();
+                ImportAccountCommand.NotifyCanExecuteChanged();
+                ReconcileAccountCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -1146,7 +1144,6 @@ public class MainViewModel : ViewModelBase {
 
     #endregion
 
-
     #region Snowball Overlay Support
 
     private bool _isManageExclusionsOpen;
@@ -1216,8 +1213,7 @@ public class MainViewModel : ViewModelBase {
     }
 
     #endregion
-
-
+    
     private bool _isLoadingData;
 #pragma warning disable CS0414 // Field is assigned but its value is never used
     private bool _isLoadingAccountData;
@@ -1311,8 +1307,7 @@ public class MainViewModel : ViewModelBase {
                 UpdateBucketWarningMetrics();
                 return;
             }
-
-
+            
             if (e.PropertyName == nameof(PeriodBucket.BudgetExceeded)) return;
             await _budgetService.UpsertPeriodBucketAsync(pb);
             await LoadPeriodDataAsync();
@@ -1414,11 +1409,19 @@ public class MainViewModel : ViewModelBase {
                 await _budgetService.UpsertBillAsync(EditingBillClone);
             }
 
-            await LoadBillDataAsync();
-            await LoadPeriodDataAsync();
+            var selectedBillId = SelectedBill?.Id;
+            
             IsEditingBill = false;
             EditingBillClone = null;
-            await CalculateProjectionsAsync();
+            
+            await LoadBillDataAsync();
+            
+            if (selectedBillId.HasValue) {
+                SelectedBill = Bills.FirstOrDefault(a => a.Id == selectedBillId);
+            }
+            
+            await LoadPeriodDataAsync();
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving bill.");
@@ -1467,7 +1470,7 @@ public class MainViewModel : ViewModelBase {
                 IsEditingPeriodBill = false;
                 EditingPeriodBillClone = null;
                 await LoadPeriodDataAsync();
-                await CalculateProjectionsAsync();
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting period bill.");
@@ -1512,10 +1515,18 @@ public class MainViewModel : ViewModelBase {
                 await _budgetService.UpsertPeriodBillAsync(EditingPeriodBillClone);
             }
 
-            await LoadPeriodDataAsync();
+            var selectedPeriodBillId = SelectedPeriodBill?.Id;
+            
             IsEditingPeriodBill = false;
             EditingPeriodBillClone = null;
-            await CalculateProjectionsAsync();
+            
+            await LoadPeriodDataAsync();
+            
+            if (selectedPeriodBillId.HasValue) {
+                SelectedPeriodBill = CurrentPeriodBills.FirstOrDefault(a => a.Id == selectedPeriodBillId);
+            }
+            
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving period bill.");
@@ -1523,8 +1534,7 @@ public class MainViewModel : ViewModelBase {
                 MessageBoxImage.Error);
         }
     }
-
-
+    
     private void CancelPeriodBill() {
         try {
             IsEditingPeriodBill = false;
@@ -1561,7 +1571,7 @@ public class MainViewModel : ViewModelBase {
                 EditingBillClone = null;
                 await LoadBillDataAsync();
                 await LoadPeriodDataAsync();
-                await CalculateProjectionsAsync();
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting bill.");
@@ -1619,13 +1629,21 @@ public class MainViewModel : ViewModelBase {
             else {
                 await _budgetService.UpsertBucketAsync(EditingBucketClone);
             }
-
-            await LoadBucketDataAsync();
-            await LoadPeriodDataAsync();
+            
+            var selectedBucketId = SelectedBucket?.Id;
 
             IsEditingBucket = false;
             EditingBucketClone = null;
-            await CalculateProjectionsAsync();
+            
+            await LoadBucketDataAsync();
+
+            if (selectedBucketId.HasValue) {
+                SelectedBucket = Buckets.FirstOrDefault(a => a.Id == selectedBucketId);
+            }
+            
+            await LoadPeriodDataAsync();
+            
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving bucket.");
@@ -1670,7 +1688,7 @@ public class MainViewModel : ViewModelBase {
                 await LoadBucketDataAsync();
                 await LoadPeriodDataAsync();
                 await LoadSubCategoryDataAsync();
-                await CalculateProjectionsAsync();
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting bucket.");
@@ -1704,6 +1722,7 @@ public class MainViewModel : ViewModelBase {
     private async Task SavePeriodBucketAsync() {
         //until a user customizes a bucket, it uses the budgeted bucket and the period bucket is a copy of that.
         if (EditingPeriodBucketClone == null) return;
+        
         try {
             if (SelectedPeriodBucket != null) {
                 UpdatePeriodBucketFromClone(SelectedPeriodBucket, EditingPeriodBucketClone);
@@ -1711,11 +1730,19 @@ public class MainViewModel : ViewModelBase {
             else {
                 await _budgetService.UpsertPeriodBucketAsync(EditingPeriodBucketClone);
             }
-
-            await LoadPeriodDataAsync();
+            
+            var selectedPeriodBucketId = SelectedPeriodBucket?.Id;
+            
             IsEditingPeriodBucket = false;
             EditingPeriodBucketClone = null;
-            await CalculateProjectionsAsync();
+            
+            await LoadPeriodDataAsync();
+            
+            if (selectedPeriodBucketId.HasValue) {
+                SelectedPeriodBucket = CurrentPeriodBuckets.FirstOrDefault(a => a.Id == selectedPeriodBucketId);
+            }
+            
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving period bucket.");
@@ -1761,7 +1788,7 @@ public class MainViewModel : ViewModelBase {
                 IsEditingPeriodBucket = false;
                 EditingPeriodBucketClone = null;
                 await LoadPeriodDataAsync();
-                await CalculateProjectionsAsync();
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting period bucket.");
@@ -1790,12 +1817,7 @@ public class MainViewModel : ViewModelBase {
             
             EditingTransactionClone = editTrans;
             EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
-            // EditingTransactionClone.PropertyChanged += (s, e) => {
-            //     if (e.PropertyName == nameof(Transaction.AccountId) ||
-            //         e.PropertyName == nameof(Transaction.ToAccountId)) {
-            //         RefreshTransactionEditState();
-            //     }
-            // };
+
             SelectedTransaction = null;
             IsEditingTransaction = true;
         }
@@ -1811,29 +1833,7 @@ public class MainViewModel : ViewModelBase {
             if (EditingTransactionClone != null) {
                 EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
             }
-
-            // var editTrans = new Transaction {
-            //     Id = SelectedTransaction.Id,
-            //     Description = SelectedTransaction.Description,
-            //     Memo = SelectedTransaction.Memo,
-            //     Amount = SelectedTransaction.Amount,
-            //     TransactionDate = SelectedTransaction.TransactionDate,
-            //     AccountId = SelectedTransaction.AccountId,
-            //     ToAccountId = SelectedTransaction.ToAccountId,
-            //     BucketId = SelectedTransaction.BucketId,
-            //     SubCategoryId = SelectedTransaction.SubCategoryId,
-            //     IsPrincipalOnly = SelectedTransaction.IsPrincipalOnly,
-            //     IsRebalance = SelectedTransaction.IsRebalance,
-            //     PaycheckId = SelectedTransaction.PaycheckId,
-            //     BillId = SelectedTransaction.BillId,
-            //     BillName = SelectedTransaction.BillName,
-            //     PaycheckOccurrenceDate = SelectedTransaction.PaycheckOccurrenceDate,
-            //     FitId = SelectedTransaction.FitId,
-            //     TransactionId = SelectedTransaction.TransactionId,
-            //     FromAccountReconciledId = SelectedTransaction.FromAccountReconciledId,
-            //     ToAccountReconciledId = SelectedTransaction.ToAccountReconciledId,
-            //     IsBalanceTransfer = SelectedTransaction.IsBalanceTransfer
-            // };
+            
             var editTrans = SelectedTransaction.Clone();
             
             RefreshTransactionEditState(editTrans);
@@ -1930,11 +1930,18 @@ public class MainViewModel : ViewModelBase {
                 await _budgetService.UpsertTransactionAsync(EditingTransactionClone);
             }
 
+            var selectedTransactionId = SelectedTransaction?.Id;
+            
             IsEditingTransaction = false;
             EditingTransactionClone = null;
 
             await LoadPeriodDataAsync();
-            await CalculateProjectionsAsync();
+
+            if (selectedTransactionId.HasValue) {
+                SelectedTransaction = CurrentPeriodTransactions.FirstOrDefault(a => a.Id == selectedTransactionId);
+            }
+            
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving transaction.");
@@ -1995,7 +2002,7 @@ public class MainViewModel : ViewModelBase {
                 IsEditingTransaction = false;
                 EditingTransactionClone = null;
                 await LoadPeriodDataAsync();
-                await CalculateProjectionsAsync();
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting transaction.");
@@ -2054,14 +2061,21 @@ public class MainViewModel : ViewModelBase {
                 await _budgetService.UpsertPaycheckAsync(EditingPaycheckClone);
             }
 
+            var selectedPaycheckId = SelectedPaycheck?.Id;
+            
             IsEditingPaycheck = false;
             EditingPaycheckClone = null;
 
             await LoadPaycheckDataAsync();
+            
+            if (selectedPaycheckId.HasValue) {
+                SelectedPaycheck = Paychecks.FirstOrDefault(a => a.Id == selectedPaycheckId);
+            }
+            
             await LoadPeriodDataAsync();
             RefreshPaychecks();
             LoadPaychecks();
-            await CalculateProjectionsAsync();
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving paycheck.");
@@ -2109,7 +2123,7 @@ public class MainViewModel : ViewModelBase {
                 await LoadPaycheckDataAsync();
                 await LoadPeriodDataAsync();
                 RefreshPaychecks();
-                await CalculateProjectionsAsync();
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting paycheck.");
@@ -2222,15 +2236,13 @@ public class MainViewModel : ViewModelBase {
                     SetAccountAprRatesCommand.Execute(EditingAccountClone);
                     return;
                 }
-
+                var selectedAccountId = SelectedAccount?.Id;
                 if (SelectedAccount != null) {
                     UpdateAccountFromClone(SelectedAccount, EditingAccountClone);
                     await _budgetService.UpsertAccountAsync(SelectedAccount);
                 }
                 else {
                     EditingAccountClone.Id = await _budgetService.UpsertAccountAsync(EditingAccountClone);
-                    //var debtAccountTypes = new List<AccountType>()
-                    //    { AccountType.Auto, AccountType.CreditCard, AccountType.Mortgage, AccountType.PersonalLoan, AccountType.HELOC, AccountType.StudentLoan };
 
                     var openingBalance = new Transaction() {
                         AccountId = EditingAccountClone.IsLiability ? EditingAccountClone.Id : null,
@@ -2292,12 +2304,19 @@ public class MainViewModel : ViewModelBase {
                         }
                     }
                 }
-
-                await LoadAccountDataAsync();
-                await LoadPeriodDataAsync();
+                
                 IsEditingAccount = false;
                 EditingAccountClone = null;
-                await CalculateProjectionsAsync();
+                
+                await LoadAccountDataAsync();
+                
+                if (selectedAccountId.HasValue) {
+                    SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
+                }
+                
+                await LoadPeriodDataAsync();
+
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error saving account.");
@@ -2414,7 +2433,7 @@ public class MainViewModel : ViewModelBase {
                 EditingAccountClone = null;
                 await LoadAccountDataAsync();
                 await LoadPeriodDataAsync();
-                await CalculateProjectionsAsync();
+                RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting account.");
@@ -2470,9 +2489,7 @@ public class MainViewModel : ViewModelBase {
             else {
                 primaryAnalysis = "Strategy matches your standard baseline plan.";
             }
-
-            //string dilemmaExplanation = "Choosing between paying down debt or investing involves a trade-off: debt paydown offers a guaranteed return and lowers monthly liabilities, while investing aims for higher long-term wealth growth at the cost of carrying debt longer.";
-
+            
             return $"{primaryAnalysis}";
         }
     }
@@ -2514,12 +2531,12 @@ public class MainViewModel : ViewModelBase {
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var transactions = showReconciled
-                    ? await _budgetService.GetAllTransactionsAsync()
-                    : await _budgetService.GetAllUnreconciledTransactionsAsync();
+                // var transactions = showReconciled
+                //     ? await _budgetService.GetAllTransactionsAsync()
+                //     : await _budgetService.GetAllUnreconciledTransactionsAsync();
 
-                var reconciliations = !showReconciled ? await _budgetService.GetAllAccountReconciliationsAsync() : null;
-                reconciliations = null;
+                //var reconciliations = !showReconciled ? await _budgetService.GetAllAccountReconciliationsAsync() : null;
+                List<AccountReconciliation>? reconciliations = null;
 
                 var start = currentPeriodDate == DateTime.MinValue ? DateTime.Today : currentPeriodDate;
                 if (projectionStartDate.HasValue) start = projectionStartDate.Value;
@@ -2531,8 +2548,12 @@ public class MainViewModel : ViewModelBase {
                 var rawPaycheckTransactions = await _budgetService.GetAllPaycheckTransactionsAsync();
                 var rawBillTransactions = await _budgetService.GetBillTransactionsAsync();
                 var rawBucketTransactions = await _budgetService.GetBucketTransactionsAsync();
-                var rawAllTransactions = await _budgetService.GetAllTransactionsAsync();
+                var rawAllTransactions = (await _budgetService.GetAllTransactionsAsync(start.AddDays(-30), end.AddDays(30))).ToList();
 
+                var transactions = showReconciled
+                    ? rawAllTransactions
+                    : (await _budgetService.GetAllUnreconciledTransactionsAsync()).ToList();
+                
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // CLONE/COPY TRANSACTIONS BEFORE MUTATING TO PREVENT SHARED STATE DATA RACES
@@ -2776,62 +2797,6 @@ public class MainViewModel : ViewModelBase {
             _isLoadingData = false;
         }
     }
-
-    // private async Task LoadAccountDataAsync() {
-    //     Log.Information("Loading account data.");
-    //     _isLoadingAccountData = true;
-    //     try {
-    //         var accounts = (await _budgetService.GetAllAccountsAsync(true)).ToList();
-    //         if (accounts.All(a => !(a.Name == "Household Cash" && a.Type == AccountType.Cash))) {
-    //             Log.Information("Household Cash account not found. Creating default.");
-    //             var cashAccount = new Account {
-    //                 Name = "Household Cash",
-    //                 Type = AccountType.Cash,
-    //                 Balance = 0,
-    //                 IncludeInTotal = true
-    //             };
-    //             await _budgetService.UpsertAccountAsync(cashAccount);
-    //             accounts = (await _budgetService.GetAllAccountsAsync(true)).ToList();
-    //         }
-    //
-    //         var accountBalances = (await _budgetService.GetAllAccountsAsOfAsync(DateTime.Now, true)).ToList();
-    //         accounts = accounts.OrderBy(b => b.Name).ToList();
-    //         foreach (var a in accounts) {
-    //             a.Balance = accountBalances.SingleOrDefault(b => b.Id == a.Id)?.Balance ?? 0;
-    //         }
-    //
-    //         foreach (var a in accounts) a.PropertyChanged += Item_PropertyChanged;
-    //         Accounts = new ObservableCollection<Account>(accounts);
-    //         VisibleAccounts =
-    //             new ObservableCollection<Account>(accounts.Where(a => !a.IsArchived).OrderBy(a => a.Name));
-    //
-    //         var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
-    //         accountsWithNone.AddRange(accounts);
-    //         AccountsWithNone = new ObservableCollection<Account>(accountsWithNone);
-    //
-    //         var activeAccountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
-    //         activeAccountsWithNone.AddRange(accounts.Where(a => !a.IsArchived));
-    //         ActiveAccountsWithNone = new ObservableCollection<Account>(activeAccountsWithNone);
-    //
-    //         if (Accounts.Any(x => x.Type == AccountType.Checking && x.IsPrimary) &&
-    //             Accounts.Any(x => x.Type == AccountType.CreditCard)) {
-    //             UseAutoSweep = true;
-    //             OnPropertyChanged(nameof(UseAutoSweep));
-    //         }
-    //
-    //         Log.Information("Account data loaded successfully. Accounts: {AccountCount}",
-    //             Accounts.Count);
-    //     }
-    //     catch (Exception ex) {
-    //         Log.Error(ex, "Failed to load account data.");
-    //         MessageBox.Show("Failed to load account data. See log for details.", "Error", MessageBoxButton.OK,
-    //             MessageBoxImage.Error);
-    //     }
-    //     finally {
-    //         _isLoadingAccountData = false;
-    //     }
-    // }
-
 
     private async Task LoadAccountDataAsync() {
         Log.Information("Loading account data.");
@@ -3368,15 +3333,22 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task ReconcileAccountAsync() {
-        if (EditingAccountClone == null) return;
+        if (SelectedAccount == null) return;
         try {
-            var window = new ReconciliationWindow(EditingAccountClone, _budgetService) {
+            var window = new ReconciliationWindow(SelectedAccount, _budgetService) {
                 Owner = Application.Current.MainWindow
             };
             window.ShowDialog();
+            
+            var selectedAccountId = SelectedAccount.Id;
+            
             await LoadAccountDataAsync();
+            
+            SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
+            
             await LoadPeriodDataAsync();
-            await CalculateProjectionsAsync();
+            
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing reconciliation window.");
@@ -3386,15 +3358,22 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task ImportAccountAsync() {
-        if (EditingAccountClone == null) return;
+        if (SelectedAccount == null) return;
         try {
-            var window = new ImportReconciliationWindow(EditingAccountClone, _budgetService) {
+            var window = new ImportReconciliationWindow(SelectedAccount, _budgetService) {
                 Owner = Application.Current.MainWindow
             };
             window.ShowDialog();
+            
+            var selectedAccountId = SelectedAccount.Id;
+            
             await LoadAccountDataAsync();
+            
+            SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
+            
             await LoadPeriodDataAsync();
-            await CalculateProjectionsAsync();
+            
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing import window.");
@@ -3411,7 +3390,7 @@ public class MainViewModel : ViewModelBase {
                 Owner = Application.Current.MainWindow
             };
             window.ShowDialog();
-            await CalculateProjectionsAsync();
+            RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing APR history window.");

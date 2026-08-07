@@ -1,4 +1,6 @@
-﻿using Dapper;
+﻿using System.Data;
+using Dapper;
+using Microsoft.Data.Sqlite;
 using StayOnTarget.Models;
 
 namespace StayOnTarget.Services;
@@ -8,12 +10,14 @@ public partial class BudgetService
     public async Task<IEnumerable<Bill>> GetAllBillsAsync(bool includeArchived = false)
     {
         await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
         return await conn.QueryAsync<Bill>("SELECT * FROM Bills WHERE IsActive = 1 AND (IsArchived=0 OR IsArchived = @includeArchived)", new { includeArchived=(includeArchived ? 1: 0) });
     }
 
     public async Task UpsertBillAsync(Bill bill)
     {
         await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
         var param = new
         {
             bill.Id,
@@ -43,36 +47,55 @@ public partial class BudgetService
     public async Task ArchiveBillAsync(int id)
     {
         await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
         await conn.ExecuteAsync(@"UPDATE Bills SET IsArchived=1 WHERE Id=@id", new { id });
     }
     
     public async Task UnArchiveBillAsync(int id)
     {
         await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
         await conn.ExecuteAsync(@"UPDATE Bills SET IsArchived=0 WHERE Id=@id", new { id });
     }
     
     public async Task SetBillInactiveAsync(int id)
     {
         await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
         await conn.ExecuteAsync("UPDATE Bills SET IsActive = 0 WHERE Id = @id", new { id });
     }
     
     public async Task DeleteBillAsync(int id)
     {
+        await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
+        await using var tx = conn.BeginTransaction();
+        
+        try {
         if (await IsBillInUseAsync(id)) {
-            await using var conn = _db.GetConnection();
             await conn.ExecuteAsync("UPDATE Bills SET IsArchived = 1 WHERE Id = @id", new { id });
         }
         else {
-            await using var conn = _db.GetConnection();
             await conn.ExecuteAsync("DELETE FROM Bills WHERE Id = @id", new { id });
+        }
+        await tx.CommitAsync();
+        }
+        catch {
+            await tx.RollbackAsync();
+            throw;
         }
     }
     
-    public async Task<bool> IsBillInUseAsync(int billId)
+    public async Task<bool> IsBillInUseAsync(int billId, SqliteConnection? cn = null, IDbTransaction? tx = null)
     {
-        await using var conn = _db.GetConnection();
+        cn ??= tx?.Connection as SqliteConnection;
+        bool isLocalConn = cn == null;
+        var conn = cn ?? _db.GetConnection();
+
+        try {
+            if (isLocalConn && conn.State != ConnectionState.Open) {
+                await conn.OpenAsync();
+            }
         
         // Check Bills (AccountId or ToAccountId)
         var periodBills = await conn.ExecuteScalarAsync<int>(
@@ -88,5 +111,11 @@ public partial class BudgetService
         if (transactions > 0) return true;
         
         return false;
+        }
+        finally {
+            if (isLocalConn) {
+                await conn.DisposeAsync();
+            }
+        }
     }
 }

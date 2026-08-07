@@ -1438,44 +1438,54 @@
                                     <Button Content="Reconcile" Command="{Binding ReconcileAccountCommand}"
                                             Width="80"
                                             Margin="2"
-                                            Background="YellowGreen"
-                                            Foreground="White">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                                <Style.Triggers>
-                                                    <DataTrigger
-                                                        Binding="{Binding EditingAccountClone.Id, Converter={StaticResource IntToVisibilityConverter}}"
-                                                        Value="Collapsed">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsEditingAccount}" Value="False">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
+                                            >
+                                        <Button.Visibility>
+                                            <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
+                                                <Binding Path="CanEditAccount" />
+                                                <Binding Path="IsNotEditingAccount" />
+                                            </MultiBinding>
+                                        </Button.Visibility>
+                                        <!-- <Button.Style> -->
+                                        <!--     <Style TargetType="Button"> -->
+                                        <!--         <Setter Property="Visibility" Value="Visible" /> -->
+                                        <!--         <Style.Triggers> -->
+                                        <!--             <DataTrigger -->
+                                        <!--                 Binding="{Binding EditingAccountClone.Id, Converter={StaticResource IntToVisibilityConverter}}" -->
+                                        <!--                 Value="Collapsed"> -->
+                                        <!--                 <Setter Property="Visibility" Value="Collapsed" /> -->
+                                        <!--             </DataTrigger> -->
+                                        <!--             <DataTrigger Binding="{Binding IsEditingAccount}" Value="False"> -->
+                                        <!--                 <Setter Property="Visibility" Value="Collapsed" /> -->
+                                        <!--             </DataTrigger> -->
+                                        <!--         </Style.Triggers> -->
+                                        <!--     </Style> -->
+                                        <!-- </Button.Style> -->
                                     </Button>
                                     <Button Content="Import" Command="{Binding ImportAccountCommand}"
                                             Width="80"
                                             Margin="2"
-                                            Background="YellowGreen"
-                                            Foreground="White">
-                                        <Button.Style>
-                                            <Style TargetType="Button">
-                                                <Setter Property="Visibility" Value="Visible" />
-                                                <Style.Triggers>
-                                                    <DataTrigger
-                                                        Binding="{Binding EditingAccountClone.Id, Converter={StaticResource IntToVisibilityConverter}}"
-                                                        Value="Collapsed">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsEditingAccount}" Value="False">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
+                                            >
+                                        <Button.Visibility>
+                                            <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
+                                                <Binding Path="CanEditAccount" />
+                                                <Binding Path="IsNotEditingAccount" />
+                                            </MultiBinding>
+                                        </Button.Visibility>
+                                        <!-- <Button.Style> -->
+                                        <!--     <Style TargetType="Button"> -->
+                                        <!--         <Setter Property="Visibility" Value="Visible" /> -->
+                                        <!--         <Style.Triggers> -->
+                                        <!--             <DataTrigger -->
+                                        <!--                 Binding="{Binding EditingAccountClone.Id, Converter={StaticResource IntToVisibilityConverter}}" -->
+                                        <!--                 Value="Collapsed"> -->
+                                        <!--                 <Setter Property="Visibility" Value="Collapsed" /> -->
+                                        <!--             </DataTrigger> -->
+                                        <!--             <DataTrigger Binding="{Binding IsEditingAccount}" Value="False"> -->
+                                        <!--                 <Setter Property="Visibility" Value="Collapsed" /> -->
+                                        <!--             </DataTrigger> -->
+                                        <!--         </Style.Triggers> -->
+                                        <!--     </Style> -->
+                                        <!-- </Button.Style> -->
                                     </Button>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
@@ -1483,7 +1493,8 @@
                                             Width="80"
                                             Margin="2"
                                             Visibility="{Binding IsNotEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                    <Button Content="Edit" Command="{Binding EditAccountCommand}"
+                                    <Button Content="Edit" 
+                                            Command="{Binding EditAccountCommand}"
                                             Width="80"
                                             Margin="2">
                                         <Button.Visibility>
@@ -2034,19 +2045,48 @@
                             <!-- <DataGridTextColumn Header="Description" Binding="{Binding Description}" IsReadOnly="True" -->
                             <!--                     Width="150" /> -->
                             
+                            <!-- <DataGridTemplateColumn Header="Description" Width="150"> -->
+                            <!--     <DataGridTemplateColumn.CellTemplate> -->
+                            <!--         <DataTemplate> -->
+                            <!--             <StackPanel Orientation="Vertical" Margin="2"> -->
+                            <!--                 <TextBlock Text="{Binding Description}" FontWeight="SemiBold" /> -->
+                            <!-- -->
+                            <!--                 <TextBlock Visibility="{Binding BillId, Converter={StaticResource NullOrZeroToVisibilityConverter}}" Margin="0,2,0,0"> -->
+                            <!--                     <Hyperlink Command="{Binding DataContext.PayBillCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" -->
+                            <!--                                CommandParameter="{Binding}"> -->
+                            <!--                         Pay It -->
+                            <!--                     </Hyperlink> -->
+                            <!--                 </TextBlock> -->
+                            <!--             </StackPanel> -->
+                            <!--         </DataTemplate> -->
+                            <!--     </DataGridTemplateColumn.CellTemplate> -->
+                            <!-- </DataGridTemplateColumn> -->
                             <DataGridTemplateColumn Header="Description" Width="150">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Vertical" Margin="2">
-                                            <TextBlock Text="{Binding Description}" FontWeight="SemiBold" />
-    
-                                            <TextBlock Visibility="{Binding BillId, Converter={StaticResource NullOrZeroToVisibilityConverter}}" Margin="0,2,0,0">
+                                        <Grid Margin="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0" 
+                                                       Text="{Binding Description}" 
+                                                       FontWeight="SemiBold" 
+                                                       TextTrimming="CharacterEllipsis" 
+                                                       VerticalAlignment="Center" />
+
+                                            <!-- Shows 'Pay It' ONLY if CanPayIt evaluates to true -->
+                                            <TextBlock Grid.Column="1" 
+                                                       Visibility="{Binding CanPayIt, Converter={StaticResource BooleanToVisibilityConverter}}" 
+                                                       Margin="6,0,0,0" 
+                                                       VerticalAlignment="Center">
                                                 <Hyperlink Command="{Binding DataContext.PayBillCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                            CommandParameter="{Binding}">
                                                     Pay It
                                                 </Hyperlink>
                                             </TextBlock>
-                                        </StackPanel>
+                                        </Grid>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>

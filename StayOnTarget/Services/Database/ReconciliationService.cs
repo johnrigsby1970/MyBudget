@@ -9,29 +9,28 @@ public class ReconciliationService {
         _budgetService = budgetService;
     }
 
-    public async Task<IEnumerable<Transaction>> GetUnreconciledTransactions(int accountId, bool isFromAccount) {
-        var allTransactions = await _budgetService.GetAllUnreconciledTransactionsAsync();
+    // public async Task<IEnumerable<Transaction>> GetUnreconciledTransactions(int accountId, bool isFromAccount) {
+    //     var allTransactions = await _budgetService.GetAllUnreconciledTransactionsAsync(accountId);
+    //
+    //     if (isFromAccount) {
+    //         // Money leaving the account (AccountId matches)
+    //         return allTransactions
+    //             .Where(t => t.AccountId == accountId && !t.FromAccountReconciledId.HasValue)
+    //             .OrderBy(t => t.TransactionDate)
+    //             .ToList();
+    //     }
+    //     else {
+    //         // Money entering the account (ToAccountId matches)
+    //         return allTransactions
+    //             .Where(t => t.ToAccountId == accountId && !t.ToAccountReconciledId.HasValue)
+    //             .OrderBy(t => t.TransactionDate)
+    //             .ToList();
+    //     }
+    // }
 
-        if (isFromAccount) {
-            // Money leaving the account (AccountId matches)
-            return allTransactions
-                .Where(t => t.AccountId == accountId && !t.FromAccountReconciledId.HasValue)
-                .OrderBy(t => t.TransactionDate)
-                .ToList();
-        }
-        else {
-            // Money entering the account (ToAccountId matches)
-            return allTransactions
-                .Where(t => t.ToAccountId == accountId && !t.ToAccountReconciledId.HasValue)
-                .OrderBy(t => t.TransactionDate)
-                .ToList();
-        }
-    }
-
-    public async
-        Task<(decimal EndingBalance, DateTime? LastTransactionDate, decimal BeginningBalance, bool
-            HasTransactionPriorToLastReconcile)> CalculateRunningBalanceAsync(int accountId,
-            IEnumerable<TransactionViewModel> transactions) {
+    public async Task<(decimal EndingBalance, DateTime? LastTransactionDate, decimal BeginningBalance, bool
+            HasTransactionPriorToLastReconcile)>
+        CalculateRunningBalanceAsync(int accountId, IEnumerable<TransactionViewModel> transactions) {
         var hasTransactionPriorToLastReconcile = false;
         var account = (await _budgetService.GetAllAccountsAsync()).FirstOrDefault(a => a.Id == accountId);
         if (account == null) {
@@ -39,54 +38,54 @@ public class ReconciliationService {
         }
 
         var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsync(accountId);
-        // Start with the latest reconciliation or the account balance
         var latestRecon = await _budgetService.GetLatestValidReconciliationAsync(accountId);
-        decimal balance = account.IsLiability
-            ? -1 * (latestRecon?.ReconciledBalance ?? account.Balance)
-            : (latestRecon?.ReconciledBalance ?? account.Balance);
+
+        // 1. Get raw database starting balance
+        decimal rawStartingBalance = latestRecon?.ReconciledBalance ?? account.Balance;
+
+        // 2. Normalize: Liabilities are inverted to positive debt balances for display/calculation loops
+        decimal balance = account.IsLiability ? Math.Abs(rawStartingBalance) : rawStartingBalance;
         decimal beginningBalance = balance;
+
         DateTime startDate = latestRecon?.ReconciledAsOfDate ??
                              (openingBalanceState.openingBalanceDate ?? account.BalanceAsOf);
 
         var earliestTransaction = transactions.OrderBy(t => t.TransactionDate).FirstOrDefault();
-        if (earliestTransaction != null) {
-            if (earliestTransaction.TransactionDate < startDate) {
-                //there is a transaction in the mix earlier than the last reconciliation. Invalidate prior reconciliation?
-                startDate = earliestTransaction.TransactionDate;
-                hasTransactionPriorToLastReconcile = true;
-            }
+        if (earliestTransaction != null && earliestTransaction.TransactionDate < startDate) {
+            startDate = earliestTransaction.TransactionDate;
+            hasTransactionPriorToLastReconcile = true;
         }
 
-        // Apply transactions after the reconciliation date
-        var orderedTransactions = transactions.Where(t => t.TransactionDate >= startDate)
-            .OrderBy(t => t.TransactionDate).ToList();
+        var orderedTransactions = transactions
+            .Where(t => t.TransactionDate >= startDate)
+            .OrderBy(t => t.TransactionDate)
+            .ToList();
 
         foreach (var transaction in orderedTransactions) {
             decimal amount = Math.Abs(transaction.Amount);
-            bool isDebitAccount = account.IsLiability;
 
-            // Money leaving the account
+            // --- OUTBOUND: Money leaving this account ---
             if (transaction.AccountId == accountId) {
-                if (isDebitAccount) {
-                    balance += amount; // Debt increases
+                if (account.IsLiability) {
+                    balance += amount; // Purchasing on credit/loans INCREASES total debt
                 }
                 else {
-                    balance -= amount; // Asset decreases
+                    balance -= amount; // Spending from checking/savings DECREASES asset balance
                 }
-                //balance -= amount;
 
                 transaction.RunningBalance = balance;
             }
 
-            // Money entering the account
+            // --- INBOUND: Money entering this account ---
             if (transaction.ToAccountId == accountId) {
                 bool isPrincipalOnly = transaction.IsPrincipalOnly;
                 bool isRebalance = transaction.IsRebalance;
                 bool isInterestOnly = transaction.IsInterestOnly;
 
                 if (account.IsLoanAccount) {
-                    if (isRebalance || isInterestOnly)
-                        balance += amount;
+                    if (isRebalance || isInterestOnly) {
+                        balance += amount; // Fee or interest adjustment INCREASES loan balance
+                    }
                     else {
                         decimal principal = amount;
                         if (!isPrincipalOnly && account.MortgageDetails != null) {
@@ -95,28 +94,27 @@ public class ReconciliationService {
                             if (principal < 0) principal = 0;
                         }
 
-                        balance -= principal;
-                        //balance += principal;
+                        balance -= principal; // Loan payment DECREASES principal balance
                     }
                 }
                 else if (account.Type == AccountType.CreditCard) {
-                    if (isRebalance || isInterestOnly)
-                        balance += amount;
-                    else
-                        balance -= amount; // Payment reduces credit card balance
-                    //balance += amount; // Payment reduces credit card balance
+                    if (isRebalance || isInterestOnly) {
+                        balance += amount; // Finance charge INCREASES credit card debt
+                    }
+                    else {
+                        balance -= amount; // Payment DECREASES credit card debt
+                    }
                 }
                 else if (account.Type == AccountType.PersonalLoan) {
-                    if (isPrincipalOnly)
-                        balance -= amount;
-                    //balance += amount;
-                    else if (isRebalance)
-                        balance += amount;
-                    else
-                        balance += amount;
+                    if (isRebalance || isInterestOnly) {
+                        balance += amount; // Charge INCREASES debt
+                    }
+                    else {
+                        balance -= amount; // Payment DECREASES loan balance
+                    }
                 }
                 else {
-                    balance += amount; // Asset increases
+                    balance += amount; // Deposit INCREASES asset balance
                 }
 
                 transaction.RunningBalance = balance;
@@ -128,10 +126,10 @@ public class ReconciliationService {
     }
 
     public async Task ReconcileAccountAsync(int accountId, List<TransactionViewModel> reconciledTransactions,
-        decimal finalBalance,
-        DateTime asOfDate) {
+        decimal finalBalance, DateTime asOfDate) {
+    
         bool reconciliationCompleted = false;
-        // Create the reconciliation record
+
         var reconciliation = new AccountReconciliation {
             AccountId = accountId,
             ReconciledAsOfDate = asOfDate,
@@ -145,10 +143,12 @@ public class ReconciliationService {
             reconciliationCompleted = true;
         }
 
+        var pendingUpdates = new List<TransactionViewModel>();
 
-        // Update transactions with the reconciliation ID
+        // Prepare state changes in memory
         foreach (var transaction in reconciledTransactions) {
             var changed = false;
+
             if (transaction.IsReconciled && reconciliationCompleted) {
                 if (transaction.AccountId == accountId) {
                     transaction.FromAccountReconciledId = reconciliation.Id;
@@ -167,11 +167,14 @@ public class ReconciliationService {
                 transaction.ToAccountIsCleared = transaction.IsCleared;
             }
 
-
-            //no dates or amounts are changing.
             if (changed || transaction.IsReconciled) {
-                await _budgetService.UpdateTransactionForReconciliationAsync(transaction);
+                pendingUpdates.Add(transaction);
             }
+        }
+
+        // Single batch update call to BudgetService
+        if (pendingUpdates.Any()) {
+            await _budgetService.UpdateTransactionsForReconciliationAsync(pendingUpdates);
         }
     }
 }

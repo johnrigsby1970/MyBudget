@@ -1,6 +1,7 @@
 ﻿using Dapper;
+using Microsoft.Data.Sqlite;
+using System.Data;
 using StayOnTarget.Helpers;
-using StayOnTarget.Models;
 
 namespace StayOnTarget.Services;
 
@@ -10,7 +11,11 @@ public partial class BudgetService
     /// Looks back 90 days in historical transactions to find the most recent SubCategoryId
     /// assigned to a matching normalized description.
     /// </summary>
-    public async Task<int?> GetSuggestedSubCategoryIdAsync(string rawDescription, DateTime? referenceDate = null)
+    public async Task<int?> GetSuggestedSubCategoryIdAsync(
+        string rawDescription, 
+        DateTime? referenceDate = null,
+        SqliteConnection? cn = null,
+        IDbTransaction? tx = null)
     {
         if (string.IsNullOrWhiteSpace(rawDescription)) 
             return null;
@@ -20,23 +25,45 @@ public partial class BudgetService
         if (string.IsNullOrWhiteSpace(normalized)) 
             return null;
 
-        // Cutoff date: 90 days prior to transaction date (or today)
+        // Cutoff window: 90 days prior to referenceDate (or today)
         var endDate = referenceDate ?? DateTime.Today;
-        var cutoffDate = endDate.AddDays(-90).ToString("yyyy-MM-dd");
+        var cutoffDateStr = endDate.AddDays(-90).ToString("yyyy-MM-dd");
+        var endDateStr = endDate.ToString("yyyy-MM-dd");
 
-        await using var conn = _db.GetConnection();
+        cn ??= tx?.Connection as SqliteConnection;
+        bool isLocalConn = cn == null;
+        var conn = cn ?? _db.GetConnection();
 
-        // Query the most recent matching transaction from the past 90 days that has a valid SubCategoryId
-        const string sql = @"
-            SELECT SubCategoryId 
-            FROM Transactions 
-            WHERE NormalizedDescription = @normalized 
-              AND SubCategoryId IS NOT NULL 
-              AND SubCategoryId > 0
-              AND TransactionDate >= @cutoffDate
-            ORDER BY TransactionDate DESC, Id DESC 
-            LIMIT 1;";
+        try
+        {
+            if (isLocalConn && conn.State != ConnectionState.Open)
+            {
+                await conn.OpenAsync();
+            }
 
-        return await conn.QueryFirstOrDefaultAsync<int?>(sql, new { normalized, cutoffDate });
+            // Query the most recent matching transaction within the 90-day window that has a valid SubCategoryId
+            const string sql = @"
+                SELECT SubCategoryId 
+                FROM Transactions 
+                WHERE NormalizedDescription = @normalized 
+                  AND SubCategoryId IS NOT NULL 
+                  AND SubCategoryId > 0
+                  AND TransactionDate >= @cutoffDateStr
+                  AND TransactionDate <= @endDateStr
+                ORDER BY TransactionDate DESC, Id DESC 
+                LIMIT 1;";
+
+            return await conn.QueryFirstOrDefaultAsync<int?>(
+                sql, 
+                new { normalized, cutoffDateStr, endDateStr }, 
+                tx);
+        }
+        finally
+        {
+            if (isLocalConn)
+            {
+                await conn.DisposeAsync();
+            }
+        }
     }
 }

@@ -1,6 +1,7 @@
 ﻿namespace StayOnTarget.ViewModels;
 
 public class ManualTransactionViewModel : ViewModelBase {
+    public int? Id { get; set; }
     public string FitId { get; set; } = string.Empty;// Your internal Guid
     public string? TransactionId { get; set; } // Your internal Transaction Id
     public DateTime TransactionDate { get; set; }

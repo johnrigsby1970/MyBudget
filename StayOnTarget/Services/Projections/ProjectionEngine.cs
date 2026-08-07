@@ -77,9 +77,7 @@ public class ProjectionEngine : IProjectionEngine {
         var moneyAccountIds = accounts.Where(x => x.Type == AccountType.Checking || x.Type == AccountType.Savings)
             .Select(x => x.Id).ToList();
         var includedTotalAccounts = new HashSet<int>(accounts.Where(a => a.IncludeInTotal).Select(a => a.Id));
-
-        var uniqueTransactions = allTransactions;
-
+        
         if (showReconciled) {
             var unbalancedPaychecks = paychecks.Where(p => !p.IsBalanced).ToList();
             if (unbalancedPaychecks.Any()) {
@@ -154,10 +152,10 @@ public class ProjectionEngine : IProjectionEngine {
         // 4. Create events for Transactions
         // We always use uniqueTransactions to build the events list for simulation.
         // This ensures consistent balance reconstruction between ShowReconciled modes.
-        events.AddTransactionEvents(uniqueTransactions, showReconciled);
+        events.AddTransactionEvents(allTransactions, showReconciled);
         // 5. Create events or Interest & Growth Setup
         // Use all transactions for interest calculation to correctly identify manual adjustments
-        events.AddInterestEvents(accounts, uniqueTransactions, startDate, endDate);
+        events.AddInterestEvents(accounts, allTransactions, startDate, endDate);
 
         // 6. Create events for reconciliations (points when an account balance is reset and verified so that balances do not have to run from the very beginning)
         events.AddReconciliationEvents(allValidReconciliations);

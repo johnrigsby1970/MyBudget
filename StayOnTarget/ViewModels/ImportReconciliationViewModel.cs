@@ -233,70 +233,146 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
     public IAsyncRelayCommand InitializeDataCommand { get; }
 
+    // private async void SaveAsync() {
+    //     if (string.IsNullOrEmpty(LastFileName)) {
+    //         return;
+    //     }
+    //
+    //     try {
+    //         var fixDate = false;
+    //
+    //         IsBusy = true;
+    //
+    //         // Yield back to UI thread to allow WPF to render the LoadingOverlay control
+    //         await Task.Delay(50);
+    //
+    //         // Handled matched transactions
+    //         foreach (var match in ImportedTransactions.Where(x =>
+    //                      x.IsSelected &&
+    //                      x.IsMatched && !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
+    //                      x.MatchedManualTransactionDate != null && !string.IsNullOrEmpty(x.MatchedManualFitId))) {
+    //             if (string.IsNullOrEmpty(match.BankId)) continue;
+    //             if (string.IsNullOrEmpty(match.Payee)) continue;
+    //             // Track each background database call
+    //             await Task.Delay(10);
+    //             if (!match.Id.HasValue) {
+    //                 //if the id is null, it didn't actually match
+    //                 continue;
+    //             }
+    //             await _budgetService.UpdateTransactionForBankFitIdAsync(
+    //                 _account.Id,
+    //                 match.MatchedManualTransactionId!,
+    //                 match.BankId,
+    //                 match.IsCleared,
+    //                 match.Id.Value
+    //             );
+    //         }
+    //
+    //         // Handle new transactions that are checked but not matched
+    //         foreach (var newItem in ImportedTransactions.Where(x => x.IsSelected && !x.IsMatched)) {
+    //             if (string.IsNullOrEmpty(newItem.Payee)) continue;
+    //             if (string.IsNullOrEmpty(newItem.BankId)) continue;
+    //             var t = new Transaction {
+    //                 AccountId = newItem.Amount > 0 ? null : _account.Id,
+    //                 ToAccountId = newItem.Amount > 0 ? _account.Id : null,
+    //                 Amount = newItem.Amount,
+    //                 TransactionDate = newItem.Date ?? DateTime.Now,
+    //                 Description = newItem.Payee,
+    //                 FitId = newItem.BankId,
+    //                 BillId = newItem.BillId == 0 ? null : newItem.BillId,
+    //                 BucketId = newItem.BucketId == 0 ? null : newItem.BucketId,
+    //                 SubCategoryId = newItem.SubCategoryId == 0 ? null : newItem.SubCategoryId,
+    //                 FromAccountIsCleared = newItem.Amount > 0 ? null : newItem.IsCleared,
+    //                 ToAccountIsCleared = newItem.Amount > 0 ? newItem.IsCleared : null,
+    //             };
+    //             await Task.Delay(10);
+    //             await _budgetService.UpsertTransactionAsync(t);
+    //         }
+    //
+    //         await Task.Delay(50);
+    //
+    //         // 4. Now these run sequentially on the UI thread with accurate database states
+    //         await LoadDataAsync();
+    //
+    //         if (LastImportAsQfx != null && LastImportAsQfx.Value) {
+    //             await ParseAndPopulateQfxAsync(LastFileName);
+    //         }
+    //
+    //         if (LastImportAsQfx != null && !LastImportAsQfx.Value) {
+    //             await ParseAndPopulateCsv(LastFileName);
+    //         }
+    //     }
+    //     finally {
+    //         IsBusy = false;
+    //     }
+    // }
+
     private async void SaveAsync() {
-        if (string.IsNullOrEmpty(LastFileName)) {
-            return;
-        }
+        if (!ImportedTransactions.Any()) return;
 
         try {
-            var fixDate = false;
-
             IsBusy = true;
+            await Task.Delay(50); // Yield for UI loader animation
 
-            // Yield back to UI thread to allow WPF to render the LoadingOverlay control
-            await Task.Delay(50);
+            // Collect items that will be processed during this save batch
+            var matchedToSave = ImportedTransactions
+                .Where(x => x.IsSelected &&
+                            x.IsMatched &&
+                            !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
+                            x.Id.HasValue &&
+                            !string.IsNullOrEmpty(x.BankId) &&
+                            !string.IsNullOrEmpty(x.Payee))
+                .ToList();
 
-            // Handled matched transactions
-            foreach (var match in ImportedTransactions.Where(x =>
-                         x.IsSelected &&
-                         x.IsMatched && !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
-                         x.MatchedManualTransactionDate != null && !string.IsNullOrEmpty(x.MatchedManualFitId))) {
-                if (string.IsNullOrEmpty(match.BankId)) continue;
-                if (string.IsNullOrEmpty(match.Payee)) continue;
-                // Track each background database call
-                await Task.Delay(10);
+            var newToSave = ImportedTransactions
+                .Where(x => x.IsSelected &&
+                            !x.IsMatched &&
+                            !string.IsNullOrEmpty(x.BankId) &&
+                            !string.IsNullOrEmpty(x.Payee))
+                .ToList();
+
+            // 1. Process matched transactions
+            foreach (var match in matchedToSave) {
                 await _budgetService.UpdateTransactionForBankFitIdAsync(
                     _account.Id,
                     match.MatchedManualTransactionId!,
-                    match.MatchedManualFitId!,
-                    match.BankId,
-                    fixDate && match.Date.HasValue ? match.Date.Value : match.MatchedManualTransactionDate!.Value,
-                    match.Payee, match.IsCleared
+                    match.BankId!,
+                    match.IsCleared,
+                    match.Id!.Value
                 );
             }
 
-            // Handle new transactions that are checked but not matched
-            foreach (var newItem in ImportedTransactions.Where(x => x.IsSelected && !x.IsMatched)) {
-                if (string.IsNullOrEmpty(newItem.Payee)) continue;
-                if (string.IsNullOrEmpty(newItem.BankId)) continue;
+            // 2. Process brand new transactions
+            foreach (var newItem in newToSave) {
                 var t = new Transaction {
                     AccountId = newItem.Amount > 0 ? null : _account.Id,
                     ToAccountId = newItem.Amount > 0 ? _account.Id : null,
                     Amount = newItem.Amount,
                     TransactionDate = newItem.Date ?? DateTime.Now,
-                    Description = newItem.Payee,
-                    FitId = newItem.BankId,
+                    Description = newItem.Payee!,
+                    FitId = newItem.BankId!,
                     BillId = newItem.BillId == 0 ? null : newItem.BillId,
                     BucketId = newItem.BucketId == 0 ? null : newItem.BucketId,
                     SubCategoryId = newItem.SubCategoryId == 0 ? null : newItem.SubCategoryId,
                     FromAccountIsCleared = newItem.Amount > 0 ? null : newItem.IsCleared,
                     ToAccountIsCleared = newItem.Amount > 0 ? newItem.IsCleared : null,
                 };
-                await Task.Delay(10);
+
                 await _budgetService.UpsertTransactionAsync(t);
             }
 
-            await Task.Delay(50);
-
-            // 4. Now these run sequentially on the UI thread with accurate database states
+            // 3. Reload fresh database lookup state (UnreconciledManualTransactions, Bills, Buckets)
             await LoadDataAsync();
 
-            if (LastImportAsQfx != null && LastImportAsQfx.Value) {
-                await ParseAndPopulateQfxAsync(LastFileName);
+            // 4. In-Memory Pruning: Remove saved items directly from UI collection without disk parsing
+            var savedItems = matchedToSave.Concat(newToSave).ToList();
+            foreach (var item in savedItems) {
+                ImportedTransactions.Remove(item);
             }
 
-            if (LastImportAsQfx != null && !LastImportAsQfx.Value) {
-                await ParseAndPopulateCsv(LastFileName);
+            // 5. Re-run auto-match for remaining stragglers against updated unreconciled database state
+            if (ImportedTransactions.Any()) {
+                AutoMatchTransactions();
             }
         }
         finally {
@@ -344,14 +420,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         ImportedTransactions.Clear();
 
-        // 1. Convert to HashSet for O(1) lookup speed
-        var processedBankIdsList = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id);
-        var processedBankIds = new HashSet<string>(processedBankIdsList, StringComparer.OrdinalIgnoreCase);
+        var rawParsedRecords = new List<ImportedTransactionViewModel>();
 
-        // Temporary lists to collect batch mutations off the UI thread
-        var newImportedList = new List<ImportedTransactionViewModel>();
-        var manualRecordsToRemove = new List<ManualTransactionViewModel>();
-
+        // 1. Read CSV into temporary holding list
         using (var reader = new StreamReader(filePath))
         using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture)) {
             await csv.ReadAsync();
@@ -359,29 +430,17 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
             while (await csv.ReadAsync()) {
                 string bankId = csv.GetField(CsvMapping.BankIdHeader!) ?? Guid.NewGuid().ToString();
-
-                if (processedBankIds.Contains(bankId)) {
-                    var rec = UnreconciledManualTransactions.SingleOrDefault(x => x.FitId == bankId);
-                    if (rec != null) {
-                        manualRecordsToRemove.Add(rec);
-                    }
-
-                    continue;
-                }
-
                 string rawDate = csv.GetField(CsvMapping.DateHeader!) ?? "";
                 string rawAmount = csv.GetField(CsvMapping.AmountHeader!) ?? "";
                 string payee = csv.GetField(CsvMapping.PayeeHeader!) ?? "";
 
-                DateTime date = DateTime.Today;
-                DateTime.TryParse(rawDate, CultureInfo.CurrentCulture, DateTimeStyles.None, out date);
-                if (date == DateTime.MinValue) {
-                    continue;
+                if (!DateTime.TryParse(rawDate, CultureInfo.CurrentCulture, DateTimeStyles.None, out var date)) {
+                    continue; // Skip invalid dates cleanly
                 }
 
                 decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out var amount);
 
-                newImportedList.Add(new ImportedTransactionViewModel {
+                rawParsedRecords.Add(new ImportedTransactionViewModel {
                     BankId = bankId,
                     Date = date,
                     Amount = amount,
@@ -392,24 +451,53 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
         }
 
-        // 2. Remove already-reconciled manual transactions safely outside the parsing loop
+        if (!rawParsedRecords.Any()) return;
+
+        // 2. Fetch only the imported FitIds that are ALREADY cleared in the DB
+        var incomingBankIds = rawParsedRecords
+            .Where(x => !string.IsNullOrWhiteSpace(x.BankId))
+            .Select(x => x.BankId!)
+            .ToList();
+
+        var existingDbIds = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id, incomingBankIds);
+        var processedBankIds = new HashSet<string>(existingDbIds, StringComparer.OrdinalIgnoreCase);
+
+        // 3. O(1) Lookup dictionary for unreconciled manual records
+        var manualLookup = UnreconciledManualTransactions
+            .Where(x => !string.IsNullOrWhiteSpace(x.FitId))
+            .ToLookup(x => x.FitId!, StringComparer.OrdinalIgnoreCase);
+
+        var filteredImports = new List<ImportedTransactionViewModel>(rawParsedRecords.Count);
+        var manualRecordsToRemove = new List<ManualTransactionViewModel>();
+
+        // 4. Single-pass partition: Separate new imports from already-cleared duplicates
+        foreach (var record in rawParsedRecords) {
+            if (processedBankIds.Contains(record.BankId!)) {
+                // Locate manual record for removal in O(1) time
+                var matches = manualLookup[record.BankId!];
+                manualRecordsToRemove.AddRange(matches);
+            }
+            else {
+                filteredImports.Add(record);
+            }
+        }
+
+        // 5. Prune already-cleared manual transactions from UI collection
         foreach (var rec in manualRecordsToRemove) {
             UnreconciledManualTransactions.Remove(rec);
         }
 
-        // 3. Populate ImportedTransactions in a single pass
+        // 6. Populate UI collection in a single batch update
         if (ImportedTransactions is RangeObservableCollection<ImportedTransactionViewModel> rangeCollection) {
-            // Fires 1 single layout notification for the entire CSV import
-            rangeCollection.AddRange(newImportedList);
+            rangeCollection.AddRange(filteredImports);
         }
         else {
-            // Fallback if standard ObservableCollection
-            foreach (var item in newImportedList) {
+            foreach (var item in filteredImports) {
                 ImportedTransactions.Add(item);
             }
         }
 
-        // 4. Auto-match pass
+        // 7. Auto-match pass
         AutoMatchTransactions();
     }
 
@@ -421,34 +509,17 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         string content = await File.ReadAllTextAsync(filePath);
 
-        // FIX 1: Pre-process the SGML into clean chunks. 
-        // This normalizes both closed </STMTTRN> and unclosed SGML transaction blocks.
-        var txBlocks = new List<string>();
+        // 1. Normalize SGML transaction blocks
         var matches = Regex.Matches(content, @"<STMTTRN>(.*?)(?=</STMTTRN>|<STMTTRN>|</STMTRS>)",
             RegexOptions.Singleline | RegexOptions.IgnoreCase);
+
+        var rawParsedRecords = new List<ImportedTransactionViewModel>();
+
+        // 2. Initial parse into in-memory collection
         foreach (Match m in matches) {
-            txBlocks.Add(m.Groups[1].Value);
-        }
-
-        // Fetch existing bank IDs from your DB to skip duplicates
-        var processedBankIds = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id);
-
-        // Maintain a list of manual transactions to remove safely after the loop
-        var transactionsToRemove = new List<ManualTransactionViewModel>();
-
-        foreach (string txBlock in txBlocks) {
+            string txBlock = m.Groups[1].Value;
             string bankId = GetQfxTagValue(txBlock, "FITID");
             if (string.IsNullOrWhiteSpace(bankId)) continue;
-
-            // Skip if this exact transaction was already committed to the DB
-            if (processedBankIds.Contains(bankId)) {
-                var rec = UnreconciledManualTransactions.SingleOrDefault(x => x.FitId == bankId);
-                if (rec != null) {
-                    transactionsToRemove.Add(rec);
-                }
-
-                continue;
-            }
 
             string rawDate = GetQfxTagValue(txBlock, "DTPOSTED");
             string rawAmount = GetQfxTagValue(txBlock, "TRNAMT");
@@ -464,22 +535,62 @@ public class ImportReconciliationViewModel : ViewModelBase {
             // Parse Amount safely
             decimal.TryParse(rawAmount, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal amount);
 
-            ImportedTransactions.Add(new ImportedTransactionViewModel {
+            rawParsedRecords.Add(new ImportedTransactionViewModel {
                 BankId = bankId,
                 Date = date,
                 Amount = amount,
-                Payee = payee, // Already sanitized by updated GetQfxTagValue
+                Payee = payee, // Already sanitized by GetQfxTagValue
                 Status = "Unmatched",
                 IsCleared = true
             });
         }
 
-        // FIX 3: Safely mutate the UI tracking collection outside of the processing loop
+        if (!rawParsedRecords.Any()) return;
+
+        // 3. Query DB ONLY for the FITIDs present in this QFX file
+        var incomingBankIds = rawParsedRecords
+            .Where(x => !string.IsNullOrWhiteSpace(x.BankId))
+            .Select(x => x.BankId!)
+            .ToList();
+
+        var existingDbIds = await _budgetService.GetAlreadyImportedBankIdsAsync(_account.Id, incomingBankIds);
+        var processedBankIds = new HashSet<string>(existingDbIds, StringComparer.OrdinalIgnoreCase);
+
+        // 4. O(1) Lookup for unreconciled manual records
+        var manualLookup = UnreconciledManualTransactions
+            .Where(x => !string.IsNullOrWhiteSpace(x.FitId))
+            .ToLookup(x => x.FitId!, StringComparer.OrdinalIgnoreCase);
+
+        var filteredImports = new List<ImportedTransactionViewModel>(rawParsedRecords.Count);
+        var transactionsToRemove = new List<ManualTransactionViewModel>();
+
+        // 5. Partition: Filter out already-imported bank IDs & flag manual matches for removal
+        foreach (var record in rawParsedRecords) {
+            if (processedBankIds.Contains(record.BankId!)) {
+                var matchesToRemove = manualLookup[record.BankId!];
+                transactionsToRemove.AddRange(matchesToRemove);
+            }
+            else {
+                filteredImports.Add(record);
+            }
+        }
+
+        // 6. Safely mutate the UI tracking collection outside the parsing loop
         foreach (var rec in transactionsToRemove) {
             UnreconciledManualTransactions.Remove(rec);
         }
 
-        // Auto-match pass
+        // 7. Populate ImportedTransactions in a single batch notification
+        if (ImportedTransactions is RangeObservableCollection<ImportedTransactionViewModel> rangeCollection) {
+            rangeCollection.AddRange(filteredImports);
+        }
+        else {
+            foreach (var item in filteredImports) {
+                ImportedTransactions.Add(item);
+            }
+        }
+
+        // 8. Auto-match pass
         AutoMatchTransactions();
     }
 
@@ -519,6 +630,11 @@ public class ImportReconciliationViewModel : ViewModelBase {
             if (exactMatch != null) {
                 ApplyMatch(imported, exactMatch, $"Auto-Matched ({exactMatch.Description})");
                 matchedManualIds.Add(exactMatch.TransactionId!);
+                matchedManualIds.Add(exactMatch.TransactionId!);
+                imported.BillId = exactMatch.BillId;
+                imported.BucketId = exactMatch.BucketId;
+                imported.IsSelected = true;
+                imported.IsCleared = true;
                 continue;
             }
 
@@ -545,9 +661,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
             if (closeMatch != null) {
                 ApplyMatch(imported, closeMatch, $"Auto-Matched ({closeMatch.Description})");
-                imported.BillId = closeMatch.BillId;
-                imported.BucketId = closeMatch.BucketId;
-                imported.IsSelected = true;
                 matchedManualIds.Add(closeMatch.TransactionId!);
                 continue;
             }
@@ -572,10 +685,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
             if (match != null) {
                 ApplyMatch(imported, match, $"Auto-Matched ({match.Description})");
-                imported.BillId = match.BillId;
-                imported.BucketId = match.BucketId;
-                imported.IsSelected = true;
-                imported.IsCleared = true;
                 matchedManualIds.Add(match.TransactionId!);
             }
         }
@@ -592,13 +701,16 @@ public class ImportReconciliationViewModel : ViewModelBase {
 // Clean helper parameterized explicitly to match your class definitions
     private void ApplyMatch(ImportedTransactionViewModel imported, ManualTransactionViewModel manual,
         string statusText) {
+        imported.Id = manual.Id;
         imported.IsMatched = true;
         imported.IsCleared = true;
+        imported.IsSelected = true;
         imported.Status = statusText;
         imported.MatchedManualFitId = manual.FitId;
         imported.MatchedManualTransactionDate = manual.TransactionDate;
         imported.MatchedManualTransactionId = manual.TransactionId;
-        manual.IsMatched = true; // Will safely fire notification 
+        imported.BillId = manual.BillId;
+        imported.BucketId = manual.BucketId;
     }
 
     private void FilterManualSuggestions() {
@@ -608,7 +720,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
     // Update the methods to handle the object parameter:
     private void LinkTransactions() {
         if (SelectedImported == null || SelectedManual == null) return;
-
+        SelectedImported.Id = SelectedManual.Id;
         SelectedImported.IsMatched = true;
         SelectedImported.IsCleared = true;
         SelectedImported.Status = $"Matched to Manual ({SelectedManual.Description} {SelectedManual.Amount:C})";
@@ -632,6 +744,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
             UnreconciledManualTransactions.SingleOrDefault(x => x.FitId == SelectedImported.MatchedManualFitId);
 
         if (manual != null) {
+            SelectedImported.Id = null;
             SelectedImported.IsMatched = false;
             SelectedImported.IsCleared = false;
             SelectedImported.Status = $"Match removed";
@@ -679,15 +792,18 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
     private async Task LoadDataAsync() {
         // Mocking manual records currently in your DB
-        var unreconciledTransactions = (await _budgetService.GetAllUnreconciledTransactionsAsync()).ToList();
+        var unreconciledTransactions = (await _budgetService.GetAllUnclearedTransactionsAsync()).ToList();
         unreconciledTransactions = unreconciledTransactions
-            .Where(x => x.AccountId == _account.Id || x.ToAccountId == _account.Id).ToList();
+            .Where(x => (x.AccountId == _account.Id && x.FromAccountIsCleared == false) ||
+                        (x.ToAccountId == _account.Id && x.ToAccountIsCleared == false)).ToList();
 
         UnreconciledManualTransactions.Clear();
         var temp = new List<ManualTransactionViewModel>(unreconciledTransactions.Count);
         foreach (var transaction in unreconciledTransactions) {
             temp.Add(new ManualTransactionViewModel {
-                FitId = transaction.FitId, TransactionDate = transaction.TransactionDate,
+                Id = (int?)(transaction.AccountId == _account.Id ? transaction.FromRecordId : transaction.ToRecordId),
+                FitId = transaction.FitId,
+                TransactionDate = transaction.TransactionDate,
                 Amount = transaction.Amount,
                 Description = transaction.Description, TransactionId = transaction.TransactionId.ToString(),
                 BillId = transaction.BillId,
@@ -708,7 +824,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         BillsWithNone.Clear();
         BillsWithNone.AddRange(billsTemp);
-        
+
         var bucketsFromDb = (await _budgetService.GetAllBucketsAsync()).ToList();
 
         // Pre-allocate space for "None" (+1) plus all DB items
@@ -720,7 +836,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         BucketsWithNone.Clear();
         BucketsWithNone.AddRange(bucketsTemp);
-        
+
         var subCategoriesFromDb = (await _budgetService.GetAllSubCategoriesAsync()).ToList();
 
         // Pre-allocate space for "None" (+1) plus all DB items

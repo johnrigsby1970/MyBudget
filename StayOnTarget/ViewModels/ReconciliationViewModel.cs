@@ -368,8 +368,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
         CurrentAssetValue = 0; // Reset so it gets recalculated in LoadData
         IsBalanceAdjustmentVisible = false;
         OnPropertyChanged(nameof(CanExecuteAdjustBalance));
-
-
+        
         await LoadDataAsync();
     }
 
@@ -489,11 +488,11 @@ public partial class ReconciliationViewModel : ViewModelBase {
 
             var transactions =
                 await _budgetService.GetAllUnreconciledTransactionsSinceLastReconciliationAsync(_account.Id);
-            transactions = transactions.OrderBy(b => b.TransactionDate).ToList();
+            transactions = transactions.Where(x=>x.AccountId == _account.Id || x.ToAccountId == _account.Id).OrderBy(b => b.TransactionDate).ToList();
 
 
-            // 1. Fetch and order transactions once
-            var allTransactions = (await _budgetService.GetAccountTransactionsAsDynamicAsync(_account.Id))
+            // 1. Fetch and order transactions at once
+            var allTransactions = (await _budgetService.GetUnreconciledAccountLedgerAsync(_account.Id))
                 .OrderBy(x => (DateTime)x.TransactionDate)
                 .ToList();
 

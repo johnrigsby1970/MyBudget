@@ -85,4 +85,26 @@ public class ProjectionItem : ViewModelBase
             }
         }
     }
+    
+    public bool CanPayIt
+    {
+        get
+        {
+            // Must be a bill
+            if (!BillId.HasValue || BillId.Value == 0) return false;
+
+            // Determine active period start (matches your VM logic)
+            DateTime periodStart = MainViewModel.Instance?.CurrentPeriodDate == DateTime.MinValue 
+                ? DateTime.Today 
+                : (MainViewModel.Instance?.CurrentPeriodDate ?? DateTime.Today);
+
+            if (MainViewModel.Instance?.ProjectionStartDate.HasValue == true)
+            {
+                periodStart = MainViewModel.Instance.ProjectionStartDate.Value;
+            }
+
+            // Only allow payment if transaction falls within 31 days from the period start date
+            return TransactionDate >= periodStart && TransactionDate <= periodStart.AddDays(31);
+        }
+    }
 }

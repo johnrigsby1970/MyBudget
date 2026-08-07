@@ -1,4 +1,6 @@
-﻿using Dapper;
+﻿using System.Data;
+using Dapper;
+using Microsoft.Data.Sqlite;
 using StayOnTarget.Models;
 
 namespace StayOnTarget.Services;
@@ -29,24 +31,31 @@ public partial class BudgetService {
         return accounts;
     }
 
-    public async Task<IEnumerable<Account>> GetAllAccountsAsOfAsync(DateTime asOfDate, bool includeArchived = false) {
-        await using var conn = _db.GetConnection();
+    public async Task<IEnumerable<Account>> GetAllAccountsAsOfAsync(DateTime asOfDate, bool includeArchived = false, SqliteConnection? cn = null, IDbTransaction? tx = null ) {
+        bool isLocalConn = cn == null;
+        var conn = cn ?? _db.GetConnection();
+
+        try {
+            // Ensure local connection is open before executing queries
+            if (isLocalConn && conn.State != ConnectionState.Open) {
+                await conn.OpenAsync();
+            }
         var accounts =
             (await conn.QueryAsync<Account>("SELECT * FROM Accounts WHERE IsArchived=0 OR @includeArchived=1",
-                new { includeArchived = (includeArchived ? 1 : 0) })).ToList();
+                new { includeArchived = (includeArchived ? 1 : 0) }, tx)).ToList();
         foreach (var acc in accounts) {
             if (acc.IsLoanAccount) {
                 acc.MortgageDetails =
                     await conn.QueryFirstOrDefaultAsync<MortgageDetails>(
-                        "SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id });
+                        "SELECT * FROM MortgageDetails WHERE AccountId = @Id", new { acc.Id }, tx);
             }
 
             if (acc.Type == AccountType.CreditCard) {
                 acc.CreditCardDetails =
                     await conn.QueryFirstOrDefaultAsync<CreditCardDetails>(
-                        "SELECT * FROM CreditCardDetails WHERE AccountId = @Id", new { acc.Id });
+                        "SELECT * FROM CreditCardDetails WHERE AccountId = @Id", new { acc.Id }, tx);
                 acc.AccountAprHistory = (await conn.QueryAsync<AccountAprHistory>(
-                    "SELECT * FROM AccountAprHistory WHERE AccountId = @Id", new { acc.Id })).ToList();
+                    "SELECT * FROM AccountAprHistory WHERE AccountId = @Id", new { acc.Id }, tx)).ToList();
             }
         }
 
@@ -83,7 +92,7 @@ public partial class BudgetService {
                        """;
 
         var accountBalances =
-            (await conn.QueryAsync<Account>(query, new { asOfDate = asOfDate.ToString("yyyy-MM-dd") })).ToList();
+            (await conn.QueryAsync<Account>(query, new { asOfDate = asOfDate.ToString("yyyy-MM-dd") }, tx)).ToList();
 
         accounts.ForEach(x => { x.Balance = 0; });
         foreach (var account in accounts) {
@@ -94,6 +103,13 @@ public partial class BudgetService {
         }
 
         return accounts;
+    }
+    finally {
+        // 3. Only dispose connection if created locally inside this method call
+        if (isLocalConn) {
+            await conn.DisposeAsync();
+        }
+    }
     }
 
     public async Task<int> UpsertAccountAsync(Account account) {
