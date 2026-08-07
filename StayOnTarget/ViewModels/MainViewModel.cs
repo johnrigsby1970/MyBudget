@@ -99,11 +99,11 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    public RangeObservableCollection<SelectableSubCategory> EditableSubCategories { get; } 
+    public RangeObservableCollection<SelectableSubCategory> EditableSubCategories { get; }
         = new RangeObservableCollection<SelectableSubCategory>();
-    
+
     public RangeObservableCollection<ProjectionItem> SnowballProjections { get; } = new();
-    
+
     public bool IsBucketDescriptionExpanded {
         get => _isBucketDescriptionExpanded;
         set => SetProperty(ref _isBucketDescriptionExpanded, value);
@@ -132,10 +132,10 @@ public class MainViewModel : ViewModelBase {
         ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => CanEditAccount);
         ReconcileAccountCommand =
             new AsyncRelayCommand(ReconcileAccountAsync, () => CanEditAccount);
-        
+
         SetAccountAprRatesCommand =
             new AsyncRelayCommand(SetAccountAprRatesAsync, () => IsEditingAccount);
-        
+
         NextPeriodCommand = new AsyncRelayCommand(() => NavigatePeriodAsync(1));
         PrevPeriodCommand = new AsyncRelayCommand(() => NavigatePeriodAsync(-1));
 
@@ -144,7 +144,7 @@ public class MainViewModel : ViewModelBase {
         CancelBillCommand = new RelayCommand(CancelBill, () => IsEditingBill);
         SaveBillCommand = new AsyncRelayCommand(SaveBillAsync, () => IsEditingBill);
         DeleteBillCommand = new AsyncRelayCommand(DeleteBillAsync, () => IsEditingBill);
-        
+
         EditPeriodBillCommand = new RelayCommand(EditPeriodBill, () => CanEditPeriodBill);
         CancelPeriodBillCommand = new RelayCommand(CancelPeriodBill, () => IsEditingPeriodBill);
         SavePeriodBillCommand =
@@ -158,6 +158,19 @@ public class MainViewModel : ViewModelBase {
         SaveBucketCommand = new AsyncRelayCommand(SaveBucketAsync, () => IsEditingBucket);
         DeleteBucketCommand = new AsyncRelayCommand(DeleteBucketAsync);
 
+        AddSubCategoryCommand = new RelayCommand(AddSubCategory, () => IsNotEditingSubCategory);
+        EditSubCategoryCommand = new RelayCommand(EditSubCategory, () => CanEditSubCategory);
+        CancelSubCategoryCommand = new RelayCommand(CancelSubCategory, () => IsEditingSubCategory);
+        SaveSubCategoryCommand = new AsyncRelayCommand(SaveSubCategoryAsync, () => IsEditingSubCategory);
+        DeleteSubCategoryCommand = new AsyncRelayCommand(DeleteSubCategoryAsync);
+
+
+        AddCategoryCommand = new RelayCommand(AddCategory, () => IsNotEditingCategory);
+        EditCategoryCommand = new RelayCommand(EditCategory, () => CanEditCategory);
+        CancelCategoryCommand = new RelayCommand(CancelCategory, () => IsEditingCategory);
+        SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => IsEditingCategory);
+        DeleteCategoryCommand = new AsyncRelayCommand(DeleteCategoryAsync);
+
         EditPeriodBucketCommand = new RelayCommand(EditPeriodBucket, () => CanEditPeriodBucket);
         CancelPeriodBucketCommand =
             new RelayCommand(CancelPeriodBucket, () => IsEditingPeriodBucket);
@@ -165,7 +178,7 @@ public class MainViewModel : ViewModelBase {
             new AsyncRelayCommand(SavePeriodBucketAsync, () => IsEditingPeriodBucket);
         DeletePeriodBucketCommand =
             new AsyncRelayCommand(DeletePeriodBucketAsync, () => IsEditingPeriodBucket);
-        
+
         AddTransactionCommand = new RelayCommand(AddTransaction, () => IsNotEditingTransaction);
         EditTransactionCommand = new RelayCommand(EditTransaction, () => CanEditTransaction);
         CancelTransactionCommand = new RelayCommand(CancelTransaction, () => IsEditingTransaction);
@@ -173,20 +186,20 @@ public class MainViewModel : ViewModelBase {
             new AsyncRelayCommand(_ => SaveTransactionAsync(), () => IsEditingTransaction);
         DeleteTransactionCommand =
             new AsyncRelayCommand(DeleteTransactionAsync, () => IsEditingTransaction);
-        
+
         AddPaycheckCommand = new RelayCommand(AddPaycheck);
         EditPaycheckCommand = new RelayCommand(EditPaycheck, () => CanEditPaycheck);
         CancelPaycheckCommand = new RelayCommand(CancelPaycheck, () => IsEditingPaycheck);
         SavePaycheckCommand = new AsyncRelayCommand(SavePaycheckAsync, () => IsEditingPaycheck);
         DeletePaycheckCommand =
             new AsyncRelayCommand(DeletePaycheckAsync, () => IsEditingPaycheck);
-        
+
         AddAccountCommand = new RelayCommand(AddAccount, () => IsNotEditingAccount);
         EditAccountCommand = new RelayCommand(EditAccount, () => CanEditAccount);
         CancelAccountCommand = new RelayCommand(CancelAccount, () => IsEditingAccount);
         SaveAccountCommand = new AsyncRelayCommand(SaveAccountAsync, () => IsEditingAccount);
         DeleteAccountCommand = new AsyncRelayCommand(DeleteAccountAsync, () => IsEditingAccount);
-        
+
         ShowAmortizationCommand =
             new RelayCommand<Account>(a => ShowAmortization(a as Account ?? throw new InvalidOperationException()));
         ShowAboutCommand = new RelayCommand(ShowAbout);
@@ -238,7 +251,7 @@ public class MainViewModel : ViewModelBase {
             _recalculationCts.Cancel();
             _recalculationCts.Dispose();
         }
-        
+
         _recalculationCts = new CancellationTokenSource();
 
         var token = _recalculationCts.Token;
@@ -449,6 +462,7 @@ public class MainViewModel : ViewModelBase {
     public RangeObservableCollection<Paycheck> PaychecksWithNone { get; } = new();
 
     private RangeObservableCollection<Account> _accounts = new();
+
     public RangeObservableCollection<Account> Accounts {
         get => _accounts;
         set {
@@ -480,6 +494,101 @@ public class MainViewModel : ViewModelBase {
     public RangeObservableCollection<BudgetBucket> BucketsWithNone { get; } = new();
 
     public RangeObservableCollection<SubCategory> SubCategories { get; } = new();
+
+    private SubCategory? _selectedSubCategory;
+    private SubCategory? _editingSubCategoryClone;
+    private bool _isEditingSubCategory;
+    private Category? _selectedCategory;
+    private Category? _editingCategoryClone;
+    private bool _isEditingCategory;
+
+    public RangeObservableCollection<Category> Categories { get; }
+        = new RangeObservableCollection<Category>();
+
+    public RangeObservableCollection<Category> CategoriesWithNone { get; }
+        = new RangeObservableCollection<Category>();
+
+    public SubCategory? SelectedSubCategory {
+        get => _selectedSubCategory;
+        set {
+            if (SetProperty(ref _selectedSubCategory, value)) {
+                OnPropertyChanged(nameof(CanEditSubCategory));
+                EditSubCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public SubCategory? EditingSubCategoryClone {
+        get => _editingSubCategoryClone;
+        set => SetProperty(ref _editingSubCategoryClone, value);
+    }
+
+    public bool IsEditingSubCategory {
+        get => _isEditingSubCategory;
+        set {
+            if (SetProperty(ref _isEditingSubCategory, value)) {
+                OnPropertyChanged(nameof(IsNotEditingSubCategory));
+                OnPropertyChanged(nameof(CanEditSubCategory));
+                AddSubCategoryCommand.NotifyCanExecuteChanged();
+                EditSubCategoryCommand.NotifyCanExecuteChanged();
+                CancelSubCategoryCommand.NotifyCanExecuteChanged();
+                SaveSubCategoryCommand.NotifyCanExecuteChanged();
+                DeleteSubCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsNotEditingSubCategory => !IsEditingSubCategory;
+    public bool CanEditSubCategory => SelectedSubCategory != null;
+
+// Commands
+    public IRelayCommand AddSubCategoryCommand { get; }
+    public IRelayCommand EditSubCategoryCommand { get; }
+    public IRelayCommand SaveSubCategoryCommand { get; }
+    public IRelayCommand CancelSubCategoryCommand { get; }
+    public IRelayCommand DeleteSubCategoryCommand { get; }
+
+
+    // Properties
+    public Category? SelectedCategory {
+        get => _selectedCategory;
+        set {
+            if (SetProperty(ref _selectedCategory, value)) {
+                OnPropertyChanged(nameof(CanEditCategory));
+                EditCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+    
+    public Category? EditingCategoryClone {
+        get => _editingCategoryClone;
+        set => SetProperty(ref _editingCategoryClone, value);
+    }
+
+    public bool IsEditingCategory {
+        get => _isEditingCategory;
+        set {
+            if (SetProperty(ref _isEditingCategory, value)) {
+                OnPropertyChanged(nameof(IsNotEditingCategory));
+                OnPropertyChanged(nameof(CanEditCategory));
+                AddCategoryCommand.NotifyCanExecuteChanged();
+                EditCategoryCommand.NotifyCanExecuteChanged();
+                CancelCategoryCommand.NotifyCanExecuteChanged();
+                SaveCategoryCommand.NotifyCanExecuteChanged();
+                DeleteCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public bool IsNotEditingCategory => !IsEditingCategory;
+    public bool CanEditCategory => SelectedCategory != null;
+
+    // Commands
+    public IRelayCommand AddCategoryCommand { get; }
+    public IRelayCommand EditCategoryCommand { get; }
+    public IRelayCommand SaveCategoryCommand { get; }
+    public IRelayCommand CancelCategoryCommand { get; }
+    public IRelayCommand DeleteCategoryCommand { get; }
 
     public RangeObservableCollection<SubCategory> SubCategoriesWithNone { get; } = new();
 
@@ -594,7 +703,7 @@ public class MainViewModel : ViewModelBase {
             }
         }
     }
-    
+
     public RangeObservableCollection<Transaction> CurrentPeriodTransactions { get; } = new();
 
     public string ToggleReconciliationText {
@@ -626,7 +735,7 @@ public class MainViewModel : ViewModelBase {
             _cts.Cancel();
             _cts.Dispose();
         }
-        
+
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
 
@@ -1216,7 +1325,7 @@ public class MainViewModel : ViewModelBase {
     }
 
     #endregion
-    
+
     private bool _isLoadingData;
 #pragma warning disable CS0414 // Field is assigned but its value is never used
     private bool _isLoadingAccountData;
@@ -1232,6 +1341,9 @@ public class MainViewModel : ViewModelBase {
 #pragma warning restore CS0414 // Field is assigned but its value is never used
 #pragma warning disable CS0414 // Field is assigned but its value is never used
     private bool _isLoadingSubCategoryData;
+#pragma warning restore CS0414 // Field is assigned but its value is never used
+#pragma warning disable CS0414 // Field is assigned but its value is never used
+    private bool _isLoadingCategoryData;
 #pragma warning restore CS0414 // Field is assigned but its value is never used
 
     #region Events
@@ -1310,7 +1422,7 @@ public class MainViewModel : ViewModelBase {
                 UpdateBucketWarningMetrics();
                 return;
             }
-            
+
             if (e.PropertyName == nameof(PeriodBucket.BudgetExceeded)) return;
             await _budgetService.UpsertPeriodBucketAsync(pb);
             await LoadPeriodDataAsync();
@@ -1369,7 +1481,9 @@ public class MainViewModel : ViewModelBase {
                 ToAccountId = SelectedBill.ToAccountId, NextDueDate = SelectedBill.NextDueDate,
                 IsPrincipalOnly = SelectedBill.IsPrincipalOnly,
                 Category = SelectedBill.Category, IsActive = SelectedBill.IsActive,
-                IsArchived = SelectedBill.IsArchived
+                IsArchived = SelectedBill.IsArchived,
+                BucketId = SelectedBill.BucketId,
+                SubCategoryId = SelectedBill.SubCategoryId
             };
             IsEditingBill = true;
         }
@@ -1413,16 +1527,16 @@ public class MainViewModel : ViewModelBase {
             }
 
             var selectedBillId = SelectedBill?.Id;
-            
+
             IsEditingBill = false;
             EditingBillClone = null;
-            
+
             await LoadBillDataAsync();
-            
+
             if (selectedBillId.HasValue) {
                 SelectedBill = Bills.FirstOrDefault(a => a.Id == selectedBillId);
             }
-            
+
             await LoadPeriodDataAsync();
             RequestProjectionRecalculation();
         }
@@ -1444,6 +1558,8 @@ public class MainViewModel : ViewModelBase {
         target.Category = clone.Category;
         target.IsActive = clone.IsActive;
         target.IsPrincipalOnly = clone.IsPrincipalOnly;
+        target.BucketId = clone.BucketId;
+        target.SubCategoryId = clone.SubCategoryId;
     }
 
     private void CancelBill() {
@@ -1519,16 +1635,16 @@ public class MainViewModel : ViewModelBase {
             }
 
             var selectedPeriodBillId = SelectedPeriodBill?.Id;
-            
+
             IsEditingPeriodBill = false;
             EditingPeriodBillClone = null;
-            
+
             await LoadPeriodDataAsync();
-            
+
             if (selectedPeriodBillId.HasValue) {
                 SelectedPeriodBill = CurrentPeriodBills.FirstOrDefault(a => a.Id == selectedPeriodBillId);
             }
-            
+
             RequestProjectionRecalculation();
         }
         catch (Exception ex) {
@@ -1537,7 +1653,7 @@ public class MainViewModel : ViewModelBase {
                 MessageBoxImage.Error);
         }
     }
-    
+
     private void CancelPeriodBill() {
         try {
             IsEditingPeriodBill = false;
@@ -1592,10 +1708,10 @@ public class MainViewModel : ViewModelBase {
         try {
             EditingBucketClone = new BudgetBucket { Name = "New Bucket", ExpectedAmount = 0 };
             SelectedBucket = null;
-            
+
             // Populate selectable subcategories and mark currently assigned ones
             PopulateEditableSubCategories(bucketId: null);
-            
+
             IsEditingBucket = true;
         }
         catch (Exception ex) {
@@ -1615,37 +1731,33 @@ public class MainViewModel : ViewModelBase {
                 PaycheckId = SelectedBucket.PaycheckId,
                 IsArchived = SelectedBucket.IsArchived
             };
-            
+
             // Populate selectable subcategories and mark currently assigned ones
             PopulateEditableSubCategories(SelectedBucket.Id);
-            
+
             IsEditingBucket = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for bucket.");
         }
     }
-    
-    private void PopulateEditableSubCategories(int? bucketId)
-    {
+
+    private void PopulateEditableSubCategories(int? bucketId) {
         // Create temporary list in memory first
         var items = new List<SelectableSubCategory>();
-        
-        foreach (var subCat in SubCategories)
-        {
-            var isCurrentlyAssignedToThis = EditingBucketClone!=null
+
+        foreach (var subCat in SubCategories) {
+            var isCurrentlyAssignedToThis = EditingBucketClone != null
                                             && subCat.DefaultBucketId == EditingBucketClone.Id;
 
             // Find the name of the bucket it currently belongs to (if any)
             string? currentBucketName = null;
-            if (subCat.DefaultBucketId.HasValue)
-            {
+            if (subCat.DefaultBucketId.HasValue) {
                 currentBucketName = Buckets
                     .FirstOrDefault(b => b.Id == subCat.DefaultBucketId.Value)?.Name;
             }
 
-            var item = new SelectableSubCategory
-            {
+            var item = new SelectableSubCategory {
                 Id = subCat.Id,
                 Name = subCat.Name,
                 CategoryName = subCat.CategoryName,
@@ -1657,6 +1769,7 @@ public class MainViewModel : ViewModelBase {
 
             items.Add(item);
         }
+
         EditableSubCategories.ReplaceRange(items);
     }
 
@@ -1672,7 +1785,7 @@ public class MainViewModel : ViewModelBase {
                 .Where(x => x.IsSelected)
                 .Select(x => x.Id)
                 .ToList();
-            
+
             if (SelectedBucket != null) {
                 UpdateBucketFromClone(SelectedBucket, EditingBucketClone);
                 await _budgetService.UpsertBucketAsync(SelectedBucket, selectedSubCategoryIds);
@@ -1680,20 +1793,20 @@ public class MainViewModel : ViewModelBase {
             else {
                 await _budgetService.UpsertBucketAsync(EditingBucketClone, selectedSubCategoryIds);
             }
-            
+
             var selectedBucketId = SelectedBucket?.Id;
 
             IsEditingBucket = false;
             EditingBucketClone = null;
-            
+
             await LoadBucketDataAsync();
 
             if (selectedBucketId.HasValue) {
                 SelectedBucket = Buckets.FirstOrDefault(a => a.Id == selectedBucketId);
             }
-            
+
             await LoadPeriodDataAsync();
-            
+
             RequestProjectionRecalculation();
         }
         catch (Exception ex) {
@@ -1739,6 +1852,7 @@ public class MainViewModel : ViewModelBase {
                 await LoadBucketDataAsync();
                 await LoadPeriodDataAsync();
                 await LoadSubCategoryDataAsync();
+                await LoadCategoryDataAsync();
                 RequestProjectionRecalculation();
             }
             catch (Exception ex) {
@@ -1773,7 +1887,7 @@ public class MainViewModel : ViewModelBase {
     private async Task SavePeriodBucketAsync() {
         //until a user customizes a bucket, it uses the budgeted bucket and the period bucket is a copy of that.
         if (EditingPeriodBucketClone == null) return;
-        
+
         try {
             if (SelectedPeriodBucket != null) {
                 UpdatePeriodBucketFromClone(SelectedPeriodBucket, EditingPeriodBucketClone);
@@ -1781,18 +1895,18 @@ public class MainViewModel : ViewModelBase {
             else {
                 await _budgetService.UpsertPeriodBucketAsync(EditingPeriodBucketClone);
             }
-            
+
             var selectedPeriodBucketId = SelectedPeriodBucket?.Id;
-            
+
             IsEditingPeriodBucket = false;
             EditingPeriodBucketClone = null;
-            
+
             await LoadPeriodDataAsync();
-            
+
             if (selectedPeriodBucketId.HasValue) {
                 SelectedPeriodBucket = CurrentPeriodBuckets.FirstOrDefault(a => a.Id == selectedPeriodBucketId);
             }
-            
+
             RequestProjectionRecalculation();
         }
         catch (Exception ex) {
@@ -1851,6 +1965,234 @@ public class MainViewModel : ViewModelBase {
 
     #endregion
 
+    #region Category CRUD
+
+    // Command Implementations
+    private void AddCategory() {
+        try {
+            CancelCategory();
+            EditingCategoryClone = new Category { Name = "New Category", SortOrder = 0 };
+            SelectedCategory = null;
+            IsEditingCategory = true;
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error initializing new category.");
+        }
+    }
+
+    private void EditCategory() {
+        try {
+            CancelCategory();
+            if (SelectedCategory == null) return;
+
+            EditingCategoryClone = new Category {
+                Id = SelectedCategory.Id,
+                Name = SelectedCategory.Name,
+                HexColor = SelectedCategory.HexColor,
+                SortOrder = SelectedCategory.SortOrder,
+                IsArchived = SelectedCategory.IsArchived
+            };
+
+            IsEditingCategory = true;
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error entering edit mode for category.");
+        }
+    }
+
+    private async Task SaveCategoryAsync() {
+        if (EditingCategoryClone == null) return;
+
+        try {
+            if (SelectedCategory != null) {
+                UpdateCategoryFromClone(SelectedCategory, EditingCategoryClone);
+                await _budgetService.UpsertCategoryAsync(SelectedCategory);
+            }
+            else {
+                await _budgetService.UpsertCategoryAsync(EditingCategoryClone);
+            }
+
+            var selectedId = SelectedCategory?.Id ?? EditingCategoryClone.Id;
+
+            IsEditingCategory = false;
+            EditingCategoryClone = null;
+
+            await LoadCategoryDataAsync();
+            await LoadSubCategoryDataAsync(); // Refresh subcategories as Category Names might have changed
+
+            if (selectedId > 0) {
+                SelectedCategory = Categories.FirstOrDefault(c => c.Id == selectedId);
+            }
+            
+            RequestProjectionRecalculation();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error saving category.");
+            MessageBox.Show("Failed to save category. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void UpdateCategoryFromClone(Category target, Category clone) {
+        target.Name = clone.Name;
+        target.HexColor = clone.HexColor;
+        target.SortOrder = clone.SortOrder;
+    }
+
+    private void CancelCategory() {
+        IsEditingCategory = false;
+        EditingCategoryClone = null;
+    }
+
+    private async Task DeleteCategoryAsync() {
+        if (EditingCategoryClone == null) return;
+
+        // Guard check: preventing delete if subcategories are assigned
+        bool inUse = await _budgetService.IsCategoryInUseAsync(EditingCategoryClone.Id);
+        if (inUse) {
+            MessageBox.Show(
+                "This category currently has subcategories assigned to it. Delete or reassign those subcategories first.",
+                "Cannot Delete Category", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show("Are you sure you want to delete this category?",
+            "Delete Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+        if (result == MessageBoxResult.Yes) {
+            try {
+                await _budgetService.DeleteCategoryAsync(EditingCategoryClone.Id);
+                IsEditingCategory = false;
+                EditingCategoryClone = null;
+                await LoadCategoryDataAsync();
+                RequestProjectionRecalculation();
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error deleting category.");
+                MessageBox.Show("Failed to delete category.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Subcategory CRUD
+
+    private void AddSubCategory() {
+        try {
+            CancelSubCategory();
+            EditingSubCategoryClone = new SubCategory {
+                CategoryId = Categories.FirstOrDefault()?.Id ?? 0,
+                Name = "New Subcategory",
+                SortOrder = 0
+            };
+            SelectedSubCategory = null;
+            IsEditingSubCategory = true;
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error initializing new subcategory.");
+        }
+    }
+
+    private void EditSubCategory() {
+        try {
+            CancelSubCategory();
+            if (SelectedSubCategory == null) return;
+
+            EditingSubCategoryClone = new SubCategory {
+                Id = SelectedSubCategory.Id,
+                CategoryId = SelectedSubCategory.CategoryId,
+                Name = SelectedSubCategory.Name,
+                DefaultBucketId = SelectedSubCategory.DefaultBucketId,
+                SortOrder = SelectedSubCategory.SortOrder,
+                IsArchived = SelectedSubCategory.IsArchived
+            };
+
+            IsEditingSubCategory = true;
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error entering edit mode for subcategory.");
+        }
+    }
+
+    private async Task SaveSubCategoryAsync() {
+        if (EditingSubCategoryClone == null) return;
+
+        try {
+            if (EditingSubCategoryClone.DefaultBucketId == 0)
+                EditingSubCategoryClone.DefaultBucketId = null;
+
+            if (SelectedSubCategory != null) {
+                UpdateSubCategoryFromClone(SelectedSubCategory, EditingSubCategoryClone);
+                await _budgetService.UpsertSubCategoryAsync(SelectedSubCategory);
+            }
+            else {
+                await _budgetService.UpsertSubCategoryAsync(EditingSubCategoryClone);
+            }
+
+            var selectedId = SelectedSubCategory?.Id ?? EditingSubCategoryClone.Id;
+
+            IsEditingSubCategory = false;
+            EditingSubCategoryClone = null;
+
+            await LoadCategoryDataAsync();
+            await LoadSubCategoryDataAsync();
+
+            if (selectedId > 0) {
+                SelectedSubCategory = SubCategories.FirstOrDefault(s => s.Id == selectedId);
+            }
+            RequestProjectionRecalculation();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error saving subcategory.");
+            MessageBox.Show("Failed to save subcategory. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private void UpdateSubCategoryFromClone(SubCategory target, SubCategory clone) {
+        target.CategoryId = clone.CategoryId;
+        target.Name = clone.Name;
+        target.DefaultBucketId = clone.DefaultBucketId == 0 ? null : clone.DefaultBucketId;
+        target.SortOrder = clone.SortOrder;
+    }
+
+    private void CancelSubCategory() {
+        IsEditingSubCategory = false;
+        EditingSubCategoryClone = null;
+    }
+
+    private async Task DeleteSubCategoryAsync() {
+        if (EditingSubCategoryClone == null) return;
+
+        bool inUse = await _budgetService.IsSubCategoryInUseAsync(EditingSubCategoryClone.Id);
+        if (inUse) {
+            MessageBox.Show("This subcategory is currently assigned to existing transactions and cannot be deleted.",
+                "Cannot Delete", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var result = MessageBox.Show("Are you sure you want to delete this subcategory?",
+            "Delete Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+        if (result == MessageBoxResult.Yes) {
+            try {
+                await _budgetService.DeleteSubCategoryAsync(EditingSubCategoryClone.Id);
+                IsEditingSubCategory = false;
+                EditingSubCategoryClone = null;
+                await LoadCategoryDataAsync();
+                await LoadSubCategoryDataAsync();
+                RequestProjectionRecalculation();
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error deleting subcategory.");
+                MessageBox.Show("Failed to delete subcategory.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+    }
+
+    #endregion
+
     #region Transaction CRUD
 
     private void AddTransaction() {
@@ -1865,7 +2207,7 @@ public class MainViewModel : ViewModelBase {
                 FitId = guid
             };
             RefreshTransactionEditState(editTrans);
-            
+
             EditingTransactionClone = editTrans;
             EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
 
@@ -1884,14 +2226,14 @@ public class MainViewModel : ViewModelBase {
             if (EditingTransactionClone != null) {
                 EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
             }
-            
+
             var editTrans = SelectedTransaction.Clone();
-            
+
             RefreshTransactionEditState(editTrans);
-            
+
             EditingTransactionClone = editTrans;
             EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
-            
+
             IsEditingTransaction = true;
         }
         catch (Exception ex) {
@@ -1940,7 +2282,7 @@ public class MainViewModel : ViewModelBase {
 
         var accountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
         accountsWithNone.AddRange(filteredAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
-        
+
         TransactionAccounts.Clear();
         TransactionAccounts.AddRange(accountsWithNone);
 
@@ -1949,7 +2291,8 @@ public class MainViewModel : ViewModelBase {
             : Accounts.ToList();
 
         // If the transaction has a to-account that is NOT in the list, we should still show it
-        if (source.ToAccountId != null && source.ToAccountId != 0 && filteredToAccounts.All(a => a.Id != source.ToAccountId)) {
+        if (source.ToAccountId != null && source.ToAccountId != 0 &&
+            filteredToAccounts.All(a => a.Id != source.ToAccountId)) {
             var missingAccount = toAccount;
             if (missingAccount != null) {
                 filteredToAccounts.Add(missingAccount);
@@ -1958,7 +2301,7 @@ public class MainViewModel : ViewModelBase {
 
         var toAccountsWithNone = new List<Account> { new Account { Id = 0, Name = "(None)" } };
         toAccountsWithNone.AddRange(filteredToAccounts.OrderBy(a => a.IsArchived).ThenBy(a => a.Name));
-        
+
         TransactionToAccounts.Clear();
         TransactionToAccounts.AddRange(toAccountsWithNone);
     }
@@ -1982,7 +2325,7 @@ public class MainViewModel : ViewModelBase {
             }
 
             var selectedTransactionId = SelectedTransaction?.Id;
-            
+
             IsEditingTransaction = false;
             EditingTransactionClone = null;
 
@@ -1991,7 +2334,7 @@ public class MainViewModel : ViewModelBase {
             if (selectedTransactionId.HasValue) {
                 SelectedTransaction = CurrentPeriodTransactions.FirstOrDefault(a => a.Id == selectedTransactionId);
             }
-            
+
             RequestProjectionRecalculation();
         }
         catch (Exception ex) {
@@ -2113,16 +2456,16 @@ public class MainViewModel : ViewModelBase {
             }
 
             var selectedPaycheckId = SelectedPaycheck?.Id;
-            
+
             IsEditingPaycheck = false;
             EditingPaycheckClone = null;
 
             await LoadPaycheckDataAsync();
-            
+
             if (selectedPaycheckId.HasValue) {
                 SelectedPaycheck = Paychecks.FirstOrDefault(a => a.Id == selectedPaycheckId);
             }
-            
+
             await LoadPeriodDataAsync();
             RefreshPaychecks();
             LoadPaychecks();
@@ -2287,6 +2630,7 @@ public class MainViewModel : ViewModelBase {
                     SetAccountAprRatesCommand.Execute(EditingAccountClone);
                     return;
                 }
+
                 var selectedAccountId = SelectedAccount?.Id;
                 if (SelectedAccount != null) {
                     UpdateAccountFromClone(SelectedAccount, EditingAccountClone);
@@ -2355,16 +2699,16 @@ public class MainViewModel : ViewModelBase {
                         }
                     }
                 }
-                
+
                 IsEditingAccount = false;
                 EditingAccountClone = null;
-                
+
                 await LoadAccountDataAsync();
-                
+
                 if (selectedAccountId.HasValue) {
                     SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
                 }
-                
+
                 await LoadPeriodDataAsync();
 
                 RequestProjectionRecalculation();
@@ -2540,7 +2884,7 @@ public class MainViewModel : ViewModelBase {
             else {
                 primaryAnalysis = "Strategy matches your standard baseline plan.";
             }
-            
+
             return $"{primaryAnalysis}";
         }
     }
@@ -2599,12 +2943,13 @@ public class MainViewModel : ViewModelBase {
                 var rawPaycheckTransactions = await _budgetService.GetAllPaycheckTransactionsAsync();
                 var rawBillTransactions = await _budgetService.GetBillTransactionsAsync();
                 var rawBucketTransactions = await _budgetService.GetBucketTransactionsAsync();
-                var rawAllTransactions = (await _budgetService.GetAllTransactionsAsync(start.AddDays(-30), end.AddDays(30))).ToList();
+                var rawAllTransactions =
+                    (await _budgetService.GetAllTransactionsAsync(start.AddDays(-30), end.AddDays(30))).ToList();
 
                 var transactions = showReconciled
                     ? rawAllTransactions
                     : (await _budgetService.GetAllUnreconciledTransactionsAsync()).ToList();
-                
+
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // CLONE/COPY TRANSACTIONS BEFORE MUTATING TO PREVENT SHARED STATE DATA RACES
@@ -2827,6 +3172,9 @@ public class MainViewModel : ViewModelBase {
             await Task.Yield();
 
             await LoadBucketDataAsync();
+            await Task.Yield();
+
+            await LoadCategoryDataAsync();
             await Task.Yield();
 
             await LoadSubCategoryDataAsync();
@@ -3087,6 +3435,57 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
+    private async Task LoadCategoryDataAsync() {
+        Log.Information("Loading all category data.");
+        _isLoadingCategoryData = true;
+        try {
+            // 1. Unsubscribe old items from both collections to prevent memory leaks
+            foreach (var item in Categories) {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
+
+            foreach (var item in CategoriesWithNone) {
+                item.PropertyChanged -= Item_PropertyChanged;
+            }
+
+            // 2. Clear both collections
+            Categories.Clear();
+            // SubCategoriesWithNone.Clear();
+
+            // 3. Query and order new items into a concrete list
+            var categoriesList = (await _budgetService.GetAllCategoriesAsync(true))
+                .OrderBy(b => b.Name)
+                .ToList();
+
+            // 4. Attach event handlers to all loaded subcategories
+            foreach (var b in categoriesList) {
+                b.PropertyChanged += Item_PropertyChanged;
+            }
+
+            // 5. Prepare the "None" list (pre-allocated capacity)
+            var unarchivedCategories = categoriesList.Where(b => !b.IsArchived).ToList();
+            var categoriesWithNoneList = new List<Category>(unarchivedCategories.Count + 1) {
+                new Category { Id = 0, Name = "(None)" }
+            };
+            categoriesWithNoneList.AddRange(unarchivedCategories);
+
+            // 6. Batch add using RangeObservableCollection (fires 1 layout update per collection)
+            Categories.AddRange(categoriesList);
+            CategoriesWithNone.AddRange(categoriesWithNoneList);
+
+            Log.Information("Category data loaded successfully. Categories: {CategoryCount}",
+                Categories.Count);
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Failed to load sub category data.");
+            MessageBox.Show("Failed to load sub category data. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        finally {
+            _isLoadingSubCategoryData = false;
+        }
+    }
+
     private async Task LoadPaycheckDataAsync() {
         Log.Information("Loading Paycheck data.");
         _isLoadingPaycheckData = true;
@@ -3210,17 +3609,17 @@ public class MainViewModel : ViewModelBase {
             }
 
             projectedBillsForPeriod = projectedBillsForPeriod.OrderBy(pb => pb.DueDate).ToList();
-            
+
             foreach (var item in CurrentPeriodBills) {
                 item.PropertyChanged -= PeriodBill_PropertyChanged;
             }
-            
+
             CurrentPeriodBills.Clear();
-            
+
             foreach (var b in projectedBillsForPeriod) {
                 b.PropertyChanged += PeriodBill_PropertyChanged;
             }
-            
+
             CurrentPeriodBills.AddRange(projectedBillsForPeriod);
 
             UpdateWarningMetrics();
@@ -3251,21 +3650,18 @@ public class MainViewModel : ViewModelBase {
                 }
             }
 
-            
-            foreach (var item in CurrentPeriodBuckets)
-            {
+
+            foreach (var item in CurrentPeriodBuckets) {
                 item.PropertyChanged -= PeriodBill_PropertyChanged;
             }
-            
+
             CurrentPeriodBuckets.Clear();
-            
-            foreach (var b in pBuckets)
-            {
+
+            foreach (var b in pBuckets) {
                 b.PropertyChanged += PeriodBill_PropertyChanged;
             }
 
             CurrentPeriodBuckets.AddRange(pBuckets);
-            
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period buckets.");
@@ -3303,10 +3699,9 @@ public class MainViewModel : ViewModelBase {
             var nextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
             var transactions = (await _budgetService.GetTransactionsAsync(CurrentPeriodDate, nextPeriodDate)).ToList();
             transactions = transactions.OrderBy(pb => pb.TransactionDate).ToList();
-            
+
             var temp = new List<Transaction>(transactions.Count);
-            foreach (var b in transactions)
-            {
+            foreach (var b in transactions) {
                 temp.Add(b);
             }
 
@@ -3390,15 +3785,15 @@ public class MainViewModel : ViewModelBase {
                 Owner = Application.Current.MainWindow
             };
             window.ShowDialog();
-            
+
             var selectedAccountId = SelectedAccount.Id;
-            
+
             await LoadAccountDataAsync();
-            
+
             SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
-            
+
             await LoadPeriodDataAsync();
-            
+
             RequestProjectionRecalculation();
         }
         catch (Exception ex) {
@@ -3415,15 +3810,15 @@ public class MainViewModel : ViewModelBase {
                 Owner = Application.Current.MainWindow
             };
             window.ShowDialog();
-            
+
             var selectedAccountId = SelectedAccount.Id;
-            
+
             await LoadAccountDataAsync();
-            
+
             SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
-            
+
             await LoadPeriodDataAsync();
-            
+
             RequestProjectionRecalculation();
         }
         catch (Exception ex) {
@@ -3460,8 +3855,7 @@ public class MainViewModel : ViewModelBase {
             }
 
             var temp = new List<Paycheck>(allPaychecks.Count);
-            foreach (var b in allPaychecks)
-            {
+            foreach (var b in allPaychecks) {
                 temp.Add(b);
             }
 
@@ -3684,7 +4078,7 @@ public class MainViewModel : ViewModelBase {
 
     private void ApplyDefaultBucketForSubCategory() {
         if (EditingTransactionClone == null) return;
-        
+
         // 1. Only auto-fill if it's a NEW transaction (Id == 0)
         // 2. AND a SubCategoryId is selected
         // 3. AND the user hasn't already picked a Bucket

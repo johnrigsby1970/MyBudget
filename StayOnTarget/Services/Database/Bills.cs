@@ -30,17 +30,20 @@ public partial class BudgetService
             NextDueDate = bill.NextDueDate?.ToString("yyyy-MM-dd"),
             bill.Category,
             bill.IsActive,
-            bill.IsPrincipalOnly
+            bill.IsPrincipalOnly,
+            bill.BucketId,
+            bill.SubCategoryId
         };
         if (bill.Id == 0)
         {
-            await conn.ExecuteAsync(@"INSERT INTO Bills (Name, ExpectedAmount, Frequency, DueDay, AccountId, ToAccountId, NextDueDate, Category, IsActive, IsPrincipalOnly) 
-                           VALUES (@Name, @ExpectedAmount, @Frequency, @DueDay, @AccountId, @ToAccountId, @NextDueDate, @Category, @IsActive, @IsPrincipalOnly)", param);
+            bill.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Bills (Name, ExpectedAmount, Frequency, DueDay, AccountId, ToAccountId, NextDueDate, Category, IsActive, IsPrincipalOnly, BucketId, SubCategoryId) 
+                           VALUES (@Name, @ExpectedAmount, @Frequency, @DueDay, @AccountId, @ToAccountId, @NextDueDate, @Category, @IsActive, @IsPrincipalOnly, @BucketId, @SubCategoryId);
+                SELECT last_insert_rowid();", param);
         }
         else
         {
             await conn.ExecuteAsync(@"UPDATE Bills SET Name=@Name, ExpectedAmount=@ExpectedAmount, Frequency=@Frequency, 
-                           DueDay=@DueDay, AccountId=@AccountId, ToAccountId=@ToAccountId, NextDueDate=@NextDueDate, Category=@Category, IsActive=@IsActive, IsPrincipalOnly=@IsPrincipalOnly WHERE Id=@Id", param);
+                           DueDay=@DueDay, AccountId=@AccountId, ToAccountId=@ToAccountId, NextDueDate=@NextDueDate, Category=@Category, IsActive=@IsActive, IsPrincipalOnly=@IsPrincipalOnly, BucketId=@BucketId, SubCategoryId=@SubCategoryId WHERE Id=@Id", param);
         }
     }   
     

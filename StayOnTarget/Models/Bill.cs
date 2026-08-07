@@ -88,4 +88,16 @@ public class Bill : ViewModelBase
         get => _isPrincipalOnly;
         set => SetProperty(ref _isPrincipalOnly, value);
     }
+    
+    private int? _bucketId;
+    public int? BucketId {
+        get => _bucketId;
+        set => SetProperty(ref _bucketId, value);
+    }
+    
+    private int? _subCategoryId;
+    public int? SubCategoryId {
+        get => _subCategoryId;
+        set => SetProperty(ref _subCategoryId, value);
+    }
 }

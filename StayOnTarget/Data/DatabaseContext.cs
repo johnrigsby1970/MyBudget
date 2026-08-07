@@ -220,6 +220,8 @@ public class DatabaseContext {
                 Category TEXT,
                 IsPrincipalOnly INTEGER DEFAULT 0,
                 IsActive INTEGER DEFAULT 1,
+                BucketId INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL, 
+                SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL,
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
                 FOREIGN KEY(ToAccountId) REFERENCES Accounts(Id)
             );
@@ -616,6 +618,24 @@ END;
                 connection.Execute("ALTER TABLE MortgageDetails ADD COLUMN StatementDay INTEGER NOT NULL DEFAULT 1;");
             }
 
+            var billsBucketIdColumnExists = connection.ExecuteScalar<int>(@"
+    SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='BucketId'");
+
+            if (billsBucketIdColumnExists == 0) 
+            {
+                connection.Execute(
+                    "ALTER TABLE Bills ADD COLUMN BucketId INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL;");
+            }
+
+            var billsSubCategoryIdColumnExists = connection.ExecuteScalar<int>(@"
+    SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='SubCategoryId'");
+
+            if (billsSubCategoryIdColumnExists == 0) 
+            {
+                connection.Execute(
+                    "ALTER TABLE Bills ADD COLUMN SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL;");
+            }
+            
             CategorySeeder.SeedDefaultCategories(connection);
 
             connection.Execute("PRAGMA foreign_keys = ON;");

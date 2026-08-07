@@ -6,6 +6,7 @@ public class Category: ViewModelBase
 {
     private bool _isArchived;
     private int _sortOrder;
+    private string _hexColor = "#FF0000FF"; // Default to Blue
     
     private int _id;
     public int Id 
@@ -41,6 +42,11 @@ public class Category: ViewModelBase
         set => SetProperty(ref _isArchived, value);
     }
     
+    public string HexColor
+    {
+        get => _hexColor;
+        set => SetProperty(ref _hexColor, value);
+    }
     
     public List<SubCategory> Subcategories { get; set; } = new();
 }

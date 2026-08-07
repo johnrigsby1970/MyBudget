@@ -17,7 +17,7 @@ public class SubCategory : ViewModelBase
     private int _categoryId;
     public int CategoryId 
     {
-        get => _id;
+        get => _categoryId;
         set => SetProperty(ref _categoryId, value);
     }
 
@@ -58,6 +58,14 @@ public class SubCategory : ViewModelBase
     {
         get => _categoryName;
         set => SetProperty(ref _categoryName, value);
+    }
+    
+    // Display-only helper populated during join or view load
+    private string? _defaultBucketName;
+    public string? DefaultBucketName
+    {
+        get => _defaultBucketName;
+        set => SetProperty(ref _defaultBucketName, value);
     }
 
 }
