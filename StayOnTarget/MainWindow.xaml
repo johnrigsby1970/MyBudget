@@ -759,10 +759,10 @@
                                                              Margin="5" />
 
                                                     <Label Grid.Column="2" Content="Budgeted:" />
+                                   
                                                     <controls:NumericTextBox Grid.Column="3"
-                                                                             helpers1:TextBoxBehavior.IsNumericOnly="True"
-                                                                             Text="{Binding EditingPeriodBillClone.ActualAmount, UpdateSourceTrigger=PropertyChanged}"
-                                                                             Margin="5" />
+                                                                             Text="{Binding EditingPeriodBillClone.ActualAmount, UpdateSourceTrigger=PropertyChanged}" 
+                                                                             Margin="5"/>
                                                 </Grid>
                                             </StackPanel>
                                         </Grid>

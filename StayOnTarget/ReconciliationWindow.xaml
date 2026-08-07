@@ -271,11 +271,11 @@
                         <Label Grid.Row="0" Grid.Column="1" Content="{Binding NewReconciledBalance, StringFormat={}{0:0.00;-0.00;''}}" Margin="0,0" />
                         
                         <Label Grid.Row="1" Grid.Column="0" Content="Today's value:" Margin="0,5,0,5" />
-                        <TextBox  Grid.Row="1" Grid.Column="1" 
-                                  helpers1:TextBoxBehavior.IsNumericOnly="True"
-                                  HorizontalAlignment="Left"
-                                  Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}"
-                                  Width="80" Margin="0,5,0,5" />
+                        
+                        <controls:NumericTextBox Grid.Row="1" Grid.Column="1" 
+                                                 Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged}" 
+                                                 Width="80" 
+                                                 Margin="0,5,0,5"/>
                         
                         <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"  Margin="0,5,0,5" />
                         

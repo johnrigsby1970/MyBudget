@@ -7,6 +7,7 @@
              xmlns:helpers="clr-namespace:StayOnTarget"
              xmlns:converters="clr-namespace:StayOnTarget.Converters"
              xmlns:helpers1="clr-namespace:StayOnTarget.Helpers"
+             xmlns:controls="clr-namespace:StayOnTarget.Controls"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     
@@ -101,11 +102,10 @@ Planning for mandatory bills first keeps your target on track and stress-free." 
                                                   SelectedItem="{Binding EditingBill.Frequency}" Margin="5" />
                                         
                                         <Label Grid.Column="2" Grid.Row="2"  Grid.ColumnSpan="2" Content="Budgeted:" />
-                                        <TextBox Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="3"
-                                                 helpers1:TextBoxBehavior.IsNumericOnly="True"
-                                                 Text="{Binding EditingBill.ExpectedAmount, UpdateSourceTrigger=PropertyChanged, Delay=500, StringFormat={}{0:0.00;-0.00;''}}"
-                                                 Margin="5" />
-                                        
+                                       
+                                        <controls:NumericTextBox Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="3"
+                                                                 Text="{Binding EditingBill.ExpectedAmount, UpdateSourceTrigger=PropertyChanged}" 
+                                                                 Margin="5"/>
                                         
                                         <Label Grid.Column="0" Grid.Row="4"  Grid.ColumnSpan="2" Content="Due Day:">
                                             <Label.Style>

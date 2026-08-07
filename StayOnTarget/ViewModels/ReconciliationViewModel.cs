@@ -361,6 +361,8 @@ public partial class ReconciliationViewModel : ViewModelBase {
             TransactionDate = DateTime.Today,
             Description = delta > 0 ? "Value Increase" : "Value Decrease",
             Memo = AdjustmentTransactionMemo,
+            FromAccountIsCleared = delta > 0 ? null : true,
+            ToAccountIsCleared = delta > 0 ? true : null,
             Amount = Math.Abs(delta)
         };
 
