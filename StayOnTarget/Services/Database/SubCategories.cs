@@ -12,7 +12,7 @@ public partial class BudgetService
         await conn.OpenAsync();
 
         return await conn.QueryAsync<SubCategory>(
-            "SELECT * FROM SubCategories WHERE IsArchived = 0 OR @includeArchived = 1 ORDER BY SortOrder, Name", 
+            "SELECT SubCategories.*, Categories.Name As CategoryName FROM SubCategories INNER JOIN Categories ON SubCategories.CategoryId = Categories.Id WHERE SubCategories.IsArchived = 0 OR @includeArchived = 1 ORDER BY SubCategories.SortOrder, SubCategories.Name", 
             new { includeArchived = includeArchived ? 1 : 0 });
     }
 

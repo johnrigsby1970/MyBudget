@@ -99,6 +99,9 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
+    public RangeObservableCollection<SelectableSubCategory> EditableSubCategories { get; } 
+        = new RangeObservableCollection<SelectableSubCategory>();
+    
     public RangeObservableCollection<ProjectionItem> SnowballProjections { get; } = new();
     
     public bool IsBucketDescriptionExpanded {
@@ -1256,7 +1259,7 @@ public class MainViewModel : ViewModelBase {
                     await _budgetService.UpsertAccountAsync(a);
                     break;
                 case BudgetBucket bb:
-                    await _budgetService.UpsertBucketAsync(bb);
+                    await _budgetService.UpsertBucketAsync(bb, null);
                     break;
             }
 
@@ -1589,6 +1592,10 @@ public class MainViewModel : ViewModelBase {
         try {
             EditingBucketClone = new BudgetBucket { Name = "New Bucket", ExpectedAmount = 0 };
             SelectedBucket = null;
+            
+            // Populate selectable subcategories and mark currently assigned ones
+            PopulateEditableSubCategories(bucketId: null);
+            
             IsEditingBucket = true;
         }
         catch (Exception ex) {
@@ -1608,11 +1615,49 @@ public class MainViewModel : ViewModelBase {
                 PaycheckId = SelectedBucket.PaycheckId,
                 IsArchived = SelectedBucket.IsArchived
             };
+            
+            // Populate selectable subcategories and mark currently assigned ones
+            PopulateEditableSubCategories(SelectedBucket.Id);
+            
             IsEditingBucket = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for bucket.");
         }
+    }
+    
+    private void PopulateEditableSubCategories(int? bucketId)
+    {
+        // Create temporary list in memory first
+        var items = new List<SelectableSubCategory>();
+        
+        foreach (var subCat in SubCategories)
+        {
+            var isCurrentlyAssignedToThis = EditingBucketClone!=null
+                                            && subCat.DefaultBucketId == EditingBucketClone.Id;
+
+            // Find the name of the bucket it currently belongs to (if any)
+            string? currentBucketName = null;
+            if (subCat.DefaultBucketId.HasValue)
+            {
+                currentBucketName = Buckets
+                    .FirstOrDefault(b => b.Id == subCat.DefaultBucketId.Value)?.Name;
+            }
+
+            var item = new SelectableSubCategory
+            {
+                Id = subCat.Id,
+                Name = subCat.Name,
+                CategoryName = subCat.CategoryName,
+                CurrentBucketId = subCat.DefaultBucketId,
+                CurrentBucketName = currentBucketName,
+                EditingBucketId = EditingBucketClone?.Id ?? 0,
+                IsSelected = isCurrentlyAssignedToThis
+            };
+
+            items.Add(item);
+        }
+        EditableSubCategories.ReplaceRange(items);
     }
 
     private async Task SaveBucketAsync() {
@@ -1622,12 +1667,18 @@ public class MainViewModel : ViewModelBase {
             if (EditingBucketClone.AccountId == 0) EditingBucketClone.AccountId = null;
             if (EditingBucketClone.PaycheckId == 0) EditingBucketClone.PaycheckId = null;
 
+            // Get selected subcategory IDs
+            var selectedSubCategoryIds = EditableSubCategories
+                .Where(x => x.IsSelected)
+                .Select(x => x.Id)
+                .ToList();
+            
             if (SelectedBucket != null) {
                 UpdateBucketFromClone(SelectedBucket, EditingBucketClone);
-                await _budgetService.UpsertBucketAsync(SelectedBucket);
+                await _budgetService.UpsertBucketAsync(SelectedBucket, selectedSubCategoryIds);
             }
             else {
-                await _budgetService.UpsertBucketAsync(EditingBucketClone);
+                await _budgetService.UpsertBucketAsync(EditingBucketClone, selectedSubCategoryIds);
             }
             
             var selectedBucketId = SelectedBucket?.Id;
@@ -2409,7 +2460,7 @@ public class MainViewModel : ViewModelBase {
 
                 foreach (var bItem in vm.Buckets) {
                     bItem.Item.AccountId = bItem.TargetAccountId;
-                    await _budgetService.UpsertBucketAsync(bItem.Item);
+                    await _budgetService.UpsertBucketAsync(bItem.Item, null);
                 }
             }
             else {

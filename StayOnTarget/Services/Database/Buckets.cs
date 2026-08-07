@@ -16,14 +16,18 @@ public partial class BudgetService {
             new { includeArchived = includeArchived ? 1 : 0 });
     }
 
-    public async Task UpsertBucketAsync(BudgetBucket bucket) {
+    public async Task UpsertBucketAsync(BudgetBucket bucket, List<int>? subCategoryIds) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
+        using var tx = conn.BeginTransaction();
 
+        try
+        {
         if (bucket.Id == 0) {
-            await conn.ExecuteAsync(@"
+            bucket.Id = await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO Buckets (Name, ExpectedAmount, AccountId, PaycheckId) 
-                VALUES (@Name, @ExpectedAmount, @AccountId, @PaycheckId)", bucket);
+                VALUES (@Name, @ExpectedAmount, @AccountId, @PaycheckId);
+                SELECT last_insert_rowid();", bucket, tx);
         }
         else {
             await conn.ExecuteAsync(@"
@@ -32,7 +36,31 @@ public partial class BudgetService {
                     ExpectedAmount = @ExpectedAmount, 
                     AccountId = @AccountId, 
                     PaycheckId = @PaycheckId 
-                WHERE Id = @Id", bucket);
+                WHERE Id = @Id", bucket, tx);
+        }
+
+        //if screen doesn't allow entering subcategories, possibly during onboarding
+        if (subCategoryIds != null) {
+            // If subcategory -> envelope is Many-to-One (BucketId column on SubCategory table)
+            // 1. Clear existing assignments for this bucket
+            await conn.ExecuteAsync(
+                "UPDATE SubCategories SET DefaultBucketId = NULL WHERE DefaultBucketId = @BucketId",
+                new { BucketId = bucket.Id }, tx);
+
+            // 2. Assign selected subcategories to this bucket
+            if (subCategoryIds.Any()) {
+                await conn.ExecuteAsync(
+                    "UPDATE SubCategories SET DefaultBucketId = @BucketId WHERE Id IN @Ids",
+                    new { BucketId = bucket.Id, Ids = subCategoryIds }, tx);
+            }
+        }
+
+        tx.Commit();
+        }
+        catch
+        {
+            tx.Rollback();
+            throw;
         }
     }
 

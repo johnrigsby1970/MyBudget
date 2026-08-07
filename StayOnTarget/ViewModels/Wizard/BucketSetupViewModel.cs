@@ -62,7 +62,7 @@ public partial class BucketSetupViewModel : ViewModelBase, IWizardStepViewModel
             AccountId = EditingBucket.AccountId
         };
 
-        await DatabaseInitializationContext.BudgetService.UpsertBucketAsync(bucket);
+        await DatabaseInitializationContext.BudgetService.UpsertBucketAsync(bucket, null);
         
         var allBuckets = await DatabaseInitializationContext.BudgetService.GetAllBucketsAsync();
         Buckets.Clear();

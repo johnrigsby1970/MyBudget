@@ -995,52 +995,82 @@
                                     </DataGrid.Columns>
                                 </DataGrid>
                                 <StackPanel Grid.Row="1" Margin="10"
-                                            Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <TextBlock Text="Edit Bucket" FontWeight="Bold" Margin="0,0,0,5" />
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
+            Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}">
+    <TextBlock Text="Edit Bucket" FontWeight="Bold" Margin="0,0,0,5" />
+    
+    <!-- Existing Grid Row 1 (Name / Budgeted) -->
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Label Grid.Column="0" Content="Name:" />
+        <TextBox Grid.Column="1" Text="{Binding EditingBucketClone.Name, UpdateSourceTrigger=PropertyChanged}" Margin="5" />
 
-                                        <Label Grid.Column="0" Content="Name:" />
-                                        <TextBox Grid.Column="1"
-                                                 Text="{Binding EditingBucketClone.Name, UpdateSourceTrigger=PropertyChanged}"
-                                                 Margin="5" />
+        <Label Grid.Column="2" Content="Budgeted:" />
+        <controls:NumericTextBox Grid.Column="3" Text="{Binding EditingBucketClone.ExpectedAmount, UpdateSourceTrigger=PropertyChanged}" Margin="5" />
+    </Grid>
 
-                                        <Label Grid.Column="2" Content="Budgeted:" />
-                                        <controls:NumericTextBox Grid.Column="3"
-                                                                 Text="{Binding EditingBucketClone.ExpectedAmount, UpdateSourceTrigger=PropertyChanged}"
-                                                                 Margin="5" />
-                                    </Grid>
-                                    <Grid Margin="0,5">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
+    <!-- Existing Grid Row 2 (Paid From / Paycheck) -->
+    <Grid Margin="0,5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-                                        <Label Content="Paid From:" />
-                                        <ComboBox Grid.Column="1" ItemsSource="{Binding ActiveAccountsWithNone}"
-                                                  SelectedValue="{Binding EditingBucketClone.AccountId}"
-                                                  SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
+        <Label Content="Paid From:" />
+        <ComboBox Grid.Column="1" ItemsSource="{Binding ActiveAccountsWithNone}"
+                  SelectedValue="{Binding EditingBucketClone.AccountId}"
+                  SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
 
-                                        <Label Grid.Column="2" Grid.Row="0" Content="Paycheck Association:" />
-                                        <ComboBox Grid.Column="3" Grid.Row="0"
-                                                  ItemsSource="{Binding PaychecksWithNone}"
-                                                  SelectedValue="{Binding EditingBucketClone.PaycheckId}"
-                                                  SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
-                                    </Grid>
-                                </StackPanel>
+        <Label Grid.Column="2" Content="Paycheck Association:" />
+        <ComboBox Grid.Column="3" ItemsSource="{Binding PaychecksWithNone}"
+                  SelectedValue="{Binding EditingBucketClone.PaycheckId}"
+                  SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5" />
+    </Grid>
+
+    <!-- NEW: SubCategory Association Section -->
+    <TextBlock Text="Associated Subcategories:" Margin="0,10,0,5" FontWeight="SemiBold" />
+    <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="3" Height="120">
+        <ListBox ItemsSource="{Binding EditableSubCategories}" 
+                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Horizontal" Margin="2">
+                        <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Category > Subcategory -->
+                                <TextBlock Text="{Binding CategoryName}" FontWeight="Bold" Margin="0,0,5,0" />
+                                <TextBlock Text=">" Margin="0,0,5,0" Foreground="Gray" />
+                                <TextBlock Text="{Binding Name}" />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <!-- Status / Warning Label -->
+                        <TextBlock x:Name="StatusText" 
+                                   Text="{Binding AssignmentStatusText}" 
+                                   Margin="10,0,0,0" 
+                                   VerticalAlignment="Center"
+                                   FontStyle="Italic" 
+                                   Foreground="Gray" />
+                    </StackPanel>
+
+                    <DataTemplate.Triggers>
+                        <!-- Highlight in Orange/Red when the subcategory will be moved from another envelope -->
+                        <DataTrigger Binding="{Binding IsReassigned}" Value="True">
+                            <Setter TargetName="StatusText" Property="Foreground" Value="DarkOrange" />
+                            <Setter TargetName="StatusText" Property="FontWeight" Value="SemiBold" />
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+    </Border>
+</StackPanel>
                             </Grid>
                         </DockPanel>
                     </TabItem>

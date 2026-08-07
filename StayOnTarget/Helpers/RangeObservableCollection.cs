@@ -5,7 +5,6 @@ using System.ComponentModel;
 
 namespace StayOnTarget.Helpers;
 
-
 public class RangeObservableCollection<T> : ObservableCollection<T>
 {
     private bool _suppressNotification = false;
@@ -27,13 +26,43 @@ public class RangeObservableCollection<T> : ObservableCollection<T>
         if (items == null) return;
 
         _suppressNotification = true;
-        foreach (var item in items)
+        try
         {
-            Add(item);
+            foreach (var item in items)
+            {
+                Add(item);
+            }
         }
-        _suppressNotification = false;
+        finally
+        {
+            _suppressNotification = false;
+        }
 
         // Raise single notifications for the whole batch
+        OnPropertyChanged(new PropertyChangedEventArgs("Count"));
+        OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+    }
+
+    public void ReplaceRange(IEnumerable<T> items)
+    {
+        if (items == null) return;
+
+        _suppressNotification = true;
+        try
+        {
+            Clear();
+            foreach (var item in items)
+            {
+                Add(item);
+            }
+        }
+        finally
+        {
+            _suppressNotification = false;
+        }
+
+        // Raise single notifications for the complete refresh
         OnPropertyChanged(new PropertyChangedEventArgs("Count"));
         OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
