@@ -3025,7 +3025,8 @@
                                                 </DockPanel>
                                                 <Slider Minimum="0" Maximum="1" TickFrequency="0.05"
                                                         IsSnapToTickEnabled="True"
-                                                        Value="{Binding SnowballOptions.CheckingSafetyThresholdPct, Converter={StaticResource DoubleToDecimalConverter}}"
+                                                        Value="{Binding SnowballOptions.CheckingSafetyThresholdPct, Converter={StaticResource DoubleToDecimalConverter}, 
+                        Delay=300}"
                                                         Margin="0,0,0,5" />
 
                                                 <TextBlock TextWrapping="Wrap"
@@ -3043,7 +3044,8 @@
                                                 </DockPanel>
                                                 <Slider Minimum="0" Maximum="1" TickFrequency="0.05"
                                                         IsSnapToTickEnabled="True"
-                                                        Value="{Binding SnowballOptions.SurplusSweepPercentage, Converter={StaticResource DoubleToDecimalConverter}}"
+                                                        Value="{Binding SnowballOptions.SurplusSweepPercentage, Converter={StaticResource DoubleToDecimalConverter}, 
+                        Delay=300}"
                                                         Margin="0,0,0,5" />
                                                 <TextBlock TextWrapping="Wrap"
                                                            Text="Percentage of extra cash moved toward debt or investments."
