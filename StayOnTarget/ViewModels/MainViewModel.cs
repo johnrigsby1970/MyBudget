@@ -3080,6 +3080,17 @@ public class MainViewModel : ViewModelBase {
             Toasts.Add(toast);
         });
     }
+    
+    public void ShowSuccessToast(string message) {
+        Application.Current.Dispatcher.Invoke(() => {
+            // Avoid duplicate toasts with the same message
+            if (Toasts.Any(t => t.Message == message)) return;
+
+            var toast = new ToastViewModel(message,
+                t => { Application.Current.Dispatcher.Invoke(() => Toasts.Remove(t)); }, ToastType.Success);
+            Toasts.Add(toast);
+        });
+    }
 
     public List<PeriodBill> GetProjectedBillsForPeriod(DateTime periodStart) {
         try {
@@ -4137,7 +4148,7 @@ public class MainViewModel : ViewModelBase {
                 NormalizedDescription = TransactionMatcher.NormalizeName(bill.Name),
                 BillId = projection.BillId,
                 BucketId = null, //future default bucket?
-                SubCategoryId = null, //future default subcategory?
+                SubCategoryId = bill.SubCategoryId, //future default subcategory?
                 FromAccountIsCleared = false // Outstanding until reconciled via CSV/QFX
             };
 
@@ -4147,7 +4158,7 @@ public class MainViewModel : ViewModelBase {
                 SystemSounds.Asterisk.Play(); // Built-in system sound, or use System.Media.SoundPlayer for a custom WAV
 
                 // 4. Trigger Toast Notification
-                ShowToast($"Marked bill {bill.Name} for {bill.ExpectedAmount:C} as paid.");
+                ShowSuccessToast($"Marked bill {bill.Name} for {bill.ExpectedAmount:C} as paid.");
 
                 await LoadPeriodDataAsync();
                 // 5. Refresh grid / remove projection
@@ -4180,7 +4191,7 @@ public class MainViewModel : ViewModelBase {
                 NormalizedDescription = TransactionMatcher.NormalizeName(bill.Name),
                 BillId = bill.Id,
                 BucketId = null, //future default bucket?
-                SubCategoryId = null, //future default subcategory?
+                SubCategoryId = bill.SubCategoryId, //future default subcategory?
                 FromAccountIsCleared = false // Outstanding until reconciled via CSV/QFX
             };
 
@@ -4190,7 +4201,7 @@ public class MainViewModel : ViewModelBase {
                 SystemSounds.Asterisk.Play(); // Built-in system sound, or use System.Media.SoundPlayer for a custom WAV
 
                 // 4. Trigger Toast Notification
-                ShowToast($"Marked bill {bill.Name} for {bill.ExpectedAmount:C} as paid.");
+                ShowSuccessToast($"Marked bill {bill.Name} for {bill.ExpectedAmount:C} as paid.");
 
                 await LoadPeriodDataAsync();
                 // 5. Refresh grid / remove projection
