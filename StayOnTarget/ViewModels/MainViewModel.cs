@@ -211,6 +211,7 @@ public class MainViewModel : ViewModelBase {
         SetThirtyYearCommand = new RelayCommand(() => SetProjectionEndDate(30));
 
         PayBillCommand = new AsyncRelayCommand<ProjectionItem>(PayBillAsync);
+        PayPeriodBillCommand = new AsyncRelayCommand<PeriodBill>(PayPeriodBillAsync);
 
         MapsToBillCommand = new RelayCommand<PeriodBill>(pb => {
             if (pb is null) return;
@@ -281,6 +282,8 @@ public class MainViewModel : ViewModelBase {
     public IRelayCommand ExportTransactionsCommand { get; }
 
     public IAsyncRelayCommand<ProjectionItem> PayBillCommand { get; }
+    
+    public IAsyncRelayCommand<PeriodBill> PayPeriodBillCommand { get; }
 
     private async Task InitializeDataAsync() {
         // Force the dispatcher to render the empty screen/loading state first
@@ -1670,6 +1673,7 @@ public class MainViewModel : ViewModelBase {
         target.ActualAmount = clone.ActualAmount;
         target.DueDate = clone.DueDate;
         target.IsPaid = clone.IsPaid;
+        target.TransactionAmount = clone.TransactionAmount;
     }
 
     private async Task DeleteBillAsync() {
@@ -4145,8 +4149,52 @@ public class MainViewModel : ViewModelBase {
                 // 4. Trigger Toast Notification
                 ShowToast($"Marked bill {bill.Name} for {bill.ExpectedAmount:C} as paid.");
 
+                await LoadPeriodDataAsync();
                 // 5. Refresh grid / remove projection
                 await CalculateProjectionsAsync();
+            }
+            else {
+                throw new Exception($"Failed to record bill payment for {bill.Name}.");
+            }
+        }
+        catch (Exception ex) {
+            // Fail gracefully to UI
+            MessageBox.Show($"Failed to record bill payment: {ex.Message}", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+    
+    private async Task PayPeriodBillAsync(PeriodBill? periodBill) {
+        if (periodBill == null) return;
+
+        try {
+            var bill = Bills.FirstOrDefault(b => b.Id == periodBill.BillId);
+            if (bill == null) return;
+            // 1. Map projection details to a concrete Transaction
+            var transaction = new Transaction {
+                AccountId = bill.AccountId,
+                Amount = -Math.Abs(bill.ExpectedAmount), // Outflow
+                ToAccountId = bill.ToAccountId,
+                TransactionDate = DateTime.Today,
+                Description = bill.Name,
+                NormalizedDescription = TransactionMatcher.NormalizeName(bill.Name),
+                BillId = bill.Id,
+                BucketId = null, //future default bucket?
+                SubCategoryId = null, //future default subcategory?
+                FromAccountIsCleared = false // Outstanding until reconciled via CSV/QFX
+            };
+
+            // 2. Commit transaction to database
+            if (await _budgetService.UpsertTransactionAsync(transaction)) {
+                // 3. Optional: Play audio cue
+                SystemSounds.Asterisk.Play(); // Built-in system sound, or use System.Media.SoundPlayer for a custom WAV
+
+                // 4. Trigger Toast Notification
+                ShowToast($"Marked bill {bill.Name} for {bill.ExpectedAmount:C} as paid.");
+
+                await LoadPeriodDataAsync();
+                // 5. Refresh grid / remove projection
+                RequestProjectionRecalculation();
             }
             else {
                 throw new Exception($"Failed to record bill payment for {bill.Name}.");

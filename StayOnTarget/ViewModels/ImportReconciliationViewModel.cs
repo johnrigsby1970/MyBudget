@@ -499,6 +499,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         // 7. Auto-match pass
         AutoMatchTransactions();
+        await AutoApplySubCategory();
     }
 
     private async Task ParseAndPopulateQfxAsync(string filePath) {
@@ -592,6 +593,16 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         // 8. Auto-match pass
         AutoMatchTransactions();
+        await AutoApplySubCategory();
+
+    }
+    
+    private async Task AutoApplySubCategory() {
+        foreach (var x in ImportedTransactions.Where(x => !x.IsMatched)) {
+            if (x.SubCategoryId == null && !string.IsNullOrWhiteSpace(x.Payee)) {
+                x.SubCategoryId = await _budgetService.GetSuggestedSubCategoryIdAsync(x.Payee, x.Date);
+            }
+        }
     }
 
     private string GetQfxTagValue(string block, string tag) {
