@@ -669,104 +669,92 @@ public static class ProjectionEngineExtensions {
     // }
 
     public static void AddBucketEvents(this List<ProjectionGridItem> events,
-    List<Account> accounts,
-    List<Paycheck> paychecks,
-    List<BudgetBucket> buckets,
-    List<PeriodBucket> periodBuckets,
-    Dictionary<int, decimal> bucketBalances, // Pass local tracking map
-    DateTime current,
-    DateTime endDate) 
-{
-    var today = DateTime.Today;
-    var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
+        List<Account> accounts,
+        List<Paycheck> paychecks,
+        List<BudgetBucket> buckets,
+        List<PeriodBucket> periodBuckets,
+        Dictionary<int, decimal> bucketBalances, // Pass local tracking map
+        DateTime current,
+        DateTime endDate) {
+        var today = DateTime.Today;
+        var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
 
-    foreach (var bucket in buckets) 
-    {
-        if (bucket.Type == BucketType.UpfrontFloor) continue;
+        foreach (var bucket in buckets) {
+            if (bucket.Type == BucketType.UpfrontFloor) continue;
 
-        if (bucket.PaycheckId.HasValue) 
-        {
-            foreach (var pay in paychecks.Where(p => p.Id == bucket.PaycheckId)) 
-            {
-                var nextPay = pay.StartDate;
-                while (nextPay < endDate) 
-                {
-                    var payPeriodEndDate = (pay.Frequency switch {
-                        Frequency.Weekly => nextPay.AddDays(7),
-                        Frequency.BiWeekly => nextPay.AddDays(14),
-                        Frequency.Monthly => nextPay.AddMonths(1),
-                        _ => nextPay.AddYears(100)
-                    }).AddDays(-1);
+            if (bucket.PaycheckId.HasValue) {
+                foreach (var pay in paychecks.Where(p => p.Id == bucket.PaycheckId)) {
+                    var nextPay = pay.StartDate;
+                    while (nextPay < endDate) {
+                        var payPeriodEndDate = (pay.Frequency switch {
+                            Frequency.Weekly => nextPay.AddDays(7),
+                            Frequency.BiWeekly => nextPay.AddDays(14),
+                            Frequency.Monthly => nextPay.AddMonths(1),
+                            _ => nextPay.AddYears(100)
+                        }).AddDays(-1);
 
-                    if (payPeriodEndDate >= today && nextPay >= current &&
-                        (pay.EndDate == null || nextPay <= pay.EndDate)) 
-                    {
-                        var pb = periodBuckets.FirstOrDefault(p =>
-                            p.BucketId == bucket.Id && (p.PeriodDate.Date == nextPay.Date));
+                        if (payPeriodEndDate >= today && nextPay >= current &&
+                            (pay.EndDate == null || nextPay <= pay.EndDate)) {
+                            var pb = periodBuckets.FirstOrDefault(p =>
+                                p.BucketId == bucket.Id && (p.PeriodDate.Date == nextPay.Date));
 
-                        if (bucket.Type == BucketType.AccumulatingDrawdown) {
-                            var s = "";
-                        }
                             decimal amountToUse = GetBucketProjectedAmount(bucket, pb, bucketBalances);
                             decimal actualAmount = amountToUse;
-                            var suffix = (bucket.Type == BucketType.AccumulatingDrawdown) ? "(FUNDED)" :  "(PAID)";
+                            var suffix = (bucket.Type == BucketType.AccumulatingDrawdown) ? "(FUNDED)" : "(PAID)";
                             if (amountToUse > 0) {
                                 // Track the projected contribution into our local balance map
-                                if (bucket.Type == BucketType.AccumulatingDrawdown && (pb== null || pb.Id==0) ) {
+                                if (bucket.Type == BucketType.AccumulatingDrawdown && (pb == null || pb.Id == 0)) {
                                     bucketBalances[bucket.Id] += amountToUse;
                                 }
 
                                 var paidSuffix = (pb != null && pb.IsPaid) ? $" {suffix}" : "";
                                 var fromAccId = bucket.AccountId ?? primaryChecking;
-                                
+
                                 var type = bucket.Type == BucketType.AccumulatingDrawdown
                                     ? ProjectionEngine.ProjectionEventType.AccumulatingDrawdown
                                     : ProjectionEngine.ProjectionEventType.Bucket;
-                                
-                                 if (bucket.Type == BucketType.AccumulatingDrawdown && pb != null) {
-                                     type = ProjectionEngine.ProjectionEventType.Bucket;
-                                     actualAmount = pb.ActualAmount;
-                                     //bucketBalances[bucket.Id] += actualAmount;
-                                 }
+
+                                if (bucket.Type == BucketType.AccumulatingDrawdown && pb != null) {
+                                    type = ProjectionEngine.ProjectionEventType.Bucket;
+                                    actualAmount = pb.ActualAmount;
+                                    //bucketBalances[bucket.Id] += actualAmount;
+                                }
 
                                 events.Add(new ProjectionGridItem(payPeriodEndDate, actualAmount,
-                                        $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
-                                        bucket.Id, null, null,
-                                        type, false, false, false,
-                                        false));
-                                
+                                    $"Bucket: {bucket.Name}{paidSuffix}", fromAccId, null,
+                                    bucket.Id, null, null,
+                                    type, false, false, false,
+                                    false));
                             }
-                        
-                    }
+                        }
 
-                    nextPay = pay.Frequency switch {
-                        Frequency.Weekly => nextPay.AddDays(7),
-                        Frequency.BiWeekly => nextPay.AddDays(14),
-                        Frequency.Monthly => nextPay.AddMonths(1),
-                        _ => nextPay.AddYears(100)
-                    };
+                        nextPay = pay.Frequency switch {
+                            Frequency.Weekly => nextPay.AddDays(7),
+                            Frequency.BiWeekly => nextPay.AddDays(14),
+                            Frequency.Monthly => nextPay.AddMonths(1),
+                            _ => nextPay.AddYears(100)
+                        };
+                    }
                 }
             }
+            // ... (Repeat same logic for non-paycheck-associated buckets)
         }
-        // ... (Repeat same logic for non-paycheck-associated buckets)
-    }
-}
-
-private static decimal GetBucketProjectedAmount(BudgetBucket bucket, PeriodBucket? pb, Dictionary<int, decimal> bucketBalances)
-{
-    if (pb != null) return pb.ActualAmount;
-
-    if (bucket.Type == BucketType.AccumulatingDrawdown)
-    {
-        decimal currentBal = bucketBalances.TryGetValue(bucket.Id, out var b) ? b : bucket.CurrentBalance;
-        decimal shortfall = Math.Max(0, bucket.TargetBalance - currentBal);
-        if (shortfall <= 0) return 0m;
-
-        return Math.Min(bucket.ExpectedAmount, shortfall);
     }
 
-    return bucket.ExpectedAmount;
-}
+    private static decimal GetBucketProjectedAmount(BudgetBucket bucket, PeriodBucket? pb,
+        Dictionary<int, decimal> bucketBalances) {
+        if (pb != null) return pb.ActualAmount;
+
+        if (bucket.Type == BucketType.AccumulatingDrawdown) {
+            decimal currentBal = bucketBalances.TryGetValue(bucket.Id, out var b) ? b : bucket.CurrentBalance;
+            decimal shortfall = Math.Max(0, bucket.TargetBalance - currentBal);
+            if (shortfall <= 0) return 0m;
+
+            return Math.Min(bucket.ExpectedAmount, shortfall);
+        }
+
+        return bucket.ExpectedAmount;
+    }
 
     public static void AddBillEvents(this List<ProjectionGridItem> events,
         List<Account> accounts,
