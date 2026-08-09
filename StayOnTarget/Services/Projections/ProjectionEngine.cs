@@ -39,7 +39,8 @@ public class ProjectionEngine : IProjectionEngine {
         Sweep,
         Final,
         Snowball,
-        Roth
+        Roth,
+        AccumulatingDrawdown
     }
 
     public IEnumerable<ProjectionItem> CalculateProjections(
@@ -62,6 +63,10 @@ public class ProjectionEngine : IProjectionEngine {
         bool useAutoSweep = false,
         SnowballStrategyOptions? snowballOptions = null,
         DateTime? referenceDate = null) {
+        
+        // Local dictionary to track dynamic balance during projection build without mutating input models
+        var bucketBalances = buckets.ToDictionary(b => b.Id, b => b.CurrentBalance);
+        
         var today = referenceDate ?? DateTime.Today;
 
         var effectiveSnowballOptions = snowballOptions ?? new SnowballStrategyOptions();
@@ -73,6 +78,20 @@ public class ProjectionEngine : IProjectionEngine {
         var current = startDate;
 
         var accountBalances = accounts.ToList().ToDictionary(a => a.Id, a => a.Balance);
+        
+        // Deduct Upfront Floor reserves from available balances
+        var primaryCheckingId = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
+
+        foreach (var floorBucket in buckets.Where(b => b.Type == BucketType.UpfrontFloor && b.TargetBalance > 0))
+        {
+            var targetAccountId = floorBucket.AccountId ?? primaryCheckingId;
+            if (targetAccountId.HasValue && accountBalances.ContainsKey(targetAccountId.Value))
+            {
+                // Reserve floor target balance up front
+                accountBalances[targetAccountId.Value] -= floorBucket.TargetBalance;
+            }
+        }
+        
         var accountNames = accounts.ToDictionary(a => a.Id, a => a.Name);
         var moneyAccountIds = accounts.Where(x => x.Type == AccountType.Checking || x.Type == AccountType.Savings)
             .Select(x => x.Id).ToList();
@@ -148,7 +167,7 @@ public class ProjectionEngine : IProjectionEngine {
         events.AddBillEvents(accounts, bills, allBillTransactions, periodBills, current, endDate);
 
         // 3. Create events for Buckets
-        events.AddBucketEvents(accounts, paychecks, buckets, periodBuckets, current, endDate);
+        events.AddBucketEvents(accounts, paychecks, buckets, periodBuckets, bucketBalances, current, endDate);
         // 4. Create events for Transactions
         // We always use uniqueTransactions to build the events list for simulation.
         // This ensures consistent balance reconstruction between ShowReconciled modes.
@@ -424,13 +443,21 @@ public class ProjectionEngine : IProjectionEngine {
             //if the amount spent is greater than the projected amount, the projected amount is set to zero.
             //we overspent the bucket, and to project further spending in this bucket category
             //would require the user to adjust the period bucket. We cannot go negative, so the floor is zero.
-            if (e is { Type: ProjectionEventType.Bucket, BucketId: not null }) {
+            if (e is { Type: ProjectionEventType.Bucket, BucketId: not null } or { Type: ProjectionEventType.AccumulatingDrawdown, BucketId: not null }) {
+                var bucket = buckets.FirstOrDefault(b => b.Id == e.BucketId);
+                if(bucket==null) continue;
                 var periodDate = paycheckDates.LastOrDefault(d => d <= e.Date);
                 if (periodDate != DateTime.MinValue) {
                     var key = (periodDate, e.BucketId.Value);
                     var spent = bucketSpending.ContainsKey(key) ? bucketSpending[key] : 0;
                     var projectedAmount = Math.Abs(e.Amount);
-                    currentEventAmount = -Math.Max(0, projectedAmount - spent);
+                    if(bucket.Type != BucketType.AccumulatingDrawdown)
+                    {
+                        currentEventAmount = -Math.Max(0, projectedAmount - spent);
+                    }
+                    else if (bucket.Type == BucketType.AccumulatingDrawdown) {
+                        currentEventAmount = -Math.Max(0, projectedAmount);
+                    }
                 }
             }
 
@@ -484,7 +511,7 @@ public class ProjectionEngine : IProjectionEngine {
             
             // Handle FromAccountId balance update
             var effectiveFromAccountId = e.FromAccountId ??
-                                         ((e.Type == ProjectionEventType.Bill || e.Type == ProjectionEventType.Bucket || e.Type == ProjectionEventType.Transfer)
+                                         ((e.Type == ProjectionEventType.Bill || e.Type == ProjectionEventType.Bucket  || e.Type == ProjectionEventType.AccumulatingDrawdown || e.Type == ProjectionEventType.Transfer)
                                              ? primaryChecking
                                              : null);
 

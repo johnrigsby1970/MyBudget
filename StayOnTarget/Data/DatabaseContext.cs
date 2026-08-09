@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Serilog;
 using StayOnTarget.Helpers;
 using System;
+using System.Data;
 using System.IO;
 using System.Windows;
 
@@ -234,7 +235,8 @@ public class DatabaseContext {
                 ActualAmount DECIMAL DEFAULT 0,
                 IsPaid INTEGER DEFAULT 0,
                 FitId TEXT NOT NULL,
-                FOREIGN KEY(BillId) REFERENCES Bills(Id)
+                FOREIGN KEY(BillId) REFERENCES Bills(Id)                
+                UNIQUE(BillId, PeriodDate) -- <--- Added composite unique constraint
             );
 
             CREATE TABLE IF NOT EXISTS Paychecks (
@@ -280,6 +282,8 @@ public class DatabaseContext {
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
                 ExpectedAmount DECIMAL NOT NULL,
+                CurrentBalance DECIMAL NOT NULL,
+                InitialBalance DECIMAL NOT NULL,
                 AccountId INTEGER,
                 PaycheckId INTEGER,
                 FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
@@ -294,6 +298,7 @@ public class DatabaseContext {
                 IsPaid INTEGER DEFAULT 0,
                 FitId TEXT NOT NULL,
                 FOREIGN KEY(BucketId) REFERENCES Buckets(Id)
+                UNIQUE(BucketId, PeriodDate) -- <--- Added composite unique constraint
             );
 
             CREATE TABLE IF NOT EXISTS AccountReconciliations (
@@ -635,6 +640,22 @@ END;
                 connection.Execute(
                     "ALTER TABLE Bills ADD COLUMN SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL;");
             }
+
+            MigrateBucketsTable(connection);
+            
+            // 2. Ensure Composite Unique Index Exists for Existing Databases
+            // (This guarantees ON CONFLICT(BucketId, PeriodDate) works even if the table was created before UNIQUE was in DDL)
+            string createIndexSql = @"
+        CREATE UNIQUE INDEX IF NOT EXISTS UX_PeriodBills_BillId_PeriodDate 
+        ON PeriodBills(BillId, PeriodDate);";
+            connection.Execute(createIndexSql);
+            
+            // 2. Ensure Composite Unique Index Exists for Existing Databases
+            // (This guarantees ON CONFLICT(BucketId, PeriodDate) works even if the table was created before UNIQUE was in DDL)
+            createIndexSql = @"
+        CREATE UNIQUE INDEX IF NOT EXISTS UX_PeriodBuckets_BucketId_PeriodDate 
+        ON PeriodBuckets(BucketId, PeriodDate);";
+            connection.Execute(createIndexSql);
             
             CategorySeeder.SeedDefaultCategories(connection);
 
@@ -647,6 +668,28 @@ END;
         catch (Exception ex) {
             Log.Fatal(ex, "Database initialization failed.");
             throw;
+        }
+    }
+    
+    // Usage when restoring/initializing SQLite database
+    public static void MigrateBucketsTable(IDbConnection connection)
+    {
+        EnsureColumnExists(connection, "Buckets", "Type", "INTEGER NOT NULL DEFAULT 0");
+        EnsureColumnExists(connection, "Buckets", "TargetBalance", "NUMERIC NOT NULL DEFAULT 0");
+        EnsureColumnExists(connection, "Buckets", "CurrentBalance", "NUMERIC NOT NULL DEFAULT 0");
+        EnsureColumnExists(connection, "Buckets", "InitialBalance", "NUMERIC NOT NULL DEFAULT 0");
+    }
+    
+    private static void EnsureColumnExists(IDbConnection connection, string tableName, string columnName, string columnDefinition)
+    {
+        var exists = connection.ExecuteScalar<int>($@"
+        SELECT COUNT(*) 
+        FROM pragma_table_info('{tableName}') 
+        WHERE name = @columnName", new { columnName });
+
+        if (exists == 0)
+        {
+            connection.Execute($"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};");
         }
     }
 }

@@ -4,13 +4,19 @@ namespace StayOnTarget.Models;
 
 public class BudgetBucket : ViewModelBase
 {
+    private int _id;
     private string _name = string.Empty;
     private decimal _expectedAmount;
     private int? _accountId;
     private int? _paycheckId;
     private bool _isArchived;
     
-    private int _id;
+    // New Bucket Type Properties
+    private BucketType _type = BucketType.Standard;
+    private decimal _targetBalance;
+    private decimal _currentBalance;
+    private decimal _initialBalance;
+    
     public int Id 
     {
         get => _id;
@@ -23,6 +29,10 @@ public class BudgetBucket : ViewModelBase
         set => SetProperty(ref _name, value);
     }
 
+    /// <summary>
+    /// For Standard buckets: The pay-period allowance.
+    /// For Accumulating/Upfront floors: The pay-period allocation contribution towards the target floor.
+    /// </summary>
     public decimal ExpectedAmount
     {
         get => _expectedAmount;
@@ -45,5 +55,36 @@ public class BudgetBucket : ViewModelBase
     {
         get => _isArchived;
         set => SetProperty(ref _isArchived, value);
+    }
+
+    public BucketType Type
+    {
+        get => _type;
+        set => SetProperty(ref _type, value);
+    }
+
+    /// <summary>
+    /// Target total balance for Upfront and AccumulatingDrawdown floors.
+    /// </summary>
+    public decimal TargetBalance
+    {
+        get => _targetBalance;
+        set => SetProperty(ref _targetBalance, value);
+    }
+
+    /// <summary>
+    /// Persistent dynamic balance for AccumulatingDrawdown floors.
+    /// Updated when contributions or drawdown transactions hit this bucket.
+    /// </summary>
+    public decimal CurrentBalance
+    {
+        get => _currentBalance;
+        set => SetProperty(ref _currentBalance, value);
+    }
+    
+    public decimal InitialBalance
+    {
+        get => _initialBalance;
+        set => SetProperty(ref _initialBalance, value);
     }
 }

@@ -44,7 +44,7 @@ public class ProjectionGridItem : ViewModelBase {
     }
     
     // Helper property for XAML DataTriggers
-    public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket;
+    public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket || Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
     public bool IsSweep => Type == ProjectionEngine.ProjectionEventType.Snowball ||  Type == ProjectionEngine.ProjectionEventType.Roth ||  Type == ProjectionEngine.ProjectionEventType.Sweep;
 
     private DateTime _date;

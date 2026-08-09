@@ -1,4 +1,5 @@
 ﻿using System.Data;
+using System.Data.Common;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using StayOnTarget.Helpers;
@@ -29,7 +30,8 @@ public partial class BudgetService {
         return MergeDbRowsToUiTransactions(dbRows);
     }
 
-    public async Task<IEnumerable<Transaction>> GetAllTransactionsAsync(DateTime? periodStart = null, DateTime? periodEnd = null) {
+    public async Task<IEnumerable<Transaction>> GetAllTransactionsAsync(DateTime? periodStart = null,
+        DateTime? periodEnd = null) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
 
@@ -60,7 +62,7 @@ public partial class BudgetService {
     public async Task<IEnumerable<Transaction>> GetRawTransactionsAsync() {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
-        
+
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a.Name as AccountName, b.Name as BucketName
             , SubCategories.Name as SubCategoryName 
@@ -117,7 +119,7 @@ public partial class BudgetService {
     public async Task<IEnumerable<Ledger>> GetAccountTransactionsAsDynamicAsync(int accountId) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
-        
+
         var dbRows = (await conn
             .QueryAsync<Ledger>("SELECT * FROM Transactions WHERE AccountId=@accountId",
                 new { accountId })).ToList();
@@ -127,17 +129,17 @@ public partial class BudgetService {
     public async Task<IEnumerable<Ledger>> GetUnreconciledAccountLedgerAsync(int accountId) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
-        
+
         var dbRows = (await conn
             .QueryAsync<Ledger>("SELECT * FROM Transactions WHERE AccountId=@accountId AND ReconciliationId IS NULL",
                 new { accountId })).ToList();
         return dbRows;
     }
-    
+
     public async Task<IEnumerable<Transaction>> GetAllPaycheckTransactionsAsync() {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
-        
+
         var dbRows = (await conn.QueryAsync<dynamic>(@"
             SELECT t.*, a1.Name as AccountName, 
                    Bills.Name as BillName, Buckets.Name as BucketName 
@@ -187,14 +189,14 @@ public partial class BudgetService {
     public async Task<List<string>> GetAlreadyImportedBankIdsAsync(int accountId) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
-        
+
         var dbRows = (await conn
                 .QueryAsync<string>(
                     "SELECT FitId FROM Transactions WHERE AccountId=@accountId", new { accountId })
             ).ToList();
         return dbRows;
     }
-    
+
     public async Task<List<string>> GetAlreadyImportedBankIdsAsync(int accountId, List<string> bankIds) {
         if (bankIds == null || !bankIds.Any()) {
             return new List<string>();
@@ -270,7 +272,7 @@ public partial class BudgetService {
 
         return MergeDbRowsToUiTransactions(dbRows);
     }
-    
+
     public async Task<IEnumerable<Transaction>> GetAllUnclearedTransactionsAsync(int? accountId = null) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
@@ -326,7 +328,7 @@ public partial class BudgetService {
 
         return MergeDbRowsToUiTransactions(dbRows);
     }
-    
+
     public async Task<IEnumerable<Transaction>> GetAllUnreconciledTransactionsSinceLastReconciliationAsync(
         int accountId) {
         await using var conn = _db.GetConnection();
@@ -386,7 +388,8 @@ public partial class BudgetService {
                 //its already reconciled and with a different id
 
                 // Execute historical drops
-                await InvalidateReconciliationsAfterDateAsync(transaction.AccountId.Value, transaction.TransactionDate, tx);
+                await InvalidateReconciliationsAfterDateAsync(transaction.AccountId.Value, transaction.TransactionDate,
+                    tx);
 
                 if (transaction.FromAccountReconciledId.HasValue) {
                     transaction.FromAccountReconciledId = null;
@@ -446,7 +449,7 @@ public partial class BudgetService {
         }
     }
 
-    public async Task<bool> UpdateTransactionForBankFitIdAsync(int accountId, string transactionId, 
+    public async Task<bool> UpdateTransactionForBankFitIdAsync(int accountId, string transactionId,
         string bankFitId, bool isCleared, int id) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
@@ -515,16 +518,26 @@ public partial class BudgetService {
 
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
-        await using var tx = conn.BeginTransaction();
+        await using var tx = await conn.BeginTransactionAsync();
 
         try {
-            // Step 1: Detect changes & handle invalidations using the TransactionId linkage group
+            // Track unique Bucket IDs that require recalculation after updates/deletes
+            var bucketsToRecalculate = new HashSet<int>();
+
+            // Step 1: Detect changes & capture original Bucket IDs before modification
             if (t.TransactionId != Guid.Empty) {
                 var oldRows = (await conn.QueryAsync<dynamic>(
-                    "SELECT AccountId, Amount, TransactionDate FROM Transactions WHERE TransactionId = @TransactionId",
-                    new { TransactionId = t.TransactionId.ToString() })).ToList();
+                    "SELECT AccountId, Amount, TransactionDate, BucketId FROM Transactions WHERE TransactionId = @TransactionId",
+                    new { TransactionId = t.TransactionId.ToString() }, tx)).ToList();
 
                 if (oldRows.Any()) {
+                    // Collect any existing Bucket IDs attached to this TransactionId group
+                    foreach (var row in oldRows) {
+                        if (row.BucketId != null) {
+                            bucketsToRecalculate.Add((int)row.BucketId);
+                        }
+                    }
+
                     DateTime oldDate = DateTime.Parse(oldRows.First().TransactionDate);
 
                     var oldFromRow = oldRows.FirstOrDefault(r => (decimal)r.Amount < 0);
@@ -605,24 +618,27 @@ public partial class BudgetService {
             if (t.FromAccountReconciledId.HasValue) {
                 var exists = await conn.ExecuteScalarAsync<int>(
                     "SELECT COUNT(*) FROM AccountReconciliations WHERE Id = @id",
-                    new { id = t.FromAccountReconciledId.Value });
+                    new { id = t.FromAccountReconciledId.Value }, tx);
                 if (exists == 0) t.FromAccountReconciledId = null;
             }
 
             if (t.ToAccountReconciledId.HasValue) {
                 var exists = await conn.ExecuteScalarAsync<int>(
                     "SELECT COUNT(*) FROM AccountReconciliations WHERE Id = @id",
-                    new { id = t.ToAccountReconciledId.Value });
+                    new { id = t.ToAccountReconciledId.Value }, tx);
                 if (exists == 0) t.ToAccountReconciledId = null;
             }
 
             // Step 2: In-place Upsert Logic
-
-
             if (t.TransactionId == Guid.Empty) {
                 t.TransactionId = Guid.NewGuid();
             }
 
+            // Capture newly assigned Bucket ID for recalculation
+            if (t.BucketId.HasValue) {
+                bucketsToRecalculate.Add(t.BucketId.Value);
+            }
+            
             // Helper query to insert and capture identity for SQLite
             string insertWithIdSql = GetInsertSql() + "; SELECT last_insert_rowid();";
 
@@ -696,10 +712,10 @@ public partial class BudgetService {
 
                     var existingInterestOnStatement = await conn.QueryFirstOrDefaultAsync<dynamic>(
                         @"SELECT TransactionId, ReconciliationId FROM Transactions 
-                      WHERE AccountId = @accountId 
-                      AND IsInterestOnly = 1 
-                      AND TransactionDate > @start 
-                      AND TransactionDate <= @end",
+                  WHERE AccountId = @accountId 
+                  AND IsInterestOnly = 1 
+                  AND TransactionDate > @start 
+                  AND TransactionDate <= @end",
                         new {
                             accountId = t.ToAccountId.Value,
                             start = targetStatementDate.ToString("yyyy-MM-dd"),
@@ -758,6 +774,11 @@ public partial class BudgetService {
                 }
             }
 
+            // --- 4. RE-SYNC BUCKET BALANCES FOR ALL AFFECTED ENVELOPES ---
+            foreach (var bucketId in bucketsToRecalculate) {
+                await RecalculateBucketBalanceAsync(bucketId, tx);
+            }
+
             await tx.CommitAsync();
             return true;
         }
@@ -767,6 +788,48 @@ public partial class BudgetService {
         }
     }
 
+    public async Task RecalculateBucketBalanceAsync(int bucketId, IDbTransaction? tx = null) {
+        var conn = tx?.Connection ?? _db.GetConnection();
+        bool isLocalConn = tx == null;
+
+        try {
+            if (isLocalConn && conn is DbConnection dbConn && dbConn.State != ConnectionState.Open) {
+                await dbConn.OpenAsync();
+            }
+
+            // 1. Get the bucket's baseline rules and InitialBalance
+            var bucket = await conn.QuerySingleOrDefaultAsync<BudgetBucket>(
+                "SELECT * FROM Buckets WHERE Id = @bucketId", new { bucketId }, tx);
+
+            if (bucket == null || bucket.Type != BucketType.AccumulatingDrawdown) return;
+
+            // 2. Sum actual spending outflows
+            var totalSpent = await conn.ExecuteScalarAsync<decimal?>(@"
+            SELECT ABS(SUM(Amount)) 
+            FROM Transactions 
+            WHERE BucketId = @bucketId AND Amount < 0", new { bucketId }, tx) ?? 0m;
+
+            // 3. Sum paid period contributions to date
+            var totalContributed = await conn.ExecuteScalarAsync<decimal?>(@"
+            SELECT SUM(ActualAmount) 
+            FROM PeriodBuckets 
+            WHERE BucketId = @bucketId AND IsPaid = 1", new { bucketId }, tx) ?? 0m;
+
+            // 4. Calculate net current balance WITH InitialBalance SEED
+            decimal newCurrentBalance = Math.Max(0, bucket.InitialBalance + totalContributed - totalSpent);
+
+            // 5. Update master bucket balance
+            await conn.ExecuteAsync(@"
+            UPDATE Buckets 
+            SET CurrentBalance = @newCurrentBalance 
+            WHERE Id = @bucketId", new { bucketId, newCurrentBalance }, tx);
+        }
+        finally {
+            if (isLocalConn && conn is IAsyncDisposable asyncDisposable) {
+                await asyncDisposable.DisposeAsync();
+            }
+        }
+    }
 
     public async Task DeleteTransactionAsync(Guid transactionId) {
         await using var conn = _db.GetConnection();

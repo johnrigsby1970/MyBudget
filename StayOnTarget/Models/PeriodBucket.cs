@@ -14,9 +14,18 @@ public class PeriodBucket : ViewModelBase
     public int Id 
     {
         get => _id;
-        set => SetProperty(ref _id, value);
-        
+        set
+        {
+            if (SetProperty(ref _id, value))
+            {
+                OnPropertyChanged(nameof(IsAccumulatingDrawdown));
+                OnPropertyChanged(nameof(FundingStatus));
+                OnPropertyChanged(nameof(IsSkipped));
+                OnPropertyChanged(nameof(IsFunded));
+            }
+        }
     }
+    
     private Guid _fitId = Guid.NewGuid();
     public Guid FitId 
     {
@@ -44,8 +53,10 @@ public class PeriodBucket : ViewModelBase
             {
                 OnPropertyChanged(nameof(HasActualAmount));
                 OnPropertyChanged(nameof(BudgetExceeded));
-                
-                
+                OnPropertyChanged(nameof(IsAccumulatingDrawdown));
+                OnPropertyChanged(nameof(FundingStatus));
+                OnPropertyChanged(nameof(IsSkipped));
+                OnPropertyChanged(nameof(IsFunded));
             }
         }
     }
@@ -81,4 +92,37 @@ public class PeriodBucket : ViewModelBase
         get => _bucketName;
         set => SetProperty(ref _bucketName, value);
     }
+    
+    private BucketType _bucketType;
+    public BucketType BucketType
+    {
+        get => _bucketType;
+        set
+        {
+            if (SetProperty(ref _bucketType, value))
+            {
+                OnPropertyChanged(nameof(IsAccumulatingDrawdown));
+                OnPropertyChanged(nameof(FundingStatus));
+                OnPropertyChanged(nameof(IsSkipped));
+                OnPropertyChanged(nameof(IsFunded));
+            }
+        }
+    }
+
+    public bool IsAccumulatingDrawdown => BucketType == BucketType.AccumulatingDrawdown;
+
+    // Status helper for DataGrid row styling and text displays
+    public string FundingStatus
+    {
+        get
+        {
+            if (!IsAccumulatingDrawdown) return "Standard";
+            if (Id > 0 && ActualAmount == 0) return "Skipped";
+            if (Id > 0 && ActualAmount > 0) return "Funded";
+            return "Pending"; // Virtual / Draft
+        }
+    }
+
+    public bool IsSkipped => IsAccumulatingDrawdown && Id > 0 && ActualAmount == 0;
+    public bool IsFunded => IsAccumulatingDrawdown && Id > 0 && ActualAmount > 0;
 }

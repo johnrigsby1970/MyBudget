@@ -11,10 +11,14 @@ public partial class BudgetService
         await conn.OpenAsync();
 
         return await conn.QueryAsync<PeriodBucket>(@"
-            SELECT pb.*, b.Name as BucketName 
-            FROM PeriodBuckets pb 
-            JOIN Buckets b ON pb.BucketId = b.Id 
-            WHERE pb.PeriodDate = @periodDate", new { periodDate = periodDate.ToString("yyyy-MM-dd") });
+        SELECT 
+            pb.*, 
+            b.Name AS BucketName, 
+            b.Type AS BucketType 
+        FROM PeriodBuckets pb 
+        JOIN Buckets b ON pb.BucketId = b.Id 
+        WHERE DATE(pb.PeriodDate) = DATE(@periodDate)", 
+            new { periodDate = periodDate.ToString("yyyy-MM-dd") });
     }
     
     public async Task<IEnumerable<PeriodBucket>> GetPeriodBucketsIncludingMonthlyAsync(DateTime periodDate)
@@ -24,7 +28,8 @@ public partial class BudgetService
 
         var month = new DateTime(periodDate.Year, periodDate.Month, 1);
         return await conn.QueryAsync<PeriodBucket>(@"
-            SELECT pb.*, b.Name as BucketName 
+            SELECT pb.*, b.Name as BucketName , 
+            b.Type AS BucketType 
             FROM PeriodBuckets pb 
             JOIN Buckets b ON pb.BucketId = b.Id 
             WHERE pb.PeriodDate = @periodDate OR pb.PeriodDate = @month", 
@@ -37,7 +42,8 @@ public partial class BudgetService
         await conn.OpenAsync();
 
         return await conn.QueryAsync<PeriodBucket>(@"
-            SELECT pb.*, b.Name as BucketName 
+            SELECT pb.*, b.Name as BucketName , 
+            b.Type AS BucketType 
             FROM PeriodBuckets pb 
             JOIN Buckets b ON pb.BucketId = b.Id");
     }
@@ -59,9 +65,10 @@ public partial class BudgetService
 
         if (pb.Id == 0)
         {
-            await conn.ExecuteAsync(@"
+            pb.Id = await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO PeriodBuckets (BucketId, PeriodDate, ActualAmount, IsPaid, FitId) 
-                VALUES (@BucketId, @PeriodDate, @ActualAmount, @IsPaid, @FitId)", param);
+                VALUES (@BucketId, @PeriodDate, @ActualAmount, @IsPaid, @FitId);
+            SELECT last_insert_rowid();", param);
         }
         else
         {
@@ -81,6 +88,6 @@ public partial class BudgetService
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
 
-        await conn.ExecuteAsync("DELETE FROM PeriodBuckets WHERE Id = @id AND IsPaid = 0", new { id });
+        await conn.ExecuteAsync("DELETE FROM PeriodBuckets WHERE Id = @id", new { id });
     }
 }

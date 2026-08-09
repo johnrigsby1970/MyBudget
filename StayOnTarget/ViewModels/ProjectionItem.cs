@@ -1,4 +1,5 @@
-﻿using StayOnTarget.Services.Projections;
+﻿using StayOnTarget.Models;
+using StayOnTarget.Services.Projections;
 
 namespace StayOnTarget.ViewModels;
 
@@ -35,7 +36,7 @@ public class ProjectionItem : ViewModelBase
     public bool NeedsAttention { get => _paycheckId.HasValue;  }
     
     // Helper property for XAML DataTriggers
-    public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket;
+    public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket || Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
     
     public bool IsSweep => Type == ProjectionEngine.ProjectionEventType.Sweep || Type == ProjectionEngine.ProjectionEventType.Snowball || Type == ProjectionEngine.ProjectionEventType.Roth;
     
@@ -105,6 +106,20 @@ public class ProjectionItem : ViewModelBase
 
             // Only allow payment if transaction falls within 31 days from the period start date
             return TransactionDate >= periodStart && TransactionDate <= periodStart.AddDays(31);
+        }
+    }
+    
+    public bool CanFundDrawdown
+    {
+        get
+        {
+            // Must be a bill
+            if (!BucketId.HasValue || BucketId.Value == 0) return false;
+
+            var bucket = MainViewModel.Instance?.Buckets?.FirstOrDefault(x => x.Id == BucketId);
+            //if (bucket == null || bucket.Type != BucketType.AccumulatingDrawdown) return false;
+            if (Type != ProjectionEngine.ProjectionEventType.AccumulatingDrawdown) return false;
+            return true;
         }
     }
 }
