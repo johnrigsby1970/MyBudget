@@ -525,8 +525,7 @@ public static class ProjectionEngineExtensions {
         }
     }
 
-    public static void AddTransactionEvents(this List<ProjectionGridItem> events, List<Transaction> transactions,
-        bool showReconciled) {
+    public static void AddTransactionEvents(this List<ProjectionGridItem> events, List<Transaction> transactions) {
         foreach (var transaction in transactions) {
             // Skip fully reconciled transactions:
             // A transaction is fully reconciled if:
@@ -539,11 +538,11 @@ public static class ProjectionEngineExtensions {
                 !transaction.ToAccountId.HasValue || transaction.ToAccountReconciledId.HasValue;
             var isFullyReconciled = isFromAccountReconciled && isToAccountReconciled;
 
-            if (showReconciled) {
+
                 isFromAccountReconciled = false;
                 isToAccountReconciled = false;
                 isFullyReconciled = false;
-            }
+            
 
             if (!isFullyReconciled) {
                 // We need to collect ALL transactions that could affect balances from the earliest BalanceAsOf

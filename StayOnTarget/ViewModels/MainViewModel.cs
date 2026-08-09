@@ -53,7 +53,6 @@ public class MainViewModel : ViewModelBase {
     private ObservableCollection<ToastViewModel> _toasts = new();
     private bool _isEditingPaycheck;
     private Paycheck? _selectedPaycheck;
-    private bool _showReconciled = true;
     private string _toggleReconciliationText = "Show Reconciled";
     private DateTime _projectionEndDate = DateTime.Today.AddYears(1);
     private DateTime? _projectionStartDate;
@@ -216,6 +215,7 @@ public class MainViewModel : ViewModelBase {
         PayBillCommand = new AsyncRelayCommand<ProjectionItem>(PayBillAsync);
         PayPeriodBillCommand = new AsyncRelayCommand<PeriodBill>(PayPeriodBillAsync);
         FundEnvelopeCommand = new AsyncRelayCommand<ProjectionItem>(FundEnvelopeAsync);
+        SkipFundEnvelopeCommand = new AsyncRelayCommand<ProjectionItem>(SkipFundEnvelopeAsync);
         MapsToBillCommand = new RelayCommand<PeriodBill>(pb => {
             if (pb is null) return;
             SelectedPeriodBill = pb;
@@ -241,7 +241,8 @@ public class MainViewModel : ViewModelBase {
         CloseManageExcludedAccountsCommand = new RelayCommand(CloseManageExcludedAccounts);
         ToggleAccountExclusionCommand = new RelayCommand<int>(ToggleAccountExclusion);
 
-        InitializeBillsView(BillsWithNone);
+        _filteredBillsView = CollectionViewSource.GetDefaultView(BillsWithNone);
+        _filteredBillsView.Filter = FilterBillItem;
     }
 
     private CancellationTokenSource? _recalculationCts;
@@ -288,6 +289,7 @@ public class MainViewModel : ViewModelBase {
 
     public IAsyncRelayCommand<ProjectionItem> PayBillCommand { get; }
     public IAsyncRelayCommand<ProjectionItem> FundEnvelopeCommand { get; }
+    public IAsyncRelayCommand<ProjectionItem> SkipFundEnvelopeCommand { get; }
 
     public IAsyncRelayCommand<PeriodBill> PayPeriodBillCommand { get; }
 
@@ -719,20 +721,7 @@ public class MainViewModel : ViewModelBase {
         get => _toggleReconciliationText;
         set => SetProperty(ref _toggleReconciliationText, value);
     }
-
-    public bool ShowReconciled {
-        get => _showReconciled;
-        set {
-            if (SetProperty(ref _showReconciled, value)) {
-                // 1. Immediately toggle the flag on the UI thread
-                IsProjecting = true;
-
-                // 2. Schedule the calculation for the next UI tick
-                OnCalculateProjections();
-            }
-        }
-    }
-
+    
     private CancellationTokenSource? _cts;
 
     private async void OnCalculateProjections() {
@@ -1784,7 +1773,7 @@ public class MainViewModel : ViewModelBase {
             var item = new SelectableSubCategory {
                 Id = subCat.Id,
                 Name = subCat.Name,
-                CategoryName = subCat.CategoryName,
+                CategoryName = subCat.CategoryName??"",
                 CurrentBucketId = subCat.DefaultBucketId,
                 CurrentBucketName = currentBucketName,
                 EditingBucketId = EditingBucketClone?.Id ?? 0,
@@ -2973,7 +2962,7 @@ public class MainViewModel : ViewModelBase {
             SnowballAnalysisText = "Analyzing strategy...";
 
             // 1. CAPTURE ALL VIEWMODEL SNAPSHOTS ON UI THREAD FIRST
-            var showReconciled = ShowReconciled;
+            var showReconciled = true;
             var currentPeriodDate = CurrentPeriodDate;
             var projectionStartDate = ProjectionStartDate;
             var projectionEndDate = ProjectionEndDate;
@@ -2993,12 +2982,7 @@ public class MainViewModel : ViewModelBase {
                 var periodBuckets = await _budgetService.GetAllPeriodBucketsAsync();
 
                 cancellationToken.ThrowIfCancellationRequested();
-
-                // var transactions = showReconciled
-                //     ? await _budgetService.GetAllTransactionsAsync()
-                //     : await _budgetService.GetAllUnreconciledTransactionsAsync();
-
-                //var reconciliations = !showReconciled ? await _budgetService.GetAllAccountReconciliationsAsync() : null;
+                
                 List<AccountReconciliation>? reconciliations = null;
 
                 var start = currentPeriodDate == DateTime.MinValue ? DateTime.Today : currentPeriodDate;
@@ -3011,12 +2995,8 @@ public class MainViewModel : ViewModelBase {
                 var rawPaycheckTransactions = await _budgetService.GetAllPaycheckTransactionsAsync();
                 var rawBillTransactions = await _budgetService.GetBillTransactionsAsync();
                 var rawBucketTransactions = await _budgetService.GetBucketTransactionsAsync();
-                var rawAllTransactions =
-                    (await _budgetService.GetAllTransactionsAsync(start.AddDays(-30), end.AddDays(30))).ToList();
-
-                var transactions = showReconciled
-                    ? rawAllTransactions
-                    : (await _budgetService.GetAllUnreconciledTransactionsAsync()).ToList();
+                var transactions =
+                    (await _budgetService.GetAllTransactionsAsync(start.AddDays(-90), end.AddDays(365))).ToList();
 
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -3034,7 +3014,7 @@ public class MainViewModel : ViewModelBase {
                         AccountId = x.AccountId
                     }).ToList();
 
-                var allTransactions = rawAllTransactions.Select(x => {
+                var allTransactions = transactions.Select(x => {
                     var copy = x.CloneReflection();
 
                     if (copy.PaycheckId != null && copy.PaycheckOccurrenceDate != null &&
@@ -3415,12 +3395,6 @@ public class MainViewModel : ViewModelBase {
         finally {
             _isLoadingBillData = false;
         }
-    }
-    
-    public void InitializeBillsView(IEnumerable<Bill> billsWithNone)
-    {
-        _filteredBillsView = CollectionViewSource.GetDefaultView(billsWithNone);
-        _filteredBillsView.Filter = FilterBillItem;
     }
     
     private bool FilterBillItem(object item)
@@ -4313,7 +4287,7 @@ public class MainViewModel : ViewModelBase {
                 MessageBoxImage.Error);
         }
     }
-
+    
     #endregion
 
     #region Draw down
@@ -4338,6 +4312,43 @@ public class MainViewModel : ViewModelBase {
             }
             // 2. Commit transaction to database
             await _budgetService.FundPeriodBucketAsync(bucket.Id, transactionDate, projection.Amount);
+            // 3. Optional: Play audio cue
+            SystemSounds.Asterisk.Play(); // Built-in system sound, or use System.Media.SoundPlayer for a custom WAV
+
+            // 4. Trigger Toast Notification
+            ShowSuccessToast($"Set aside {bucket.ExpectedAmount:C} for {bucket.Name}.");
+            await LoadBucketDataAsync();
+            await LoadPeriodDataAsync();
+            // 5. Refresh grid / remove projection
+            await CalculateProjectionsAsync();
+        }
+        catch (Exception ex) {
+            // Fail gracefully to UI
+            MessageBox.Show($"Failed to set aside money for envelope {ex.Message}", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+    
+    private async Task SkipFundEnvelopeAsync(ProjectionItem? projection) {
+        if (projection == null || projection.Type != ProjectionEngine.ProjectionEventType.AccumulatingDrawdown) return;
+
+        try {
+            var bucket = Buckets.FirstOrDefault(b => b.Id == projection.BucketId);
+            if (bucket == null) return;
+            var pay = Paychecks.Single(p => p.Id == bucket.PaycheckId);
+            var transactionDate = projection.TransactionDate;
+            var nextPay = pay.StartDate;
+            while (nextPay <= projection.TransactionDate) {
+                transactionDate = nextPay;
+                nextPay = pay.Frequency switch {
+                    Frequency.Weekly => nextPay.AddDays(7),
+                    Frequency.BiWeekly => nextPay.AddDays(14),
+                    Frequency.Monthly => nextPay.AddMonths(1),
+                    _ => nextPay.AddYears(100) //that is optimistic
+                };
+            }
+            // 2. Commit transaction to database
+            await _budgetService.FundPeriodBucketAsync(bucket.Id, transactionDate, 0);
             // 3. Optional: Play audio cue
             SystemSounds.Asterisk.Play(); // Built-in system sound, or use System.Media.SoundPlayer for a custom WAV
 

@@ -89,32 +89,8 @@ public partial class BudgetService {
             LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id  WHERE t.AccountId=@accountId",
             new { accountId })).ToList();
 
-        // var dbRows = (await conn
-        //     .QueryAsync<dynamic>("SELECT * FROM Transactions WHERE AccountId=@accountId",
-        //         new { accountId })).ToList();
         return MergeDbRowsToUiTransactions(dbRows);
     }
-
-    // public async Task<IEnumerable<Transaction>> GetReconciledAccountTransactionsAsync(int accountId) {
-    //     await using var conn = _db.GetConnection();
-    //     await conn.OpenAsync();
-    //
-    //     var dbRows = (await conn.QueryAsync<dynamic>(@"
-    //         SELECT t.*, a1.Name as AccountName, 
-    //                Bills.Name as BillName, Buckets.Name as BucketName 
-    //         , SubCategories.Name as SubCategoryName 
-    //         FROM Transactions t
-    //         LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
-    //         LEFT JOIN Bills ON t.BillId = Bills.Id
-    //         LEFT JOIN Buckets ON t.BucketId = Buckets.Id
-    //         LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id  WHERE t.AccountId=@accountId",
-    //         new { accountId })).ToList();
-    //
-    //     // var dbRows = (await conn
-    //     //     .QueryAsync<dynamic>("SELECT * FROM Transactions WHERE AccountId=@accountId",
-    //     //         new { accountId })).ToList();
-    //     return MergeDbRowsToUiTransactions(dbRows);
-    // }
 
     public async Task<IEnumerable<Ledger>> GetAccountTransactionsAsDynamicAsync(int accountId) {
         await using var conn = _db.GetConnection();
@@ -205,7 +181,6 @@ public partial class BudgetService {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
 
-        // Dapper automatically expands 'IN @bankIds' into (@bankIds0, @bankIds1, ...)
         const string sql = @"
         SELECT DISTINCT FitId 
         FROM Transactions 
@@ -225,8 +200,6 @@ public partial class BudgetService {
         object param;
 
         if (accountId.HasValue) {
-            // Find all TransactionIds where the specified account has an unreconciled row,
-            // then fetch ALL rows associated with those TransactionIds so merging works completely.
             sql = @"
             SELECT t.*, 
                    a1.Name as AccountName, 
@@ -247,8 +220,6 @@ public partial class BudgetService {
             param = new { accountId };
         }
         else {
-            // Find all TransactionIds that have ANY unreconciled row across the system,
-            // and pull all sibling rows for those TransactionIds.
             sql = @"
             SELECT t.*, 
                    a1.Name as AccountName, 
@@ -281,8 +252,6 @@ public partial class BudgetService {
         object param;
 
         if (accountId.HasValue) {
-            // Find all TransactionIds where the specified account has an unreconciled row,
-            // then fetch ALL rows associated with those TransactionIds so merging works completely.
             sql = @"
             SELECT t.*, 
                    a1.Name as AccountName, 
@@ -303,8 +272,6 @@ public partial class BudgetService {
             param = new { accountId };
         }
         else {
-            // Find all TransactionIds that have ANY unreconciled row across the system,
-            // and pull all sibling rows for those TransactionIds.
             sql = @"
             SELECT t.*, 
                    a1.Name as AccountName, 
@@ -375,56 +342,13 @@ public partial class BudgetService {
         await conn.OpenAsync();
         await using var tx = conn.BeginTransaction();
 
-        //Note, it is possible this transaction has two parts but only one part has been sent in for a change specific to reconciliation.
-        if (transaction.AccountId.HasValue) {
-            var oldRows = (await conn.QueryAsync<dynamic>(
-                "SELECT AccountId, TransactionDate FROM Transactions WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId AND (NOT ReconciliationId IS NULL AND NOT ReconciliationId=@ReconciliationId)",
-                new {
-                    AccountId = transaction.AccountId, TransactionId = transaction.TransactionId.ToString(),
-                    ReconciliationId = transaction.FromAccountReconciledId
-                }, tx)).ToList();
-
-            if (oldRows.Any()) {
-                //its already reconciled and with a different id
-
-                // Execute historical drops
-                await InvalidateReconciliationsAfterDateAsync(transaction.AccountId.Value, transaction.TransactionDate,
-                    tx);
-
-                if (transaction.FromAccountReconciledId.HasValue) {
-                    transaction.FromAccountReconciledId = null;
-                }
-            }
-        }
-
-        if (transaction.ToAccountId.HasValue) {
-            var oldRows = (await conn.QueryAsync<dynamic>(
-                "SELECT AccountId, TransactionDate FROM Transactions WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId AND (NOT ReconciliationId IS NULL AND NOT ReconciliationId=@ReconciliationId)",
-                new {
-                    AccountId = transaction.ToAccountId, TransactionId = transaction.TransactionId.ToString(),
-                    ReconciliationId = transaction.ToAccountReconciledId
-                }, tx)).ToList();
-
-            if (oldRows.Any()) {
-                //its already reconciled and with a different id
-
-                // Execute historical drops
-                await InvalidateReconciliationsAfterDateAsync(transaction.ToAccountId.Value,
-                    transaction.TransactionDate, tx);
-
-                if (transaction.ToAccountReconciledId.HasValue) {
-                    transaction.ToAccountReconciledId = null;
-                }
-            }
-        }
-
-
         try {
             if (transaction.AccountId.HasValue) {
                 await conn.ExecuteAsync(
                     @"UPDATE Transactions SET ReconciliationId=@ReconciliationId, IsCleared=@IsCleared WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
                     new {
-                        AccountId = transaction.AccountId, ReconciliationId = transaction.FromAccountReconciledId,
+                        AccountId = transaction.AccountId, 
+                        ReconciliationId = transaction.FromAccountReconciledId,
                         TransactionId = transaction.TransactionId.ToString(),
                         IsCleared = transaction.FromAccountIsCleared
                     }, tx);
@@ -434,7 +358,8 @@ public partial class BudgetService {
                 await conn.ExecuteAsync(
                     @"UPDATE Transactions SET ReconciliationId=@ReconciliationId, IsCleared=@IsCleared WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
                     new {
-                        AccountId = transaction.ToAccountId, ReconciliationId = transaction.ToAccountReconciledId,
+                        AccountId = transaction.ToAccountId, 
+                        ReconciliationId = transaction.ToAccountReconciledId,
                         TransactionId = transaction.TransactionId.ToString(),
                         IsCleared = transaction.ToAccountIsCleared
                     }, tx);
@@ -487,134 +412,51 @@ public partial class BudgetService {
 
     private async Task<decimal> CalculateAccruedInterestAsync(DateTime paymentDate, decimal apr, int statementDay,
         int accountId, SqliteConnection? cn = null, IDbTransaction? tx = null) {
-        // 1. Determine target month/year for the prior statement
         int year = paymentDate.Year;
         int month = paymentDate.Month;
 
-        // If payment date is before the statement day in the current month, look back to previous month
         if (paymentDate.Day < statementDay) {
             var prevMonthDate = paymentDate.AddMonths(-1);
             year = prevMonthDate.Year;
             month = prevMonthDate.Month;
         }
 
-        // 2. Safe statement date handling (e.g., handles Feb 28/29 for a 31st statement day)
         int safeDay = Math.Min(statementDay, DateTime.DaysInMonth(year, month));
-        DateTime targetStatementDate = new DateTime(year, month, safeDay).Date.AddDays(1).AddTicks(-1); // 23:59:59.999
+        DateTime targetStatementDate = new DateTime(year, month, safeDay).Date.AddDays(1).AddTicks(-1);
 
-        // 3. Get ledger balance on that date
         decimal priorBalance = await GetAccountBalanceAsOfAsync(accountId, targetStatementDate, cn, tx);
 
-        // 4. Calculate monthly interest (assuming negative liability balance)
         decimal monthlyRate = (apr / 100m) / 12m;
         decimal interestAmount = Math.Round(priorBalance * monthlyRate, 2, MidpointRounding.AwayFromZero);
 
-        return interestAmount; // Will return negative value if priorBalance is negative
+        return interestAmount;
     }
 
     public async Task<bool> UpsertTransactionAsync(Transaction t,
         bool showConfirmationOfImpactToExistingReconciliations = true) {
-        t.Amount = Math.Abs(t.Amount); // Amount should always be positive entering upsert logic
+        t.Amount = Math.Abs(t.Amount);
 
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
         try {
-            // Track unique Bucket IDs that require recalculation after updates/deletes
             var bucketsToRecalculate = new HashSet<int>();
 
-            // Step 1: Detect changes & capture original Bucket IDs before modification
+            // Step 1: Capture original Bucket IDs before modification
             if (t.TransactionId != Guid.Empty) {
                 var oldRows = (await conn.QueryAsync<dynamic>(
-                    "SELECT AccountId, Amount, TransactionDate, BucketId FROM Transactions WHERE TransactionId = @TransactionId",
+                    "SELECT BucketId FROM Transactions WHERE TransactionId = @TransactionId",
                     new { TransactionId = t.TransactionId.ToString() }, tx)).ToList();
 
-                if (oldRows.Any()) {
-                    // Collect any existing Bucket IDs attached to this TransactionId group
-                    foreach (var row in oldRows) {
-                        if (row.BucketId != null) {
-                            bucketsToRecalculate.Add((int)row.BucketId);
-                        }
-                    }
-
-                    DateTime oldDate = DateTime.Parse(oldRows.First().TransactionDate);
-
-                    var oldFromRow = oldRows.FirstOrDefault(r => (decimal)r.Amount < 0);
-                    var oldToRow = oldRows.FirstOrDefault(r => (decimal)r.Amount >= 0);
-
-                    if (oldRows.Count == 1) {
-                        var singleRow = oldRows.First();
-                        if ((decimal)singleRow.Amount >= 0) {
-                            oldToRow = singleRow;
-                            oldFromRow = null;
-                        }
-                        else {
-                            oldFromRow = singleRow;
-                            oldToRow = null;
-                        }
-                    }
-
-                    decimal oldAmount = oldRows.Count == 2 && oldFromRow != null
-                        ? Math.Abs((decimal)oldFromRow!.Amount)
-                        : Math.Abs((decimal)oldRows.First().Amount);
-
-                    int? oldFromAccountId = (int?)oldFromRow?.AccountId;
-                    int? oldToAccountId = (int?)oldToRow?.AccountId;
-
-                    bool dateChanged = oldDate != t.TransactionDate;
-                    bool amountChanged = oldAmount != Math.Abs(t.Amount);
-                    bool fromAccountChanged = oldFromAccountId != t.AccountId;
-                    bool toAccountChanged = oldToAccountId != t.ToAccountId;
-
-                    if (dateChanged || amountChanged || fromAccountChanged || toAccountChanged) {
-                        var effectiveDate = oldDate <= t.TransactionDate ? oldDate : t.TransactionDate;
-
-                        bool fromImpacted = t.AccountId.HasValue &&
-                                            (fromAccountChanged || dateChanged || amountChanged) &&
-                                            await WillInvalidateReconciliationsAfterDateAsync(t.AccountId.Value,
-                                                effectiveDate, cn: conn, tx: tx);
-
-                        bool toImpacted = t.ToAccountId.HasValue &&
-                                          (toAccountChanged || dateChanged || amountChanged) &&
-                                          await WillInvalidateReconciliationsAfterDateAsync(t.ToAccountId.Value,
-                                              effectiveDate, cn: conn, tx: tx);
-
-                        if (!fromImpacted && oldFromAccountId.HasValue && fromAccountChanged) {
-                            fromImpacted =
-                                await WillInvalidateReconciliationsAfterDateAsync(oldFromAccountId.Value, effectiveDate,
-                                    cn: conn, tx: tx);
-                        }
-
-                        if (!toImpacted && oldToAccountId.HasValue && toAccountChanged) {
-                            toImpacted =
-                                await WillInvalidateReconciliationsAfterDateAsync(oldToAccountId.Value, effectiveDate,
-                                    cn: conn, tx: tx);
-                        }
-
-                        if (fromImpacted || toImpacted) {
-                            if (fromImpacted && t.AccountId.HasValue)
-                                await InvalidateReconciliationsAfterDateAsync(t.AccountId.Value, effectiveDate, tx: tx);
-                            if (oldFromAccountId.HasValue && fromAccountChanged)
-                                await InvalidateReconciliationsAfterDateAsync(oldFromAccountId.Value, effectiveDate,
-                                    tx: tx);
-
-                            if (toImpacted && t.ToAccountId.HasValue)
-                                await InvalidateReconciliationsAfterDateAsync(t.ToAccountId.Value, effectiveDate,
-                                    tx: tx);
-                            if (oldToAccountId.HasValue && toAccountChanged)
-                                await InvalidateReconciliationsAfterDateAsync(oldToAccountId.Value, effectiveDate,
-                                    tx: tx);
-
-                            t.FromAccountReconciledId = null;
-                            t.ToAccountReconciledId = null;
-                        }
+                foreach (var row in oldRows) {
+                    if (row.BucketId != null) {
+                        bucketsToRecalculate.Add((int)row.BucketId);
                     }
                 }
             }
 
-            // Guard: a previous save may have deleted a reconciliation that this transaction still
-            // references. Null out any stale IDs before writing to avoid an FK violation.
+            // Guard: Null out stale Reconciliation IDs if referenced AccountReconciliation no longer exists
             if (t.FromAccountReconciledId.HasValue) {
                 var exists = await conn.ExecuteScalarAsync<int>(
                     "SELECT COUNT(*) FROM AccountReconciliations WHERE Id = @id",
@@ -634,12 +476,10 @@ public partial class BudgetService {
                 t.TransactionId = Guid.NewGuid();
             }
 
-            // Capture newly assigned Bucket ID for recalculation
             if (t.BucketId.HasValue) {
                 bucketsToRecalculate.Add(t.BucketId.Value);
             }
             
-            // Helper query to insert and capture identity for SQLite
             string insertWithIdSql = GetInsertSql() + "; SELECT last_insert_rowid();";
 
             // --- 1. OUTBOUND / FROM SIDE ---
@@ -657,14 +497,12 @@ public partial class BudgetService {
                 }
             }
             else if (t.FromRecordId.HasValue && t.FromRecordId > 0) {
-                // Outbound account removed during edit: delete orphaned row
                 await conn.ExecuteAsync("DELETE FROM Transactions WHERE Id = @Id", new { Id = t.FromRecordId }, tx);
                 t.FromRecordId = null;
             }
 
             // --- 2. INBOUND / TO SIDE ---
             if (t.ToAccountId.HasValue) {
-                // Determine sign: negative if transfer (since AccountId exists), positive if standalone deposit
                 decimal amount = t.AccountId.HasValue ? Math.Abs(t.Amount) : t.Amount;
 
                 if (t.ToRecordId.HasValue && t.ToRecordId > 0) {
@@ -679,7 +517,6 @@ public partial class BudgetService {
                 }
             }
             else if (t.ToRecordId.HasValue && t.ToRecordId > 0) {
-                // Inbound account removed during edit: delete orphaned row
                 await conn.ExecuteAsync("DELETE FROM Transactions WHERE Id = @Id", new { Id = t.ToRecordId }, tx);
                 t.ToRecordId = null;
             }
@@ -739,12 +576,6 @@ public partial class BudgetService {
                             existingInterestId = (int?)existingInterest.Id;
                             interestReconciledId = (int?)existingInterest.ReconciliationId;
                             interestIsCleared = (bool)(existingInterest.IsCleared == 1);
-
-                            if (interestReconciledId.HasValue) {
-                                await InvalidateReconciliationsAfterDateAsync(t.ToAccountId.Value, t.TransactionDate,
-                                    tx);
-                                interestReconciledId = null;
-                            }
                         }
 
                         var interestTx = new Transaction {
@@ -797,28 +628,23 @@ public partial class BudgetService {
                 await dbConn.OpenAsync();
             }
 
-            // 1. Get the bucket's baseline rules and InitialBalance
             var bucket = await conn.QuerySingleOrDefaultAsync<BudgetBucket>(
                 "SELECT * FROM Buckets WHERE Id = @bucketId", new { bucketId }, tx);
 
             if (bucket == null || bucket.Type != BucketType.AccumulatingDrawdown) return;
 
-            // 2. Sum actual spending outflows
             var totalSpent = await conn.ExecuteScalarAsync<decimal?>(@"
             SELECT ABS(SUM(Amount)) 
             FROM Transactions 
             WHERE BucketId = @bucketId AND Amount < 0", new { bucketId }, tx) ?? 0m;
 
-            // 3. Sum paid period contributions to date
             var totalContributed = await conn.ExecuteScalarAsync<decimal?>(@"
             SELECT SUM(ActualAmount) 
             FROM PeriodBuckets 
             WHERE BucketId = @bucketId AND IsPaid = 1", new { bucketId }, tx) ?? 0m;
 
-            // 4. Calculate net current balance WITH InitialBalance SEED
             decimal newCurrentBalance = Math.Max(0, bucket.InitialBalance + totalContributed - totalSpent);
 
-            // 5. Update master bucket balance
             await conn.ExecuteAsync(@"
             UPDATE Buckets 
             SET CurrentBalance = @newCurrentBalance 
@@ -833,56 +659,28 @@ public partial class BudgetService {
 
     public async Task DeleteTransactionAsync(Guid transactionId) {
         await using var conn = _db.GetConnection();
-        // Erases the entire logical transaction group by its UUID string representation
         await conn.ExecuteAsync("DELETE FROM Transactions WHERE TransactionId = @transactionId",
             new { transactionId = transactionId.ToString() });
     }
-
 
     #region Private Service Helpers (Mapping Engine)
 
     private IEnumerable<Transaction> MergeDbRowsToUiTransactions(IEnumerable<dynamic> dbRows) {
         var resultList = new List<Transaction>();
-
-        // Filter out interest-only transactions unless they are the "from" part (negative amount)
-        // and have no other parts to merge with.
-        // Actually, the requirement says: "ignore the IsInterestOnly account for that transaction merger unless it is the from part of a transaction and then there will be nothing to merge it with."
-        // This implies we should group and then decide.
-
-        // Group everything cleanly via the tracking Guid column string value
         var transactionGroups = dbRows.GroupBy(r => r.TransactionId?.ToString());
 
         foreach (var group in transactionGroups) {
             if (string.IsNullOrEmpty(group.Key)) continue;
 
             var list = group.ToList();
-
-            // Check if there's an interest-only transaction in the group
             bool hasInterestOnly = list.Any(r => r.IsInterestOnly != null && Convert.ToInt32(r.IsInterestOnly) == 1);
 
             if (list.Count() >= 2) {
                 if (hasInterestOnly) {
-                    // If it's interest-only and has 2 rows, we need to decide what to do.
-                    // The requirement says "ignore ... unless it is the from part ... and then there will be nothing to merge it with".
-                    // This suggests interest-only transactions might sometimes have 2 rows but shouldn't be merged?
-                    // "unless it is the from part of a transaction and then there will be nothing to merge it with"
-                    // If there are 2 rows, they ARE merged.
-                    // If one is IsInterestOnly, should it be ignored? 
-                    // "the IsInterestOnly account should be ignored for that transaction merger"
-
-                    // Let's re-read: "the IsInterestOnly account should be ignored for that transaction merger unless it is the from part of a transaction and then there will be nothing to merge it with."
-                    // If we have a normal payment (2 rows: checking -> mortgage) and an interest transaction (1 or 2 rows?).
-                    // Interest is taken from ToAccountId (mortgage). So it's an outflow from Mortgage.
-                    // Interest transaction: From: Mortgage, To: null (outside world). 1 row.
-
-                    // If it's a merger of a normal payment, we should NOT include any interest-only rows in that merger.
-                    // But they have the same TransactionId. So they WILL be in the same group.
-
                     var normalRows = list.Where(r => r.IsInterestOnly != 1).ToList();
                     var interestRows = list.Where(r => r.IsInterestOnly == 1).ToList();
 
                     if (normalRows.Count == 2) {
-                        // Merge normal rows
                         resultList.Add(MergeRows(normalRows));
                     }
                     else if (normalRows.Count == 1) {
@@ -890,8 +688,6 @@ public partial class BudgetService {
                     }
 
                     foreach (var ir in interestRows) {
-                        // "unless it is the from part of a transaction and then there will be nothing to merge it with"
-                        // Interest taken from ToAccountId means it's an outflow (amount < 0).
                         if ((double)ir.Amount < 0) {
                             resultList.Add(MapDynamicToTransaction(ir, false));
                         }
@@ -900,14 +696,11 @@ public partial class BudgetService {
                     continue;
                 }
 
-                // Two matching transaction rows represent a paired ledger transfer event
                 resultList.Add(MergeRows(list));
             }
             else {
-                // Single tracking record representing standard expense or deposit structures
                 var standaloneRow = list.First();
 
-                // For interest only, check if it's the from part
                 if (standaloneRow.IsInterestOnly == 1) {
                     if ((double)standaloneRow.Amount < 0) {
                         resultList.Add(MapDynamicToTransaction(standaloneRow, isTransferSide: false));
@@ -919,7 +712,6 @@ public partial class BudgetService {
             }
         }
 
-        //resultList.ForEach(r => r.Amount = Math.Abs(r.Amount));
         return resultList;
     }
 
@@ -971,8 +763,6 @@ public partial class BudgetService {
         int? uiToAccountReconciledId = null;
 
         if (isTransferSide) {
-            // Paired Transfer: MergeDbRowsToUiTransactions will overwrite these anyway,
-            // but we'll assign dbAccountId to AccountId as a safe baseline primary record.
             uiAccountId = dbAccountId;
             uiFromAccountReconciledId = dbReconciledId;
             uiRecordId = Convert.ToInt64(row.Id);
@@ -983,10 +773,7 @@ public partial class BudgetService {
             uiToAccountReconciledId = null;
         }
         else {
-            // Standalone Outside-World Transaction
             if (amount >= 0) {
-                // Case 1: Inflow from Outside World (Paycheck/Deposit)
-                // Money is coming INTO this account.
                 uiAccountId = null;
                 uiFromAccountReconciledId = null;
                 uiRecordId = null;
@@ -997,8 +784,6 @@ public partial class BudgetService {
                 uiToAccountReconciledId = dbReconciledId;
             }
             else {
-                // Case 2: Outflow to Outside World (Purchase/Bill)
-                // Money is coming OUT of this account.
                 uiAccountId = dbAccountId;
                 uiIsCleared = row.IsCleared == 1;
                 uiToIsCleared = null;
@@ -1059,7 +844,6 @@ public partial class BudgetService {
         p.Add("TransactionId", t.TransactionId.ToString());
         p.Add("Description", t.Description);
         p.Add("Memo", t.Memo);
-        // Force truncation to 2 decimal places to keep SQLite REAL storage clean
         p.Add("Amount", Math.Round(targetedAmount, 2, MidpointRounding.AwayFromZero));
         p.Add("TransactionDate", t.TransactionDate.ToString("yyyy-MM-dd"));
         p.Add("AccountId", targetAccountId);
@@ -1084,7 +868,6 @@ public partial class BudgetService {
         p.Add("TransactionId", t.TransactionId.ToString());
         p.Add("Description", t.Description);
         p.Add("Memo", t.Memo);
-        // Force truncation to 2 decimal places to keep SQLite REAL storage clean
         p.Add("Amount", Math.Round(targetedAmount, 2, MidpointRounding.AwayFromZero));
         p.Add("TransactionDate", t.TransactionDate.ToString("yyyy-MM-dd"));
         p.Add("AccountId", targetAccountId);

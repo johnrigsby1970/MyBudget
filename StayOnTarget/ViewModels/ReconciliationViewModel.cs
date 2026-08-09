@@ -244,6 +244,20 @@ public partial class ReconciliationViewModel : ViewModelBase {
             }
         }
     }
+    
+    private decimal? _targetBalance = 0;
+    public decimal? TargetBalance {
+        get => _targetBalance;
+        set {
+            if (SetProperty(ref _targetBalance, value)) {
+                OnPropertyChanged(nameof(CanExecuteReconcile));
+                OnPropertyChanged(nameof(ReconcileButtonText));
+                OnPropertyChanged(nameof(Difference));
+            }
+        }
+    }
+    
+    
 
     private DateTime? _newReconciledDate;
 
@@ -304,12 +318,16 @@ public partial class ReconciliationViewModel : ViewModelBase {
         }
     }
 
-    public decimal Difference => !NewReconciledBalance.HasValue ? 0 : EndingBalance - NewReconciledBalance.Value;
+    public decimal Difference => 
+        (!NewReconciledBalance.HasValue || !TargetBalance.HasValue) 
+            ? 0 
+            : TargetBalance.Value - NewReconciledBalance.Value;
 
     public bool CanExecuteAdjustBalance => AdjustmentTransactionAmount != null;
 
     public bool CanExecuteReconcile =>
-        true; //ReconciliationTransactions.Any();// && NewReconciledBalance != null && NewReconciledDate != null &&
+        ReconciliationTransactions.Any(x => x.IsCleared);// && NewReconciledBalance != null 
+                                        // && TargetBalance != null && NewReconciledBalance == TargetBalance ; //ReconciliationTransactions.Any();// && NewReconciledBalance != null && NewReconciledDate != null &&
     // NewReconciledDate >= OpeningBalanceAsOf;
 
 
@@ -332,7 +350,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public string ReconcileButtonText {
         get {
             // If cleared balance matches register balance (everything is caught up)
-            if (ReconciliationTransactions.All(x => x.IsCleared) && NewReconciledBalance == EndingBalance) {
+            if (ReconciliationTransactions.Any(x => x.IsCleared) && NewReconciledBalance == TargetBalance) {
                 return "Reconcile";
             }
 
@@ -677,11 +695,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
         }
         var recordedBalance = NewReconciledBalance ?? newReconciledBalance ?? 0;
         recordedBalance = _account.IsLiability ? -recordedBalance : recordedBalance;
-        if (ReconciliationTransactions.All(x => x.IsCleared) &&
-            (NewReconciledBalance.HasValue || newReconciledBalance.HasValue) &&
-            (NewReconciledDate.HasValue || newReconciledDate.HasValue) &&
-            ((NewReconciledBalance.HasValue && NewReconciledBalance.Value == EndingBalance) ||
-             (newReconciledBalance.HasValue && newReconciledBalance.Value == EndingBalance))) {
+        var targetBalance = _account.IsLiability ? -TargetBalance : TargetBalance;
+        if (ReconciliationTransactions.Any(x => x.IsCleared) &&
+            recordedBalance == targetBalance) {
             foreach (var tx in ReconciliationTransactions) {
                 if (tx.IsCleared) {
                     tx.IsReconciled = true;
@@ -696,11 +712,9 @@ public partial class ReconciliationViewModel : ViewModelBase {
         }
         else {
             //nothing flagged as reconciled, but there are bank cleared transactions
-            await _reconciliationService.ReconcileAccountAsync(
+            await _reconciliationService.ClearAccountAsync(
                 _account.Id,
-                ReconciliationTransactions.ToList(),
-                recordedBalance,
-                NewReconciledDate ?? newReconciledDate ?? DateTime.MinValue);
+                ReconciliationTransactions.ToList());
         }
     }
 

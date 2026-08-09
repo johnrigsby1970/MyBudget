@@ -177,4 +177,31 @@ public class ReconciliationService {
             await _budgetService.UpdateTransactionsForReconciliationAsync(pendingUpdates);
         }
     }
+    
+    public async Task ClearAccountAsync(int accountId, List<TransactionViewModel> clearedTransactions) {
+        var pendingUpdates = new List<TransactionViewModel>();
+
+        // Prepare state changes in memory
+        foreach (var transaction in clearedTransactions) {
+            var changed = false;
+            
+            if (transaction.AccountId == accountId) {
+                changed = transaction.FromAccountIsCleared != transaction.IsCleared;
+                transaction.FromAccountIsCleared = transaction.IsCleared;
+            }
+            else if (transaction.ToAccountId == accountId) {
+                changed = transaction.ToAccountIsCleared != transaction.IsCleared;
+                transaction.ToAccountIsCleared = transaction.IsCleared;
+            }
+
+            if (changed || transaction.IsReconciled) {
+                pendingUpdates.Add(transaction);
+            }
+        }
+
+        // Single batch update call to BudgetService
+        if (pendingUpdates.Any()) {
+            await _budgetService.UpdateTransactionsForReconciliationAsync(pendingUpdates);
+        }
+    }
 }

@@ -60,94 +60,94 @@ public partial class BudgetService {
         }
     }
 
-    private async Task
-        InvalidateReconciliationsAfterDateAsync(int accountId, DateTime date, IDbTransaction? tx = null) {
-        foreach (var r in await GetInvalidateReconciliationsAfterDateAsync(accountId, date, tx)) {
-            await DeleteAccountReconciliationAsync(r, tx);
-        }
-    }
-
-    private async Task<bool> WillInvalidateReconciliationsAfterDateAsync(
-        int accountId,
-        DateTime date,
-        List<int>? reconciliationsToIgnore = null,
-        SqliteConnection? cn = null,
-        IDbTransaction? tx = null) {
-        bool isLocalConn = cn == null;
-        var conn = cn ?? _db.GetConnection();
-
-        try {
-            if (isLocalConn && conn.State != ConnectionState.Open) {
-                await conn.OpenAsync();
-            }
-
-            string sql = @"
-            SELECT COUNT(*) FROM AccountReconciliations
-            WHERE AccountId = @accountId 
-              AND date(ReconciledAsOfDate) >= @date";
-
-            bool hasIgnores = reconciliationsToIgnore != null && reconciliationsToIgnore.Any();
-
-            if (hasIgnores) {
-                sql += " AND Id NOT IN @reconciliationsToIgnore";
-            }
-
-            object param = hasIgnores
-                ? new { accountId, date = date.ToString("yyyy-MM-dd"), reconciliationsToIgnore }
-                : new { accountId, date = date.ToString("yyyy-MM-dd") };
-
-            var recordsImpacted = await conn.ExecuteScalarAsync<int>(sql, param, tx);
-
-            return recordsImpacted > 0;
-        }
-        finally {
-            if (isLocalConn) {
-                await conn.DisposeAsync();
-            }
-        }
-    }
-
-    private async Task<List<int>> GetInvalidateReconciliationsAfterDateAsync(
-        int accountId,
-        DateTime date,
-        IDbTransaction? tx = null,
-        List<int>? reconciliationsToIgnore = null) {
-        reconciliationsToIgnore ??= new List<int>();
-
-        bool isLocalConn = tx?.Connection == null;
-        // Typing conn as DbConnection gives access to DisposeAsync()
-        System.Data.Common.DbConnection conn = tx?.Connection as System.Data.Common.DbConnection
-                                               ?? _db.GetConnection();
-
-        try {
-            if (isLocalConn && conn.State != ConnectionState.Open) {
-                await conn.OpenAsync();
-            }
-
-            string sql = @"
-            SELECT Id FROM AccountReconciliations
-            WHERE AccountId = @accountId 
-              AND date(ReconciledAsOfDate) >= @date";
-
-            bool hasIgnores = reconciliationsToIgnore.Any();
-            if (hasIgnores) {
-                sql += " AND Id NOT IN @reconciliationsToIgnore";
-            }
-
-            object param = hasIgnores
-                ? new { accountId, date = date.ToString("yyyy-MM-dd"), reconciliationsToIgnore }
-                : new { accountId, date = date.ToString("yyyy-MM-dd") };
-
-            var reconciliations = (await conn.QueryAsync<int>(sql, param, tx)).ToList();
-
-            return reconciliations;
-        }
-        finally {
-            if (isLocalConn) {
-                await conn.DisposeAsync();
-            }
-        }
-    }
+    // private async Task
+    //     InvalidateReconciliationsAfterDateAsync(int accountId, DateTime date, IDbTransaction? tx = null) {
+    //     foreach (var r in await GetInvalidateReconciliationsAfterDateAsync(accountId, date, tx)) {
+    //         await DeleteAccountReconciliationAsync(r, tx);
+    //     }
+    // }
+    //
+    // private async Task<bool> WillInvalidateReconciliationsAfterDateAsync(
+    //     int accountId,
+    //     DateTime date,
+    //     List<int>? reconciliationsToIgnore = null,
+    //     SqliteConnection? cn = null,
+    //     IDbTransaction? tx = null) {
+    //     bool isLocalConn = cn == null;
+    //     var conn = cn ?? _db.GetConnection();
+    //
+    //     try {
+    //         if (isLocalConn && conn.State != ConnectionState.Open) {
+    //             await conn.OpenAsync();
+    //         }
+    //
+    //         string sql = @"
+    //         SELECT COUNT(*) FROM AccountReconciliations
+    //         WHERE AccountId = @accountId 
+    //           AND date(ReconciledAsOfDate) >= @date";
+    //
+    //         bool hasIgnores = reconciliationsToIgnore != null && reconciliationsToIgnore.Any();
+    //
+    //         if (hasIgnores) {
+    //             sql += " AND Id NOT IN @reconciliationsToIgnore";
+    //         }
+    //
+    //         object param = hasIgnores
+    //             ? new { accountId, date = date.ToString("yyyy-MM-dd"), reconciliationsToIgnore }
+    //             : new { accountId, date = date.ToString("yyyy-MM-dd") };
+    //
+    //         var recordsImpacted = await conn.ExecuteScalarAsync<int>(sql, param, tx);
+    //
+    //         return recordsImpacted > 0;
+    //     }
+    //     finally {
+    //         if (isLocalConn) {
+    //             await conn.DisposeAsync();
+    //         }
+    //     }
+    // }
+    //
+    // private async Task<List<int>> GetInvalidateReconciliationsAfterDateAsync(
+    //     int accountId,
+    //     DateTime date,
+    //     IDbTransaction? tx = null,
+    //     List<int>? reconciliationsToIgnore = null) {
+    //     reconciliationsToIgnore ??= new List<int>();
+    //
+    //     bool isLocalConn = tx?.Connection == null;
+    //     // Typing conn as DbConnection gives access to DisposeAsync()
+    //     System.Data.Common.DbConnection conn = tx?.Connection as System.Data.Common.DbConnection
+    //                                            ?? _db.GetConnection();
+    //
+    //     try {
+    //         if (isLocalConn && conn.State != ConnectionState.Open) {
+    //             await conn.OpenAsync();
+    //         }
+    //
+    //         string sql = @"
+    //         SELECT Id FROM AccountReconciliations
+    //         WHERE AccountId = @accountId 
+    //           AND date(ReconciledAsOfDate) >= @date";
+    //
+    //         bool hasIgnores = reconciliationsToIgnore.Any();
+    //         if (hasIgnores) {
+    //             sql += " AND Id NOT IN @reconciliationsToIgnore";
+    //         }
+    //
+    //         object param = hasIgnores
+    //             ? new { accountId, date = date.ToString("yyyy-MM-dd"), reconciliationsToIgnore }
+    //             : new { accountId, date = date.ToString("yyyy-MM-dd") };
+    //
+    //         var reconciliations = (await conn.QueryAsync<int>(sql, param, tx)).ToList();
+    //
+    //         return reconciliations;
+    //     }
+    //     finally {
+    //         if (isLocalConn) {
+    //             await conn.DisposeAsync();
+    //         }
+    //     }
+    // }
 
     private async Task DeleteAccountReconciliationAsync(int id, IDbTransaction? tx = null) {
         var conn = tx?.Connection ?? _db.GetConnection();
@@ -176,90 +176,35 @@ public partial class BudgetService {
 
         try {
             foreach (var transaction in txList) {
-                // 1. Check if the From-side was previously reconciled with a DIFFERENT reconciliation ID
-                if (transaction.AccountId.HasValue) {
-                    var oldRows = (await conn.QueryAsync<dynamic>(@"
-                    SELECT AccountId, TransactionDate 
-                    FROM Transactions 
-                    WHERE AccountId = @AccountId 
-                      AND TransactionId = @TransactionId 
-                      AND ReconciliationId IS NOT NULL 
-                      AND ReconciliationId <> @ReconciliationId",
-                        new {
-                            AccountId = transaction.AccountId,
-                            TransactionId = transaction.TransactionId.ToString(),
-                            ReconciliationId = transaction.FromAccountReconciledId
-                        }, tx)).ToList();
-
-                    if (oldRows.Any()) {
-                        // Invalidate downstream reconciliations if swapping reconciliation IDs
-                        await InvalidateReconciliationsAfterDateAsync(
-                            transaction.AccountId.Value,
-                            transaction.TransactionDate,
-                            tx: tx);
-
-                        if (transaction.FromAccountReconciledId.HasValue) {
-                            transaction.FromAccountReconciledId = null;
-                        }
-                    }
-                }
-
-                // 2. Check if the To-side was previously reconciled with a DIFFERENT reconciliation ID
-                if (transaction.ToAccountId.HasValue) {
-                    var oldRows = (await conn.QueryAsync<dynamic>(@"
-                    SELECT AccountId, TransactionDate 
-                    FROM Transactions 
-                    WHERE AccountId = @AccountId 
-                      AND TransactionId = @TransactionId 
-                      AND ReconciliationId IS NOT NULL 
-                      AND ReconciliationId <> @ReconciliationId",
-                        new {
-                            AccountId = transaction.ToAccountId,
-                            TransactionId = transaction.TransactionId.ToString(),
-                            ReconciliationId = transaction.ToAccountReconciledId
-                        }, tx)).ToList();
-
-                    if (oldRows.Any()) {
-                        await InvalidateReconciliationsAfterDateAsync(
-                            transaction.ToAccountId.Value,
-                            transaction.TransactionDate,
-                            tx: tx);
-
-                        if (transaction.ToAccountReconciledId.HasValue) {
-                            transaction.ToAccountReconciledId = null;
-                        }
-                    }
-                }
-
-                // 3. Execute the targeted update for the From-side
+                // Outbound / From-side
                 if (transaction.AccountId.HasValue) {
                     await conn.ExecuteAsync(@"
-                    UPDATE Transactions 
-                    SET ReconciliationId = @ReconciliationId, 
-                        IsCleared = @IsCleared 
-                    WHERE AccountId = @AccountId 
-                      AND TransactionId = @TransactionId",
+                UPDATE Transactions 
+                SET ReconciliationId = @ReconciliationId, 
+                    IsCleared = @IsCleared 
+                WHERE AccountId = @AccountId 
+                  AND TransactionId = @TransactionId",
                         new {
                             AccountId = transaction.AccountId,
                             ReconciliationId = transaction.FromAccountReconciledId,
                             TransactionId = transaction.TransactionId.ToString(),
-                            IsCleared = (transaction.FromAccountIsCleared?? false) ? 1 : 0
+                            IsCleared = (transaction.FromAccountIsCleared ?? false) ? 1 : 0
                         }, tx);
                 }
 
-                // 4. Execute the targeted update for the To-side
+                // Inbound / To-side
                 if (transaction.ToAccountId.HasValue) {
                     await conn.ExecuteAsync(@"
-                    UPDATE Transactions 
-                    SET ReconciliationId = @ReconciliationId, 
-                        IsCleared = @IsCleared 
-                    WHERE AccountId = @AccountId 
-                      AND TransactionId = @TransactionId",
+                UPDATE Transactions 
+                SET ReconciliationId = @ReconciliationId, 
+                    IsCleared = @IsCleared 
+                WHERE AccountId = @ToAccountId 
+                  AND TransactionId = @TransactionId",
                         new {
-                            AccountId = transaction.ToAccountId,
+                            ToAccountId = transaction.ToAccountId,
                             ReconciliationId = transaction.ToAccountReconciledId,
                             TransactionId = transaction.TransactionId.ToString(),
-                            IsCleared = (transaction.ToAccountIsCleared?? false) ? 1 : 0
+                            IsCleared = (transaction.ToAccountIsCleared ?? false) ? 1 : 0
                         }, tx);
                 }
             }

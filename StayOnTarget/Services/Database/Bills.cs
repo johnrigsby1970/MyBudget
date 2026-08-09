@@ -121,4 +121,30 @@ public partial class BudgetService
             }
         }
     }
+    
+    public async Task SkipPeriodBillAsync(int billId, DateTime dueDate, DateTime periodDate)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+
+        try
+        {
+            // 1. Upsert the PeriodBucket entry as IsPaid = true
+            await conn.ExecuteAsync(@"
+            INSERT INTO PeriodBill (BillId, DueDate, PeriodDate, ActualAmount, IsPaid)
+            VALUES (@bucketId, @dueDate, @periodDate, @amount, 1)
+            ON CONFLICT(BucketId, PeriodDate) DO UPDATE SET
+                ActualAmount = @amount,
+                IsPaid = 1",
+                new { billId, dueDate = dueDate.ToString("yyyy-MM-dd"), periodDate = periodDate.ToString("yyyy-MM-dd"), amount = 0 }, tx);
+            
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
 }

@@ -758,7 +758,7 @@
                                                                         <Hyperlink
                                                                             Command="{Binding DataContext.PayPeriodBillCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                                             CommandParameter="{Binding}">
-                                                                            Mark as Paid
+                                                                            Enter Payment
                                                                         </Hyperlink>
                                                                     </TextBlock>
                                                                 </Grid>
@@ -2668,7 +2668,7 @@
                                         <!--         </DataTemplate> -->
                                         <!--     </DataGridTemplateColumn.CellTemplate> -->
                                         <!-- </DataGridTemplateColumn> -->
-                                        <DataGridTemplateColumn Header="Description" Width="150">
+                                        <DataGridTemplateColumn Header="Description" Width="200">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <Grid Margin="2">
@@ -2691,7 +2691,7 @@
                                                             <Hyperlink
                                                                 Command="{Binding DataContext.PayBillCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                                 CommandParameter="{Binding}">
-                                                                Mark as Paid
+                                                                Enter Payment
                                                             </Hyperlink>
                                                         </TextBlock>
 
@@ -2702,7 +2702,12 @@
                                                             <Hyperlink
                                                                 Command="{Binding DataContext.FundEnvelopeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                                 CommandParameter="{Binding}">
-                                                                Set Aside Funds
+                                                                Funds Set Aside
+                                                            </Hyperlink> or 
+                                                            <Hyperlink
+                                                                Command="{Binding DataContext.SkipFundEnvelopeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}">
+                                                                Skip
                                                             </Hyperlink>
                                                         </TextBlock>
                                                     </Grid>

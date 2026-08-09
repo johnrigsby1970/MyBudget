@@ -53,8 +53,8 @@ public class SubCategory : ViewModelBase
         set => SetProperty(ref _isArchived, value);
     }
     
-    private string _categoryName;
-    public string CategoryName
+    private string? _categoryName;
+    public string? CategoryName
     {
         get => _categoryName;
         set => SetProperty(ref _categoryName, value);

@@ -160,11 +160,27 @@
                         Content="{Binding NewReconciledBalance}"
                         ContentStringFormat="{}{0:C2}"
                         Width="100" Margin="0,0" />
+                    
+                    <Label Content="Target Balance:" Margin="0,0" />
+                    <controls:NumericTextBox Grid.Row="1" Grid.Column="1" 
+                                             Text="{Binding TargetBalance, UpdateSourceTrigger=PropertyChanged}" 
+                                             Width="80" 
+                                             Margin="0,0"/>
+                    
                     <Label Content="Reconciled date:" Margin="0,0" />
-                    <Label
-                        Content="{Binding NewReconciledDate}"
-                        ContentStringFormat="{}{0:d}"
-                        Width="100" Margin="0,0" />
+   
+                    <DatePicker
+                        SelectedDate="{Binding NewReconciledDate, 
+                                               Mode=TwoWay, 
+                                               UpdateSourceTrigger=PropertyChanged, 
+                                               TargetNullValue=''}"
+                        VerticalAlignment="Center"
+                        Margin="5,0,0,0" />
+                    
+                    <!-- <Label -->
+                    <!--     Content="{Binding NewReconciledDate}" -->
+                    <!--     ContentStringFormat="{}{0:d}" -->
+                    <!--     Width="100" Margin="0,0" /> -->
                 </StackPanel>
                 <StackPanel Grid.Row="3" Margin="0,5"
             Orientation="Horizontal"
