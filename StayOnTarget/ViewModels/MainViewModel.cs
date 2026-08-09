@@ -7,6 +7,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Media;
 using System.Windows;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
 using StayOnTarget.Helpers;
@@ -239,6 +240,8 @@ public class MainViewModel : ViewModelBase {
         OpenManageExcludedAccountsCommand = new RelayCommand(OpenManageExcludedAccounts);
         CloseManageExcludedAccountsCommand = new RelayCommand(CloseManageExcludedAccounts);
         ToggleAccountExclusionCommand = new RelayCommand<int>(ToggleAccountExclusion);
+
+        InitializeBillsView(BillsWithNone);
     }
 
     private CancellationTokenSource? _recalculationCts;
@@ -3359,6 +3362,10 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
+    // Inside your ViewModel:
+    private ICollectionView _filteredBillsView;
+    public ICollectionView FilteredBillsView => _filteredBillsView;
+    
     private async Task LoadBillDataAsync() {
         Log.Information("Loading bill data.");
         _isLoadingBillData = true;
@@ -3408,6 +3415,26 @@ public class MainViewModel : ViewModelBase {
         finally {
             _isLoadingBillData = false;
         }
+    }
+    
+    public void InitializeBillsView(IEnumerable<Bill> billsWithNone)
+    {
+        _filteredBillsView = CollectionViewSource.GetDefaultView(billsWithNone);
+        _filteredBillsView.Filter = FilterBillItem;
+    }
+    
+    private bool FilterBillItem(object item)
+    {
+        if (item is not Bill bill) return false;
+    
+        // Always show "None" if present
+        if (bill.Id == 0) return true;
+
+        string searchText = EditingTransactionClone?.Description?.Trim() ?? string.Empty;
+        if (string.IsNullOrEmpty(searchText)) return true;
+
+        // Show items containing the typed text (case-insensitive)
+        return bill.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task LoadBucketDataAsync() {
@@ -4148,6 +4175,10 @@ public class MainViewModel : ViewModelBase {
         }
         // Handle Description triggering SubCategoryId lookup
         else if (e.PropertyName == nameof(Transaction.Description)) {
+            // 1. Refresh the ComboBox dropdown list based on current typed text
+            FilteredBillsView?.Refresh();
+            
+            // 2. Only auto-suggest subcategory if the typed text EXACTLY matches an existing bill/payee
             await TryAutoSuggestSubCategoryAsync();
         }
     }
@@ -4174,20 +4205,24 @@ public class MainViewModel : ViewModelBase {
 
     private async Task TryAutoSuggestSubCategoryAsync() {
         if (EditingTransactionClone == null) return;
+
+        string typedText = EditingTransactionClone.Description?.Trim() ?? string.Empty;
+
         // Conditions:
         // 1. Must be a NEW transaction (Id == 0)
-        // 2. SubCategoryId must not already be selected by the user
-        // 3. Description must have actual text
+        // 2. SubCategoryId must not already be explicitly set
+        // 3. Description must have actual text (at least 2 characters)
         if (EditingTransactionClone.Id == 0 &&
             !EditingTransactionClone.SubCategoryId.HasValue &&
-            !string.IsNullOrWhiteSpace(EditingTransactionClone.Description)) {
+            typedText.Length >= 2) 
+        {
+            // Check if the typed text strictly matches a bill OR fetch subcategory for exact name
             var suggestedSubId = await _budgetService.GetSuggestedSubCategoryIdAsync(
-                EditingTransactionClone.Description,
+                typedText,
                 EditingTransactionClone.TransactionDate);
 
-            if (suggestedSubId.HasValue) {
-                // Setting SubCategoryId will trigger PropertyChanged for SubCategoryId,
-                // which automatically triggers ApplyDefaultBucketForSubCategory() above!
+            // Re-verify that the user hasn't typed more characters while the async DB query ran
+            if (suggestedSubId.HasValue && EditingTransactionClone.Description?.Trim() == typedText) {
                 EditingTransactionClone.SubCategoryId = suggestedSubId.Value;
             }
         }
