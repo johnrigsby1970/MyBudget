@@ -1209,8 +1209,21 @@
                                                       VerticalAlignment="Center" />
                                         </Grid>
 
-                                        <!-- Row 2: Target Projection Cadence Fields -->
+                                        <!-- Row 2: Target Projection Cadence Fields (HIDDEN for UpfrontFloor) -->
                                         <Grid Margin="0,5">
+                                            <Grid.Style>
+                                                <Style TargetType="Grid">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <!-- Hide Cadence row completely when UpfrontFloor -->
+                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
+                                                                     Value="UpfrontFloor">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Grid.Style>
+
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
@@ -1234,7 +1247,7 @@
                                                                      Text="{Binding EditingBucketClone.TargetAmount, UpdateSourceTrigger=PropertyChanged}"
                                                                      Margin="5" VerticalAlignment="Center" />
 
-                                            <!-- Next Due Date (Optional Anchor for Calendar Frequencies) -->
+                                            <!-- Next Due Date -->
                                             <Label Grid.Column="4" Content="Next Due Date:" VerticalAlignment="Center" />
                                             <DatePicker Grid.Column="5"
                                                         SelectedDate="{Binding EditingBucketClone.NextDueDate, UpdateSourceTrigger=PropertyChanged}"
@@ -1250,7 +1263,7 @@
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Target Floor Balance (Visible for Upfront and Accumulating Drawdown) -->
+                                            <!-- Target Floor Balance (ONLY Visible for UpfrontFloor) -->
                                             <Label Grid.Column="0" Content="Target Floor:" VerticalAlignment="Center">
                                                 <Label.Style>
                                                     <Style TargetType="Label">
@@ -1258,10 +1271,6 @@
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding EditingBucketClone.Type}"
                                                                          Value="UpfrontFloor">
-                                                                <Setter Property="Visibility" Value="Visible" />
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                         Value="AccumulatingDrawdown">
                                                                 <Setter Property="Visibility" Value="Visible" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
@@ -1279,16 +1288,12 @@
                                                                          Value="UpfrontFloor">
                                                                 <Setter Property="Visibility" Value="Visible" />
                                                             </DataTrigger>
-                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                         Value="AccumulatingDrawdown">
-                                                                <Setter Property="Visibility" Value="Visible" />
-                                                            </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </controls:NumericTextBox.Style>
                                             </controls:NumericTextBox>
 
-                                            <!-- Current Balance (Only Visible for Accumulating Drawdown) -->
+                                            <!-- Current Balance (ONLY Visible for AccumulatingDrawdown) -->
                                             <Label Grid.Column="2" Content="Current Balance:"
                                                    VerticalAlignment="Center">
                                                 <Label.Style>
@@ -1320,7 +1325,7 @@
                                             </controls:NumericTextBox>
                                         </Grid>
 
-                                        <!-- Paycheck Allocations Section (Hidden for Upfront Floors) -->
+                                        <!-- Paycheck Allocations Section (Hidden for UpfrontFloor) -->
                                         <StackPanel Margin="0,10,0,5">
                                             <StackPanel.Style>
                                                 <Style TargetType="StackPanel">
@@ -1342,23 +1347,20 @@
                                                           AutoGenerateColumns="False" CanUserAddRows="True">
                                                     <DataGrid.Columns>
                                                         <DataGridTemplateColumn Header="Paycheck" Width="*">
-                                                            <!-- DISPLAY MODE -->
                                                             <DataGridTemplateColumn.CellTemplate>
                                                                 <DataTemplate>
-                                                                    <TextBlock Text="{Binding PaycheckName}" 
-                                                                               VerticalAlignment="Center" 
-                                                                               Margin="4,0" />
+                                                                    <TextBlock Text="{Binding PaycheckName}"
+                                                                               VerticalAlignment="Center" Margin="4,0" />
                                                                 </DataTemplate>
                                                             </DataGridTemplateColumn.CellTemplate>
-
-                                                            <!-- EDIT MODE -->
                                                             <DataGridTemplateColumn.CellEditingTemplate>
                                                                 <DataTemplate>
-                                                                    <ComboBox ItemsSource="{Binding DataContext.Paychecks, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                              SelectedValue="{Binding PaycheckId, UpdateSourceTrigger=PropertyChanged}"
-                                                                              SelectedValuePath="Id"
-                                                                              DisplayMemberPath="Name" 
-                                                                              IsDropDownOpen="True" />
+                                                                    <ComboBox
+                                                                        ItemsSource="{Binding DataContext.Paychecks, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                        SelectedValue="{Binding PaycheckId, UpdateSourceTrigger=PropertyChanged}"
+                                                                        SelectedValuePath="Id"
+                                                                        DisplayMemberPath="Name"
+                                                                        IsDropDownOpen="True" />
                                                                 </DataTemplate>
                                                             </DataGridTemplateColumn.CellEditingTemplate>
                                                         </DataGridTemplateColumn>
@@ -1373,7 +1375,29 @@
                                             </Border>
                                         </StackPanel>
 
-                                        <!-- SubCategory Association Section -->
+                                        <!-- Dynamic Purpose Description Banner -->
+                                        <Border Background="LightSkyBlue" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="8,6" Margin="0,0,0,8">
+                                            <TextBlock x:Name="BucketPurposeText" TextWrapping="Wrap" FontSize="11" Foreground="#334155" LineHeight="15">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <!-- Default Standard Envelope Description -->
+                                                        <Setter Property="Text" Value="💡 Think of this as a temporary allowance for a period. Spending comes out of this envelope first. If you spend less, the leftover cash goes back to your main account. If you spend more, it automatically pulls from your extra reserves." />
+                                                        <Style.Triggers>
+                                                            <!-- UpfrontFloor Description -->
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}" Value="UpfrontFloor">
+                                                                <Setter Property="Text" Value="💡 Sets a minimum balance cushion in your account. Make sure your account actually holds these funds—projections will alert you whenever your balance falls below this required floor at any point in the projected timeline." />
+                                                            </DataTrigger>
+                                                            <!-- AccumulatingDrawdown Description -->
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}" Value="AccumulatingDrawdown">
+                                                                <Setter Property="Text" Value="💡 Builds up cash over time from paychecks toward a goal. Ensure your account actually holds these saved funds, as projections will alert you if your balance drops below your accumulated target and offers actions to take to indicate money has been set aside as available for this savings goal." />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+
+                                        <!-- SubCategory Association Section (KEPT VISIBLE FOR ALL TYPES) -->
                                         <TextBlock Text="Associated Subcategories:" Margin="0,10,0,5"
                                                    FontWeight="SemiBold" />
                                         <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="3" Height="100">
