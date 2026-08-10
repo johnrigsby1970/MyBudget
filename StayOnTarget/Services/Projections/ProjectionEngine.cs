@@ -252,14 +252,17 @@ public class ProjectionEngine : IProjectionEngine {
 
         futureEvents = futureEvents.OrderBy(e => e.Date).ToList();
 
-        var nextPaycheckIndex = 0;
-        var nextPaycheckDate = paycheckDates.Count > 0 ? paycheckDates[0] : DateTime.MaxValue;
+        // FIX 1: Point nextPaycheckDate to index 1 (the boundary date closing period 1)
+        var nextPaycheckIndex = paycheckDates.Count > 1 ? 1 : 0;
+        var nextPaycheckDate = paycheckDates.Count > nextPaycheckIndex ? paycheckDates[nextPaycheckIndex] : DateTime.MaxValue;
 
         foreach (var e in futureEvents) {
             if (useAutoSweep) {
                 while (e.Date >= nextPaycheckDate && nextPaycheckDate != DateTime.MaxValue) {
                     var sweepDate = nextPaycheckDate.AddDays(-1);
-                    if (sweepDate >= startDate.Date && sweepDate >= today.Date) {
+
+                    // FIX 2: Allow sweep if the period boundary is within the projection range
+                    if (sweepDate >= startDate.Date.AddDays(-1) && nextPaycheckDate >= startDate.Date) {
                         if (effectiveSnowballOptions.EnableSnowball && primaryChecking.HasValue) {
                             SnowballStrategyProcessor.ProcessSurplus(
                                 sweepDate,
@@ -271,7 +274,8 @@ public class ProjectionEngine : IProjectionEngine {
                                 ref runningBalance,
                                 includedTotalAccounts,
                                 rothContributionsByYear,
-                                list);
+                                list,
+                                accountFloors);
                         }
                         else if (primaryChecking.HasValue) {
                             foreach (var ccId in creditCardAccountIds) {
@@ -279,9 +283,8 @@ public class ProjectionEngine : IProjectionEngine {
                                 if (balance < 0) {
                                     var sweepAmount = -balance;
 
-                                    // Dynamic spendable balance for source account
-                                    decimal spendableChecking = GetSpendableBalance(primaryChecking.Value,
-                                        accountBalances, accountFloors);
+                                    decimal spendableChecking =
+                                        GetSpendableBalance(primaryChecking.Value, accountBalances, accountFloors);
                                     decimal pctSafetyThreshold = Math.Max(0m,
                                         effectiveSnowballOptions.CheckingSafetyThresholdPct *
                                         accountBalances[primaryChecking.Value]);
