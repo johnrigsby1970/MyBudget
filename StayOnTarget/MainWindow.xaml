@@ -1354,7 +1354,7 @@
                                                             <!-- EDIT MODE -->
                                                             <DataGridTemplateColumn.CellEditingTemplate>
                                                                 <DataTemplate>
-                                                                    <ComboBox ItemsSource="{Binding DataContext.Paychecks, RelativeSource={RelativeSource AncestorType=TabItem}}"
+                                                                    <ComboBox ItemsSource="{Binding DataContext.Paychecks, RelativeSource={RelativeSource AncestorType=Window}}"
                                                                               SelectedValue="{Binding PaycheckId, UpdateSourceTrigger=PropertyChanged}"
                                                                               SelectedValuePath="Id"
                                                                               DisplayMemberPath="Name" 
