@@ -17,6 +17,12 @@ public partial class BudgetService
         _db = new DatabaseContext(dbPath, password);
     }
     
+    public BudgetService(DatabaseContext db, string password)
+    {
+        _password = password;
+        _db = db;
+    }
+    
     public string BackupDatabase()
     {
         return _db.BackupDatabase(_password);

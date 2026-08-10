@@ -72,7 +72,7 @@ public class DatabaseContext {
         _dbPath = dbPath;
         _connectionString = BuildConnectionString(_dbPath, userPassword);
 
-        InitializeDatabase();
+        //InitializeDatabase();
     }
 
     // Public helper to compute the default user profile path safely
@@ -90,14 +90,13 @@ public class DatabaseContext {
         // Convert Windows backslashes to forward slashes so the SQLite URI parser reads it cleanly
         var normalizedPath = dbPath.Replace('\\', '/');
 
-        var builder = new SqliteConnectionStringBuilder
-        {
+        var builder = new SqliteConnectionStringBuilder {
             // Use URI syntax safely in the Data Source field
             DataSource = $"file:{normalizedPath}?cipher=sqlcipher&legacy=4",
             Password = password,
             Pooling = false
         };
-        
+
         // Semicolons only separate built-in keywords (Data Source, Password, Pooling)
         // The cipher settings live seamlessly inside the Data Source string itself!
         return builder.ConnectionString;
@@ -106,7 +105,7 @@ public class DatabaseContext {
     public string BackupDatabase(string? password) {
         var userProfileFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         //var dbFolder = Path.Combine(userProfileFolder, ProgramFolderName);
-        var oldPath = _dbPath;//Path.Combine(dbFolder, DatabaseName);
+        var oldPath = _dbPath; //Path.Combine(dbFolder, DatabaseName);
         if (string.IsNullOrWhiteSpace(oldPath)) {
             MessageBox.Show("No file found to backup.");
             return string.Empty;
@@ -164,505 +163,379 @@ public class DatabaseContext {
         }
     }
 
-    private void InitializeDatabase() {
+    public void InitializeDatabase() {
         Log.Information("Initializing database.");
         try {
             using var connection = GetConnection();
             connection.Open();
             Log.Debug("Database connection opened for initialization.");
 
+            // Turn off FKs globally for table setup and migrations
+            connection.Execute("PRAGMA foreign_keys = OFF;");
+
             connection.Execute(@"
-            CREATE TABLE IF NOT EXISTS Accounts (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                BankName TEXT,
-                Balance DECIMAL NOT NULL,
-                BalanceAsOf TEXT DEFAULT '2000-01-01', 
-                AnnualGrowthRate DECIMAL DEFAULT 0,
-                IncludeInTotal INTEGER DEFAULT 1,
-                Type INTEGER NOT NULL,
-                HexColor TEXT DEFAULT '#FF0000FF',
-                IsPrimary INTEGER DEFAULT 0,
-                IsArchived INTEGER DEFAULT 0
-            );
+        CREATE TABLE IF NOT EXISTS Accounts (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            BankName TEXT,
+            Balance DECIMAL NOT NULL,
+            BalanceAsOf TEXT DEFAULT '2000-01-01', 
+            AnnualGrowthRate DECIMAL DEFAULT 0,
+            IncludeInTotal INTEGER DEFAULT 1,
+            Type INTEGER NOT NULL,
+            HexColor TEXT DEFAULT '#FF0000FF',
+            IsPrimary INTEGER DEFAULT 0,
+            IsArchived INTEGER DEFAULT 0
+        );
 
-            CREATE TABLE IF NOT EXISTS MortgageDetails (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                AccountId INTEGER NOT NULL,
-                InterestRate DECIMAL NOT NULL,
-                Escrow DECIMAL NOT NULL,
-                MortgageInsurance DECIMAL NOT NULL,
-                LoanPayment DECIMAL NOT NULL,
-                PaymentDate TEXT,
-                StatementDay INTEGER NOT NULL DEFAULT 1,
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
-            );
+        CREATE TABLE IF NOT EXISTS MortgageDetails (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            AccountId INTEGER NOT NULL,
+            InterestRate DECIMAL NOT NULL,
+            Escrow DECIMAL NOT NULL,
+            MortgageInsurance DECIMAL NOT NULL,
+            LoanPayment DECIMAL NOT NULL,
+            PaymentDate TEXT,
+            StatementDay INTEGER NOT NULL DEFAULT 1,
+            FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
+        );
 
-            CREATE TABLE IF NOT EXISTS CreditCardDetails (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                AccountId INTEGER NOT NULL,
-                StatementDay INTEGER NOT NULL,
-                DueDateOffset INTEGER NOT NULL DEFAULT 21,
-                MinPayFloor DECIMAL NOT NULL DEFAULT 25,
-                PayPreviousMonthBalanceInFull INTEGER NOT NULL,
-                GraceActive INTEGER DEFAULT 0,
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
-            );
+        CREATE TABLE IF NOT EXISTS CreditCardDetails (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            AccountId INTEGER NOT NULL,
+            StatementDay INTEGER NOT NULL,
+            DueDateOffset INTEGER NOT NULL DEFAULT 21,
+            MinPayFloor DECIMAL NOT NULL DEFAULT 25,
+            PayPreviousMonthBalanceInFull INTEGER NOT NULL,
+            GraceActive INTEGER DEFAULT 0,
+            FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
+        );
 
-            CREATE TABLE IF NOT EXISTS Bills (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                ExpectedAmount DECIMAL NOT NULL,
-                Frequency INTEGER NOT NULL,
-                DueDay INTEGER NOT NULL,
-                AccountId INTEGER,
-                ToAccountId INTEGER,
-                NextDueDate TEXT,
-                Category TEXT,
-                IsPrincipalOnly INTEGER DEFAULT 0,
-                IsActive INTEGER DEFAULT 1,
-                BucketId INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL, 
-                SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL,
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
-                FOREIGN KEY(ToAccountId) REFERENCES Accounts(Id)
-            );
+        CREATE TABLE IF NOT EXISTS Bills (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            ExpectedAmount DECIMAL NOT NULL,
+            Frequency INTEGER NOT NULL,
+            DueDay INTEGER NOT NULL,
+            AccountId INTEGER,
+            ToAccountId INTEGER,
+            NextDueDate TEXT,
+            Category TEXT,
+            IsPrincipalOnly INTEGER DEFAULT 0,
+            IsActive INTEGER DEFAULT 1,
+            BucketId INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL, 
+            SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL,
+            FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
+            FOREIGN KEY(ToAccountId) REFERENCES Accounts(Id)
+        );
 
-            CREATE TABLE IF NOT EXISTS PeriodBills (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                BillId INTEGER NOT NULL,
-                PeriodDate TEXT NOT NULL,
-                DueDate TEXT NOT NULL,
-                ActualAmount DECIMAL DEFAULT 0,
-                IsPaid INTEGER DEFAULT 0,
-                FitId TEXT NOT NULL,
-                FOREIGN KEY(BillId) REFERENCES Bills(Id)                
-                UNIQUE(BillId, PeriodDate) -- <--- Added composite unique constraint
-            );
+        CREATE TABLE IF NOT EXISTS PeriodBills (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            BillId INTEGER NOT NULL,
+            PeriodDate TEXT NOT NULL,
+            DueDate TEXT NOT NULL,
+            ActualAmount DECIMAL DEFAULT 0,
+            IsPaid INTEGER DEFAULT 0,
+            FitId TEXT NOT NULL,
+            FOREIGN KEY(BillId) REFERENCES Bills(Id),               
+            UNIQUE(BillId, PeriodDate)
+        );
 
-            CREATE TABLE IF NOT EXISTS Paychecks (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                ExpectedAmount DECIMAL NOT NULL,
-                Frequency INTEGER NOT NULL,
-                StartDate TEXT NOT NULL,
-                EndDate TEXT,
-                AccountId INTEGER REFERENCES Accounts(Id),
-                IsBalanced INTEGER DEFAULT 0
-            );
+        CREATE TABLE IF NOT EXISTS Paychecks (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            ExpectedAmount DECIMAL NOT NULL,
+            Frequency INTEGER NOT NULL,
+            StartDate TEXT NOT NULL,
+            EndDate TEXT,
+            AccountId INTEGER REFERENCES Accounts(Id),
+            IsBalanced INTEGER DEFAULT 0
+        );
 
-            CREATE TABLE IF NOT EXISTS Transactions (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Description TEXT,
-                NormalizedDescription TEXT,
-                Memo TEXT,
-                Amount DECIMAL NOT NULL,
-                TransactionDate TEXT NOT NULL,
-                AccountId INTEGER NOT NULL,
-                BucketId INTEGER REFERENCES Buckets(Id),
-                PeriodDate TEXT NOT NULL,
-                IsPrincipalOnly INTEGER DEFAULT 0,
-                IsInterestOnly INTEGER DEFAULT 0,
-                TransactionId TEXT NOT NULL,
-                FitId TEXT NOT NULL,
-                PaycheckId INTEGER REFERENCES Paychecks(Id),
-                PaycheckOccurrenceDate TEXT,
-                BillId INTEGER REFERENCES Bills(Id),
-                ReconciliationId INTEGER REFERENCES AccountReconciliations(Id),
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
-                
-                -- Optional budget/tracking links (preserve historical transactions if parent is deleted)
-    FOREIGN KEY(BucketId) REFERENCES Buckets(Id) ON DELETE SET NULL,
-    FOREIGN KEY(SubCategoryId) REFERENCES Subcategories(Id) ON DELETE SET NULL,
-    FOREIGN KEY(BillId) REFERENCES Bills(Id) ON DELETE SET NULL,
-    FOREIGN KEY(PaycheckId) REFERENCES Paychecks(Id) ON DELETE SET NULL,
-    FOREIGN KEY(ReconciliationId) REFERENCES AccountReconciliations(Id) ON DELETE SET NULL
-            );
+        CREATE TABLE IF NOT EXISTS Transactions (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Description TEXT,
+            NormalizedDescription TEXT,
+            Memo TEXT,
+            Amount DECIMAL NOT NULL,
+            TransactionDate TEXT NOT NULL,
+            AccountId INTEGER NOT NULL,
+            BucketId INTEGER REFERENCES Buckets(Id),
+            PeriodDate TEXT NOT NULL,
+            IsPrincipalOnly INTEGER DEFAULT 0,
+            IsInterestOnly INTEGER DEFAULT 0,
+            TransactionId TEXT NOT NULL,
+            FitId TEXT NOT NULL,
+            PaycheckId INTEGER REFERENCES Paychecks(Id),
+            PaycheckOccurrenceDate TEXT,
+            BillId INTEGER REFERENCES Bills(Id),
+            ReconciliationId INTEGER REFERENCES AccountReconciliations(Id),
+            SubCategoryId INTEGER REFERENCES Subcategories(Id),
+            FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
+            FOREIGN KEY(BucketId) REFERENCES Buckets(Id) ON DELETE SET NULL,
+            FOREIGN KEY(SubCategoryId) REFERENCES Subcategories(Id) ON DELETE SET NULL,
+            FOREIGN KEY(BillId) REFERENCES Bills(Id) ON DELETE SET NULL,
+            FOREIGN KEY(PaycheckId) REFERENCES Paychecks(Id) ON DELETE SET NULL,
+            FOREIGN KEY(ReconciliationId) REFERENCES AccountReconciliations(Id) ON DELETE SET NULL
+        );
 
-            CREATE TABLE IF NOT EXISTS Buckets (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Name TEXT NOT NULL,
-                ExpectedAmount DECIMAL NOT NULL,
-                CurrentBalance DECIMAL NOT NULL,
-                InitialBalance DECIMAL NOT NULL,
-                AccountId INTEGER,
-                PaycheckId INTEGER,
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
-                FOREIGN KEY(PaycheckId) REFERENCES PayChecks(Id) ON DELETE SET NULL
-            );
+        CREATE TABLE IF NOT EXISTS Buckets (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            ExpectedAmount DECIMAL NOT NULL,
+            AccountId INTEGER,
+            PaycheckId INTEGER, 
+            IsArchived INTEGER DEFAULT 0, 
+            IsActive INTEGER DEFAULT 1, 
+            Type INTEGER NOT NULL DEFAULT 0, 
+            TargetBalance NUMERIC NOT NULL DEFAULT 0, 
+            CurrentBalance NUMERIC NOT NULL DEFAULT 0, 
+            InitialBalance NUMERIC NOT NULL DEFAULT 0,
+            FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
+            FOREIGN KEY(PaycheckId) REFERENCES PayChecks(Id) ON DELETE SET NULL
+        );
 
-            CREATE TABLE IF NOT EXISTS PeriodBuckets (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                BucketId INTEGER NOT NULL,
-                PeriodDate TEXT NOT NULL,
-                ActualAmount DECIMAL DEFAULT 0,
-                IsPaid INTEGER DEFAULT 0,
-                FitId TEXT NOT NULL,
-                FOREIGN KEY(BucketId) REFERENCES Buckets(Id)
-                UNIQUE(BucketId, PeriodDate) -- <--- Added composite unique constraint
-            );
+        CREATE TABLE IF NOT EXISTS PeriodBuckets (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            BucketId INTEGER NOT NULL,
+            PeriodDate TEXT NOT NULL,
+            ActualAmount DECIMAL DEFAULT 0,
+            IsPaid INTEGER DEFAULT 0,
+            FitId TEXT NOT NULL,
+            FOREIGN KEY(BucketId) REFERENCES Buckets(Id),
+            UNIQUE(BucketId, PeriodDate)
+        );
 
-            CREATE TABLE IF NOT EXISTS AccountReconciliations (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                AccountId INTEGER NOT NULL,
-                ReconciledAsOfDate TEXT NOT NULL, --StatementEndingBalance
-                ReconciledBalance DECIMAL NOT NULL, --StatementEndingBalance
-                ReconciledOnDate TEXT NOT NULL,
-                IsInvalidated INTEGER DEFAULT 0,
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
-            );
+        CREATE TABLE IF NOT EXISTS AccountReconciliations (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            AccountId INTEGER NOT NULL,
+            ReconciledAsOfDate TEXT NOT NULL,
+            ReconciledBalance DECIMAL NOT NULL,
+            ReconciledOnDate TEXT NOT NULL,
+            IsInvalidated INTEGER DEFAULT 0,
+            FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
+        );
 
-            CREATE TABLE IF NOT EXISTS AccountAprHistory (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                AccountId INTEGER NOT NULL,
-                AsOfDate TEXT NOT NULL,
-                AnnualPercentageRate DECIMAL NOT NULL,
-                CashAdvanceRate DECIMAL NOT NULL,
-                BalanceTransferRate DECIMAL NOT NULL,
-                FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
-            );
+        CREATE TABLE IF NOT EXISTS AccountAprHistory (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            AccountId INTEGER NOT NULL,
+            AsOfDate TEXT NOT NULL,
+            AnnualPercentageRate DECIMAL NOT NULL,
+            CashAdvanceRate DECIMAL NOT NULL,
+            BalanceTransferRate DECIMAL NOT NULL,
+            FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
+        );
 
-CREATE TABLE IF NOT EXISTS AppSettings (
-    SettingKey TEXT PRIMARY KEY,
-    SettingValue TEXT
-);
+        CREATE TABLE IF NOT EXISTS AppSettings (
+            SettingKey TEXT PRIMARY KEY,
+            SettingValue TEXT
+        );
 
-CREATE TABLE IF NOT EXISTS AccountSnapshots (
-    SnapshotDate TEXT NOT NULL,    -- ISO8601 YYYY-MM-DD
-    AccountID INTEGER NOT NULL,
-    Balance REAL NOT NULL,
-    PRIMARY KEY (SnapshotDate, AccountID),
-    FOREIGN KEY (AccountID) REFERENCES Accounts(ID)
-);
+        CREATE TABLE IF NOT EXISTS AccountSnapshots (
+            SnapshotDate TEXT NOT NULL,
+            AccountID INTEGER NOT NULL,
+            Balance REAL NOT NULL,
+            PRIMARY KEY (SnapshotDate, AccountID),
+            FOREIGN KEY (AccountID) REFERENCES Accounts(ID)
+        );
 
-CREATE TABLE IF NOT EXISTS Categories (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    Name TEXT NOT NULL,
-    HexColor TEXT DEFAULT '#FF0000FF',
-    SortOrder INTEGER DEFAULT 0,
-    IsArchived INTEGER DEFAULT 0
-);
+        CREATE TABLE IF NOT EXISTS Categories (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            HexColor TEXT DEFAULT '#FF0000FF',
+            SortOrder INTEGER DEFAULT 0,
+            IsArchived INTEGER DEFAULT 0
+        );
 
-CREATE TABLE IF NOT EXISTS Subcategories (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    CategoryId INTEGER NOT NULL,
-    DefaultBucketId INTEGER,
-    Name TEXT NOT NULL,
-    SortOrder INTEGER DEFAULT 0,
-    IsArchived INTEGER DEFAULT 0,
-    FOREIGN KEY(CategoryId) REFERENCES Categories(Id) ON DELETE CASCADE,
-    FOREIGN KEY(DefaultBucketId) REFERENCES Buckets(Id) ON DELETE SET NULL
-);
+        CREATE TABLE IF NOT EXISTS Subcategories (
+            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+            CategoryId INTEGER NOT NULL,
+            DefaultBucketId INTEGER,
+            Name TEXT NOT NULL,
+            SortOrder INTEGER DEFAULT 0,
+            IsArchived INTEGER DEFAULT 0,
+            FOREIGN KEY(CategoryId) REFERENCES Categories(Id) ON DELETE CASCADE,
+            FOREIGN KEY(DefaultBucketId) REFERENCES Buckets(Id) ON DELETE SET NULL
+        );
 
--- 1. INSERT TRIGGER
-CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterInsert
-AFTER INSERT ON Transactions
-BEGIN
-    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
-    VALUES (
-        NEW.TransactionDate, 
-        NEW.AccountID, 
-        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = NEW.AccountID AND TransactionDate <= NEW.TransactionDate), 0.00)
-    )
-    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
-        Balance = EXCLUDED.Balance;
-END;
+        CREATE TABLE IF NOT EXISTS BucketPaycheckAllocations (
+            AllocationId INTEGER PRIMARY KEY AUTOINCREMENT,
+            BucketId INTEGER NOT NULL,
+            PaycheckId INTEGER NOT NULL,
+            AllocationType TEXT NOT NULL DEFAULT 'FixedAmount' CHECK(AllocationType IN ('FixedAmount', 'Percentage')),
+            AllocationValue DECIMAL NOT NULL,
+            SortOrder INTEGER NOT NULL DEFAULT 0,
+            IsActive INTEGER NOT NULL DEFAULT 1 CHECK(IsActive IN (0, 1)),
+            CreatedDate TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (BucketId) REFERENCES Buckets (Id) ON DELETE CASCADE,
+            FOREIGN KEY (PaycheckId) REFERENCES PayChecks (Id) ON DELETE CASCADE,
+            CONSTRAINT UQ_Bucket_Paycheck UNIQUE (BucketId, PaycheckId)
+        );
 
--- 2. UPDATE TRIGGER
-CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterUpdate
-AFTER UPDATE ON Transactions
-BEGIN
-    -- Fix the snapshot chain for the OLD account/date
-    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
-    VALUES (
-        OLD.TransactionDate, 
-        OLD.AccountID, 
-        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = OLD.AccountID AND TransactionDate <= OLD.TransactionDate), 0.00)
-    )
-    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
-        Balance = EXCLUDED.Balance;
+        CREATE INDEX IF NOT EXISTS IX_BucketPaycheckAllocations_PaycheckId ON BucketPaycheckAllocations (PaycheckId);
+        CREATE INDEX IF NOT EXISTS IX_BucketPaycheckAllocations_BucketId ON BucketPaycheckAllocations (BucketId);
 
-    -- Fix the snapshot chain for the NEW account/date
-    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
-    VALUES (
-        NEW.TransactionDate, 
-        NEW.AccountID, 
-        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = NEW.AccountID AND TransactionDate <= NEW.TransactionDate), 0.00)
-    )
-    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
-        Balance = EXCLUDED.Balance;
-END;
+        -- TRIGGERS
+        CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterInsert
+        AFTER INSERT ON Transactions
+        BEGIN
+            INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+            VALUES (
+                NEW.TransactionDate, 
+                NEW.AccountID, 
+                COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = NEW.AccountID AND TransactionDate <= NEW.TransactionDate), 0.00)
+            )
+            ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET Balance = EXCLUDED.Balance;
+        END;
 
--- 3. DELETE TRIGGER
-CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterDelete
-AFTER DELETE ON Transactions
-BEGIN
-    INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
-    VALUES (
-        OLD.TransactionDate, 
-        OLD.AccountID, 
-        COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = OLD.AccountID AND TransactionDate <= OLD.TransactionDate), 0.00)
-    )
-    ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET
-        Balance = EXCLUDED.Balance;
-END;
+        CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterUpdate
+        AFTER UPDATE ON Transactions
+        BEGIN
+            INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+            VALUES (
+                OLD.TransactionDate, 
+                OLD.AccountID, 
+                COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = OLD.AccountID AND TransactionDate <= OLD.TransactionDate), 0.00)
+            )
+            ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET Balance = EXCLUDED.Balance;
 
+            INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+            VALUES (
+                NEW.TransactionDate, 
+                NEW.AccountID, 
+                COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = NEW.AccountID AND TransactionDate <= NEW.TransactionDate), 0.00)
+            )
+            ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET Balance = EXCLUDED.Balance;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS trig_Transactions_AfterDelete
+        AFTER DELETE ON Transactions
+        BEGIN
+            INSERT INTO AccountSnapshots (SnapshotDate, AccountID, Balance)
+            VALUES (
+                OLD.TransactionDate, 
+                OLD.AccountID, 
+                COALESCE((SELECT SUM(Amount) FROM Transactions WHERE AccountID = OLD.AccountID AND TransactionDate <= OLD.TransactionDate), 0.00)
+            )
+            ON CONFLICT(SnapshotDate, AccountID) DO UPDATE SET Balance = EXCLUDED.Balance;
+        END;
         ");
 
+            // Execute incremental migrations & column checks
+            MigrateBucketsTable(connection);
+
             var subcategoryColumnExists = connection.ExecuteScalar<int>(@"
-        SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='SubCategoryId'");      
-            
-            if (subcategoryColumnExists == 0)
-            {
-                var tableExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
+            SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='SubCategoryId'");
 
-                if (tableExists > 0)
-                {
-                    // Add SubCategoryId foreign key column
-                    connection.Execute("ALTER TABLE Transactions ADD COLUMN SubCategoryId INTEGER REFERENCES Subcategories(Id)");
+            if (subcategoryColumnExists == 0) {
+                connection.Execute(
+                    "ALTER TABLE Transactions ADD COLUMN SubCategoryId INTEGER REFERENCES Subcategories(Id)");
 
-                    // 3. Seed initial Categories and Subcategories from existing Buckets
-                    var existingBuckets = connection.Query<(long Id, string Name)>("SELECT Id, Name FROM Buckets");
+                var existingBuckets = connection.Query<(long Id, string Name)>("SELECT Id, Name FROM Buckets");
+                foreach (var bucket in existingBuckets) {
+                    var categoryId = connection.QuerySingle<long>(@"
+                    INSERT INTO Categories (Name) VALUES (@Name);
+                    SELECT last_insert_rowid();", new { Name = bucket.Name });
 
-                    foreach (var bucket in existingBuckets)
-                    {
-                        // Create a matching Category for each Bucket
-                        var categoryId = connection.QuerySingle<long>(@"
-                    INSERT INTO Categories (Name) 
-                    VALUES (@Name);
-                    SELECT last_insert_rowid();", 
-                            new { Name = bucket.Name });
-
-                        // Create a default SubCategory under that Category linked to the Bucket
-                        var subCategoryId = connection.QuerySingle<long>(@"
+                    var subCategoryId = connection.QuerySingle<long>(@"
                     INSERT INTO Subcategories (CategoryId, DefaultBucketId, Name) 
                     VALUES (@CategoryId, @DefaultBucketId, @Name);
-                    SELECT last_insert_rowid();", 
-                            new { 
-                                CategoryId = categoryId, 
-                                DefaultBucketId = bucket.Id, 
-                                Name = $"General {bucket.Name}" 
-                            });
+                    SELECT last_insert_rowid();",
+                        new { CategoryId = categoryId, DefaultBucketId = bucket.Id, Name = $"General {bucket.Name}" });
 
-                        // 4. Backfill existing transactions that currently have this BucketId
-                        connection.Execute(@"
-                    UPDATE Transactions 
-                    SET SubCategoryId = @subCategoryId 
-                    WHERE BucketId = @bucketId", 
-                            new { subCategoryId, bucketId = bucket.Id });
-                    }
-                }
-            }
-            
-            var columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='NormalizedDescription'");
-
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Transactions ADD COLUMN NormalizedDescription TEXT");
-
-                    // Populate the new column
-                    var transactions = connection.Query<(long Id, string Description)>("SELECT Id, Description FROM Transactions");
-                    foreach (var tx in transactions) {
-                        var normalized = TransactionMatcher.NormalizeName(tx.Description);
-                        connection.Execute("UPDATE Transactions SET NormalizedDescription = @normalized WHERE Id = @id", new { normalized, id = tx.Id });
-                    }
-                }
-            }
-            
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='IsCleared'");
-
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Transactions ADD COLUMN IsCleared INTEGER DEFAULT 0");
-                    
-                    var transactions = connection.Query<(long Id, int? ReconciliationId)>("SELECT Id, ReconciliationId FROM Transactions");
-                    foreach (var tx in transactions) {
-                        var isCleared = tx.ReconciliationId.HasValue;
-                        connection.Execute("UPDATE Transactions SET IsCleared = @isCleared WHERE Id = @id", new { isCleared, id = tx.Id });
-                    }
-                }
-            }
-            
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name='IsInterestOnly'");
-
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Transactions'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Transactions ADD COLUMN IsInterestOnly INTEGER DEFAULT 0");
+                    connection.Execute(
+                        "UPDATE Transactions SET SubCategoryId = @subCategoryId WHERE BucketId = @bucketId",
+                        new { subCategoryId, bucketId = bucket.Id });
                 }
             }
 
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='IsPrincipalOnly'");
+            EnsureColumnExists(connection, "Transactions", "NormalizedDescription", "TEXT");
+            EnsureColumnExists(connection, "Transactions", "IsCleared", "INTEGER DEFAULT 0");
+            EnsureColumnExists(connection, "Transactions", "IsInterestOnly", "INTEGER DEFAULT 0");
+            EnsureColumnExists(connection, "Bills", "IsPrincipalOnly", "INTEGER DEFAULT 0");
+            EnsureColumnExists(connection, "Accounts", "IsArchived", "INTEGER DEFAULT 0");
+            EnsureColumnExists(connection, "Bills", "IsArchived", "INTEGER DEFAULT 0");
+            EnsureColumnExists(connection, "Buckets", "IsArchived", "INTEGER DEFAULT 0");
+            EnsureColumnExists(connection, "Buckets", "IsActive", "INTEGER DEFAULT 1");
+            EnsureColumnExists(connection, "Accounts", "IsPrimary", "INTEGER DEFAULT 0");
+            EnsureColumnExists(connection, "Accounts", "HexColor", "TEXT DEFAULT '#FF0000FF'");
+            EnsureColumnExists(connection, "MortgageDetails", "StatementDay", "INTEGER NOT NULL DEFAULT 1");
+            EnsureColumnExists(connection, "Bills", "BucketId", "INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL");
+            EnsureColumnExists(connection, "Bills", "SubCategoryId",
+                "INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL");
 
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Bills'");
+            // Composite Unique Indexes
+            connection.Execute(@"
+            CREATE UNIQUE INDEX IF NOT EXISTS UX_PeriodBills_BillId_PeriodDate ON PeriodBills(BillId, PeriodDate);
+            CREATE UNIQUE INDEX IF NOT EXISTS UX_PeriodBuckets_BucketId_PeriodDate ON PeriodBuckets(BucketId, PeriodDate);
+        ");
 
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Bills ADD COLUMN IsPrincipalOnly INTEGER DEFAULT 0");
-                }
-            }
+            // BUCKETS MIGRATION FOR DECOUPLED PAYCHECKS & TARGET FREQUENCY
+            var newBucketFieldExists = connection.ExecuteScalar<int>(@"
+            SELECT COUNT(*) FROM pragma_table_info('Buckets') WHERE name='TargetFrequency'");
 
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='IsArchived'");
+            if (newBucketFieldExists == 0) {
+                // Guarantee FKs are OFF during table swap
+                connection.Execute("PRAGMA foreign_keys = OFF;");
 
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Accounts'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Accounts ADD COLUMN IsArchived INTEGER DEFAULT 0");
-                }
-            }
-
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='IsArchived'");
-
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Bills'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Bills ADD COLUMN IsArchived INTEGER DEFAULT 0");
-                }
-            }
-
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Buckets') WHERE name='IsArchived'");
-
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Buckets'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Buckets ADD COLUMN IsArchived INTEGER DEFAULT 0");
-                }
-            }
-
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Buckets') WHERE name='IsActive'");
-
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Buckets'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Buckets ADD COLUMN IsActive INTEGER DEFAULT 1");
-                }
-            }
-
-            columnExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='IsPrimary'");
-
-            if (columnExists == 0) {
-                // If the table exists but the column doesn't, add it. 
-                // We check if table exists first.
-                var tableExists = connection.ExecuteScalar<int>(@"
-                SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Accounts'");
-
-                if (tableExists > 0) {
-                    connection.Execute("ALTER TABLE Accounts ADD COLUMN IsPrimary INTEGER DEFAULT 0");
-                }
-            }
-
-            // Check if CreditCardDetails table exists
-            var ccDetailsTableExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM sqlite_master WHERE TYPE='table' AND name='CreditCardDetails'");
-
-            if (ccDetailsTableExists == 0) {
+                // Seed Junction Table from existing Bucket -> Paycheck relationships
                 connection.Execute(@"
-                CREATE TABLE CreditCardDetails (
+                INSERT INTO BucketPaycheckAllocations (BucketId, PaycheckId, AllocationType, AllocationValue, SortOrder, IsActive)
+                SELECT 
+                    Id AS BucketId,
+                    PaycheckId,
+                    'FixedAmount' AS AllocationType,
+                    ExpectedAmount AS AllocationValue,
+                    0 AS SortOrder,
+                    1 AS IsActive
+                FROM Buckets
+                WHERE PaycheckId IS NOT NULL 
+                  AND Type <> 1;");
+
+                // Create updated Buckets table without PaycheckId
+                connection.Execute(@"
+                CREATE TABLE Buckets_New (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    AccountId INTEGER NOT NULL,
-                    Apr DECIMAL NOT NULL,
-                    StatementDay INTEGER NOT NULL,
-                    DueDateOffset INTEGER NOT NULL DEFAULT 21,
-                    PayPreviousMonthBalanceInFull INTEGER NOT NULL,
-                    GraceActive INTEGER NOT NULL DEFAULT 0,
+                    Name TEXT NOT NULL,
+                    ExpectedAmount DECIMAL NOT NULL,
+                    AccountId INTEGER,
+                    Type INTEGER NOT NULL DEFAULT 0,
+                    TargetBalance NUMERIC NOT NULL DEFAULT 0,
+                    CurrentBalance NUMERIC NOT NULL DEFAULT 0,
+                    InitialBalance NUMERIC NOT NULL DEFAULT 0,
+                    IsArchived INTEGER DEFAULT 0,
+                    IsActive INTEGER DEFAULT 1,
+                    TargetFrequency INTEGER NULL,
+                    TargetAmount DECIMAL NOT NULL DEFAULT 0.0,
+                    NextDueDate TEXT NULL,
                     FOREIGN KEY(AccountId) REFERENCES Accounts(Id)
-                )");
+                );");
+
+                // Copy data over
+                connection.Execute(@"
+                INSERT INTO Buckets_New (
+                    Id, Name, ExpectedAmount, AccountId, Type, TargetBalance, 
+                    CurrentBalance, InitialBalance, IsArchived, IsActive, 
+                    TargetFrequency, TargetAmount
+                )
+                SELECT 
+                    Id, Name, ExpectedAmount, AccountId, Type, TargetBalance, 
+                    CurrentBalance, InitialBalance, IsArchived, IsActive, 
+                    CASE WHEN PaycheckId IS NOT NULL AND Type <> 1 THEN 0 ELSE NULL END AS TargetFrequency,
+                    ExpectedAmount AS TargetAmount
+                FROM Buckets;");
+
+                // Swap tables
+                connection.Execute("DROP TABLE Buckets;");
+                connection.Execute("ALTER TABLE Buckets_New RENAME TO Buckets;");
             }
 
-            // Check if HexColor exists in Accounts table
-            var hexColorExists = connection.ExecuteScalar<int>(@"
-            SELECT COUNT(*) FROM pragma_table_info('Accounts') WHERE name='HexColor'");
-
-            if (hexColorExists == 0) {
-                connection.Execute("ALTER TABLE Accounts ADD COLUMN HexColor TEXT DEFAULT '#FF0000FF'");
-            }
-            
-            if (!connection.Query<dynamic>("PRAGMA table_info(MortgageDetails)").Any(x => x.name == "StatementDay")) {
-                connection.Execute("ALTER TABLE MortgageDetails ADD COLUMN StatementDay INTEGER NOT NULL DEFAULT 1;");
-            }
-
-            var billsBucketIdColumnExists = connection.ExecuteScalar<int>(@"
-    SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='BucketId'");
-
-            if (billsBucketIdColumnExists == 0) 
-            {
-                connection.Execute(
-                    "ALTER TABLE Bills ADD COLUMN BucketId INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL;");
-            }
-
-            var billsSubCategoryIdColumnExists = connection.ExecuteScalar<int>(@"
-    SELECT COUNT(*) FROM pragma_table_info('Bills') WHERE name='SubCategoryId'");
-
-            if (billsSubCategoryIdColumnExists == 0) 
-            {
-                connection.Execute(
-                    "ALTER TABLE Bills ADD COLUMN SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL;");
-            }
-
-            MigrateBucketsTable(connection);
-            
-            // 2. Ensure Composite Unique Index Exists for Existing Databases
-            // (This guarantees ON CONFLICT(BucketId, PeriodDate) works even if the table was created before UNIQUE was in DDL)
-            string createIndexSql = @"
-        CREATE UNIQUE INDEX IF NOT EXISTS UX_PeriodBills_BillId_PeriodDate 
-        ON PeriodBills(BillId, PeriodDate);";
-            connection.Execute(createIndexSql);
-            
-            // 2. Ensure Composite Unique Index Exists for Existing Databases
-            // (This guarantees ON CONFLICT(BucketId, PeriodDate) works even if the table was created before UNIQUE was in DDL)
-            createIndexSql = @"
-        CREATE UNIQUE INDEX IF NOT EXISTS UX_PeriodBuckets_BucketId_PeriodDate 
-        ON PeriodBuckets(BucketId, PeriodDate);";
-            connection.Execute(createIndexSql);
-            
+            // Seed Default Categories
             CategorySeeder.SeedDefaultCategories(connection);
 
+            // Turn foreign key enforcement back ON
             connection.Execute("PRAGMA foreign_keys = ON;");
-            
-            //TransactionTableMigration.FixTransactionForeignKeys(connection);
-            
+
             Log.Information("Database initialization and schema updates completed successfully.");
         }
         catch (Exception ex) {
@@ -670,25 +543,23 @@ END;
             throw;
         }
     }
-    
+
     // Usage when restoring/initializing SQLite database
-    public static void MigrateBucketsTable(IDbConnection connection)
-    {
+    public static void MigrateBucketsTable(IDbConnection connection) {
         EnsureColumnExists(connection, "Buckets", "Type", "INTEGER NOT NULL DEFAULT 0");
         EnsureColumnExists(connection, "Buckets", "TargetBalance", "NUMERIC NOT NULL DEFAULT 0");
         EnsureColumnExists(connection, "Buckets", "CurrentBalance", "NUMERIC NOT NULL DEFAULT 0");
         EnsureColumnExists(connection, "Buckets", "InitialBalance", "NUMERIC NOT NULL DEFAULT 0");
     }
-    
-    private static void EnsureColumnExists(IDbConnection connection, string tableName, string columnName, string columnDefinition)
-    {
+
+    private static void EnsureColumnExists(IDbConnection connection, string tableName, string columnName,
+        string columnDefinition) {
         var exists = connection.ExecuteScalar<int>($@"
         SELECT COUNT(*) 
         FROM pragma_table_info('{tableName}') 
         WHERE name = @columnName", new { columnName });
 
-        if (exists == 0)
-        {
+        if (exists == 0) {
             connection.Execute($"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};");
         }
     }

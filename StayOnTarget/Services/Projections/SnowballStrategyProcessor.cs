@@ -15,14 +15,15 @@ public static class SnowballStrategyProcessor
         ref decimal runningBalance,
         HashSet<int> includedTotalAccounts,
         Dictionary<int, decimal> rothContributionsByYear,
-        List<ProjectionItem> projectionList)
+        List<ProjectionItem> projectionList,
+        IReadOnlyDictionary<int, decimal>? accountFloors = null) // <--- ADDED accountFloors parameter
     {
         if (!options.EnableSnowball) return;
 
         decimal checkingBalance = accountBalances[primaryCheckingId];
 
         // -------------------------------------------------------------
-        // Step 0: Calculate Available Sweep Pool Based on Strategy Options
+        // Step 0: Calculate Available Sweep Pool Based on Strategy Options + Floors
         // -------------------------------------------------------------
         decimal threshold = options.CheckingSafetyBufferAmount;
         if (options.CheckingSafetyThresholdPct > 0m)
@@ -30,6 +31,13 @@ public static class SnowballStrategyProcessor
             decimal pctThreshold = options.CheckingSafetyThresholdPct * checkingBalance;
             threshold = Math.Max(threshold, pctThreshold);
         }
+
+        // Add the primary checking floor reserve cushion to the threshold
+        if (accountFloors != null && accountFloors.TryGetValue(primaryCheckingId, out var floorReserve))
+        {
+            threshold += floorReserve;
+        }
+
         if (threshold < 0) threshold = 0;
 
         decimal availableSurplus = checkingBalance - threshold;
@@ -62,13 +70,12 @@ public static class SnowballStrategyProcessor
         if (options.PrimaryTarget is SurplusAllocationTarget.PayDownDebt or SurplusAllocationTarget.Hybrid)
         {
             var debtAccounts = accounts.Where(a => a.IsLiability)
-                                       .Where(a => !options.ExcludedAccountIds.Contains(a.Id)) // Honor Excluded Accounts
+                                       .Where(a => !options.ExcludedAccountIds.Contains(a.Id))
                                        .Where(a => accountBalances[a.Id] < -0.01m)
                                        .ToList();
 
             if (options.DebtSortStrategy == SnowballSortStrategy.LowestBalanceFirst)
             {
-                // Closest to $0 balance first (balances are negative)
                 debtAccounts = debtAccounts.OrderByDescending(a => accountBalances[a.Id]).ToList();
             }
             else // HighestInterestFirst (Avalanche)
@@ -121,7 +128,6 @@ public static class SnowballStrategyProcessor
         // -------------------------------------------------------------
         if (sweepPool > 0.01m && options.PrimaryTarget is SurplusAllocationTarget.InvestSurplus or SurplusAllocationTarget.Hybrid)
         {
-            // Expand filter to capture all investment/retirement account types
             var investmentAccounts = accounts.Where(a => a.Type is AccountType.Brokerage 
                                                         or AccountType.Retirement401k 
                                                         or AccountType.Roth401k
@@ -131,7 +137,6 @@ public static class SnowballStrategyProcessor
                                              .Where(a => !options.ExcludedAccountIds.Contains(a.Id))
                                              .ToList();
 
-            // Roth Prioritization
             if (options.InvestmentStrategy == InvestmentStrategy.PrioritizeRothLimits)
             {
                 var rothAccounts = investmentAccounts.Where(a => a.Type == AccountType.RothIRA).ToList();
@@ -173,7 +178,6 @@ public static class SnowballStrategyProcessor
                 }
             }
 
-            // Yield Optimization / Remaining Investment
             if (sweepPool > 0.01m && investmentAccounts.Any())
             {
                 var nonRothInvestmentAccounts = investmentAccounts

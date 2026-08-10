@@ -67,7 +67,12 @@ public partial class App : Application {
 
                     Log.Information("Auto-unlock successful.");
                     // Success! Launch MainWindow
-                    LaunchMainWindow(dbPath, password);
+                    
+                    dbContext.InitializeDatabase();
+                    
+                    var budgetService = new BudgetService(dbContext, password);
+                    //LaunchMainWindow(dbPath, password);
+                    LaunchMainWindow(budgetService);
                     return;
                 }
                 catch (SqliteException ex) {
@@ -96,7 +101,22 @@ public partial class App : Application {
                     if (passwordWindow.ShowDialog() == true)
                     {
                         Log.Information("Password provided, launching MainWindow.");
-                        LaunchMainWindow(dbPath, passwordWindow.Password);
+                        
+                        
+                        // Verify the password from vault works
+                        var dbContext = new DatabaseContext(dbPath, password);
+                        using (var connection = dbContext.GetConnection()) {
+                            connection.Open();
+                        }
+
+                        Log.Information("Auto-unlock successful.");
+                        // Success! Launch MainWindow
+                    
+                        dbContext.InitializeDatabase();
+                        
+                        var budgetService = new BudgetService(dbPath, passwordWindow.Password);
+                        //var budgetService = new BudgetService(dbPath, passwordWindow.Password);
+                        LaunchMainWindow(budgetService);
                     }
                     else
                     {
@@ -188,8 +208,21 @@ public partial class App : Application {
                         string currentDbPath = Path.Combine(
                             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                             @"AppData\Local\StayOnTarget", dbStep?.DatabaseName ?? "budget.db");
+                        
+                        // Verify the password from vault works
+                        var dbContext = new DatabaseContext(currentDbPath, passwordProvided);
+                        using (var connection = dbContext.GetConnection()) {
+                            connection.Open();
+                        }
 
-                        LaunchMainWindow(currentDbPath, passwordProvided);
+                        Log.Information("Auto-unlock successful.");
+                        // Success! Launch MainWindow
+                    
+                        dbContext.InitializeDatabase();
+                        
+                        var budgetService = new BudgetService(dbContext, passwordProvided);
+                        
+                        LaunchMainWindow(budgetService);
                     }
                     else {
                         Log.Warning("Wizard result was true but BudgetService is null. Shutting down.");
@@ -232,11 +265,11 @@ public partial class App : Application {
             e.SetObserved();
         };
     }
-
-    private void LaunchMainWindow(string dbPath, string password) {
+    private void LaunchMainWindow(BudgetService budgetService) {
+    //private void LaunchMainWindow(string dbPath, string password) {
         try {
             Log.Information("Initializing BudgetService and MainWindow.");
-            var budgetService = new BudgetService(dbPath, password);
+            //var budgetService = new BudgetService(dbPath, password);
             var reconciliationService = new ReconciliationService(budgetService);
             var viewModel = new MainViewModel(budgetService, reconciliationService);
             var mainWindow = new MainWindow(viewModel);

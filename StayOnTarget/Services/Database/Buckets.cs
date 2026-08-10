@@ -15,7 +15,12 @@ public partial class BudgetService
         await conn.OpenAsync();
 
         return await conn.QueryAsync<BudgetBucket>(
-            "SELECT * FROM Buckets WHERE IsActive = 1 AND (IsArchived = 0 OR @includeArchived = 1) ORDER BY Name",
+            @"SELECT Id, Name, ExpectedAmount, AccountId, Type, TargetBalance, 
+                     CurrentBalance, InitialBalance, IsArchived, IsActive,
+                     TargetFrequency, TargetAmount, NextDueDate 
+              FROM Buckets 
+              WHERE IsActive = 1 AND (IsArchived = 0 OR @includeArchived = 1) 
+              ORDER BY Name",
             new { includeArchived = includeArchived ? 1 : 0 });
     }
 
@@ -30,9 +35,29 @@ public partial class BudgetService
             if (bucket.Id == 0) 
             {
                 bucket.Id = await conn.ExecuteScalarAsync<int>(@"
-                    INSERT INTO Buckets (Name, ExpectedAmount, AccountId, PaycheckId, Type, TargetBalance, CurrentBalance, InitialBalance) 
-                    VALUES (@Name, @ExpectedAmount, @AccountId, @PaycheckId, @Type, @TargetBalance, @CurrentBalance, @InitialBalance);
-                    SELECT last_insert_rowid();", bucket, tx);
+                    INSERT INTO Buckets (
+                        Name, ExpectedAmount, AccountId, Type, 
+                        TargetBalance, CurrentBalance, InitialBalance,
+                        TargetFrequency, TargetAmount, NextDueDate
+                    ) 
+                    VALUES (
+                        @Name, @ExpectedAmount, @AccountId, @Type, 
+                        @TargetBalance, @CurrentBalance, @InitialBalance,
+                        @TargetFrequency, @TargetAmount, @NextDueDate
+                    );
+                    SELECT last_insert_rowid();", 
+                    new {
+                        bucket.Name,
+                        bucket.ExpectedAmount,
+                        bucket.AccountId,
+                        Type = (int)bucket.Type,
+                        bucket.TargetBalance,
+                        bucket.CurrentBalance,
+                        bucket.InitialBalance,
+                        TargetFrequency = bucket.TargetFrequency.HasValue ? (int?)bucket.TargetFrequency.Value : null,
+                        bucket.TargetAmount,
+                        NextDueDate = bucket.NextDueDate?.ToString("yyyy-MM-dd")
+                    }, tx);
             }
             else 
             {
@@ -41,12 +66,27 @@ public partial class BudgetService
                     SET Name = @Name, 
                         ExpectedAmount = @ExpectedAmount, 
                         AccountId = @AccountId, 
-                        PaycheckId = @PaycheckId,
                         Type = @Type,
                         TargetBalance = @TargetBalance,
                         CurrentBalance = @CurrentBalance,
-                        InitialBalance = @InitialBalance
-                    WHERE Id = @Id", bucket, tx);
+                        InitialBalance = @InitialBalance,
+                        TargetFrequency = @TargetFrequency,
+                        TargetAmount = @TargetAmount,
+                        NextDueDate = @NextDueDate
+                    WHERE Id = @Id", 
+                    new {
+                        bucket.Id,
+                        bucket.Name,
+                        bucket.ExpectedAmount,
+                        bucket.AccountId,
+                        Type = (int)bucket.Type,
+                        bucket.TargetBalance,
+                        bucket.CurrentBalance,
+                        bucket.InitialBalance,
+                        TargetFrequency = bucket.TargetFrequency.HasValue ? (int?)bucket.TargetFrequency.Value : null,
+                        bucket.TargetAmount,
+                        NextDueDate = bucket.NextDueDate?.ToString("yyyy-MM-dd")
+                    }, tx);
             }
 
             // Subcategory mapping handling
@@ -73,6 +113,63 @@ public partial class BudgetService
         }
     }
 
+    // Bucket Paycheck Allocation Operations
+    public async Task SaveBucketPaycheckAllocationsAsync(int bucketId, BucketType bucketType, IEnumerable<BucketPaycheckAllocation> allocations)
+    {
+        // Enforce business rule: UpfrontFloor buckets cannot be mapped to paycheck allocations
+        if (bucketType == BucketType.UpfrontFloor)
+        {
+            throw new InvalidOperationException("UpfrontFloor buckets represent static reserve balances and cannot be linked to paycheck allocations.");
+        }
+
+        await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+
+        try
+        {
+            // Wipe existing allocations for this bucket and re-insert set
+            await conn.ExecuteAsync("DELETE FROM BucketPaycheckAllocations WHERE BucketId = @bucketId", new { bucketId }, tx);
+
+            const string sql = @"
+                INSERT INTO BucketPaycheckAllocations (BucketId, PaycheckId, AllocationType, AllocationValue, SortOrder, IsActive)
+                VALUES (@BucketId, @PaycheckId, @AllocationType, @AllocationValue, @SortOrder, @IsActive);";
+
+            foreach (var alloc in allocations)
+            {
+                await conn.ExecuteAsync(sql, new {
+                    BucketId = bucketId,
+                    alloc.PaycheckId,
+                    alloc.AllocationType,
+                    alloc.AllocationValue,
+                    alloc.SortOrder,
+                    IsActive = alloc.IsActive ? 1 : 0
+                }, tx);
+            }
+
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<BucketPaycheckAllocation>> GetAllocationsForBucketAsync(int bucketId)
+    {
+        await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
+
+        return await conn.QueryAsync<BucketPaycheckAllocation>(@"
+            SELECT AllocationId, BucketId, PaycheckId, AllocationType, AllocationValue, SortOrder, IsActive, CreatedDate
+                 , Paychecks.Name as PaycheckName
+            FROM BucketPaycheckAllocations
+            LEFT OUTER JOIN Paychecks ON BucketPaycheckAllocations.PaycheckId = Paychecks.Id
+            WHERE BucketId = @bucketId AND IsActive = 1
+            ORDER BY SortOrder ASC", new { bucketId });
+    }
+
     /// <summary>
     /// Process a transaction against an AccumulatingDrawdown bucket, updating its CurrentBalance.
     /// </summary>
@@ -83,7 +180,6 @@ public partial class BudgetService
 
         try
         {
-            // Cast to DbConnection to access OpenAsync and DisposeAsync safely
             if (isLocalConn && conn is DbConnection dbConn)
             {
                 if (dbConn.State != ConnectionState.Open)
@@ -153,6 +249,7 @@ public partial class BudgetService
             }
             else 
             {
+                await conn.ExecuteAsync("DELETE FROM BucketPaycheckAllocations WHERE BucketId = @id", new { id }, tx);
                 await conn.ExecuteAsync("DELETE FROM Buckets WHERE Id = @id", new { id }, tx);
             }
 

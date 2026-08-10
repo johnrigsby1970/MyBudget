@@ -19,6 +19,9 @@ public class ProjectionItem : ViewModelBase
     private int? _fromAccountId;
     private Dictionary<string, decimal> _accountBalances = new();
     private bool _isSynthetic;
+    private decimal _spendableBalance;
+    private bool _isBelowFloor;
+    private string? _warningMessage;
 
     public DateTime TransactionDate { get => _transactionDate; set => SetProperty(ref _transactionDate, value); }
     public string Description { get => _description; set => SetProperty(ref _description, value); }
@@ -32,10 +35,33 @@ public class ProjectionItem : ViewModelBase
     public bool InMoneyAccount { get; set; }
     public bool OutOfMoneyAccount { get; set; }
     public bool InternalTransfer { get; set; }
+
+    public decimal SpendableBalance 
+    { 
+        get => _spendableBalance; 
+        set => SetProperty(ref _spendableBalance, value); 
+    }
+
+    public bool IsBelowFloor 
+    { 
+        get => _isBelowFloor; 
+        set 
+        {
+            if (SetProperty(ref _isBelowFloor, value) && value)
+            {
+                IsWarning = true;
+            }
+        } 
+    }
+
+    public string? WarningMessage 
+    { 
+        get => _warningMessage; 
+        set => SetProperty(ref _warningMessage, value); 
+    }
+
+    public bool NeedsAttention { get => _paycheckId.HasValue; }
     
-    public bool NeedsAttention { get => _paycheckId.HasValue;  }
-    
-    // Helper property for XAML DataTriggers
     public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket || Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
     
     public bool IsSweep => Type == ProjectionEngine.ProjectionEventType.Sweep || Type == ProjectionEngine.ProjectionEventType.Snowball || Type == ProjectionEngine.ProjectionEventType.Roth;
@@ -74,6 +100,7 @@ public class ProjectionItem : ViewModelBase
     {
         return _accountBalances.TryGetValue(accountName, out var bal) ? bal : 0;
     }
+
     private bool _isReconciled;
     public bool IsReconciled
     {
@@ -91,10 +118,8 @@ public class ProjectionItem : ViewModelBase
     {
         get
         {
-            // Must be a bill
             if (!BillId.HasValue || BillId.Value == 0) return false;
 
-            // Determine active period start (matches your VM logic)
             DateTime periodStart = MainViewModel.Instance?.CurrentPeriodDate == DateTime.MinValue 
                 ? DateTime.Today 
                 : (MainViewModel.Instance?.CurrentPeriodDate ?? DateTime.Today);
@@ -104,7 +129,6 @@ public class ProjectionItem : ViewModelBase
                 periodStart = MainViewModel.Instance.ProjectionStartDate.Value;
             }
 
-            // Only allow payment if transaction falls within 31 days from the period start date
             return TransactionDate >= periodStart && TransactionDate <= periodStart.AddDays(31);
         }
     }
@@ -113,11 +137,7 @@ public class ProjectionItem : ViewModelBase
     {
         get
         {
-            // Must be a bill
             if (!BucketId.HasValue || BucketId.Value == 0) return false;
-
-            var bucket = MainViewModel.Instance?.Buckets?.FirstOrDefault(x => x.Id == BucketId);
-            //if (bucket == null || bucket.Type != BucketType.AccumulatingDrawdown) return false;
             if (Type != ProjectionEngine.ProjectionEventType.AccumulatingDrawdown) return false;
             return true;
         }

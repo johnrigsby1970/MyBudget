@@ -62,7 +62,10 @@ public class MainViewModel : ViewModelBase {
     private SnowballStrategyOptions _snowballOptions = new();
 
     #region Properties
-
+    
+    public IEnumerable<TargetFrequencyType> TargetFrequencyTypes => 
+        Enum.GetValues(typeof(TargetFrequencyType)).Cast<TargetFrequencyType>();
+    
     public IEnumerable<BucketType> BucketTypes => Enum.GetValues(typeof(BucketType)).Cast<BucketType>();
 
     public SnowballStrategyOptions SnowballOptions {
@@ -101,6 +104,9 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
+    public RangeObservableCollection<BucketPaycheckAllocation> EditableAllocations { get; } 
+        = new RangeObservableCollection<BucketPaycheckAllocation>();
+    
     public RangeObservableCollection<SelectableSubCategory> EditableSubCategories { get; }
         = new RangeObservableCollection<SelectableSubCategory>();
 
@@ -721,7 +727,7 @@ public class MainViewModel : ViewModelBase {
         get => _toggleReconciliationText;
         set => SetProperty(ref _toggleReconciliationText, value);
     }
-    
+
     private CancellationTokenSource? _cts;
 
     private async void OnCalculateProjections() {
@@ -1713,8 +1719,15 @@ public class MainViewModel : ViewModelBase {
                 Type = BucketType.Standard,
                 ExpectedAmount = 0,
                 TargetBalance = 0,
-                CurrentBalance = 0
+                CurrentBalance = 0,
+                TargetFrequency = TargetFrequencyType.PaycheckFrequency,
+                TargetAmount = 0,
+                NextDueDate = null
             };
+
+            // Clear any active allocations for the edit form
+            EditableAllocations.Clear();
+
             SelectedBucket = null;
 
             // Populate selectable subcategories and mark currently assigned ones
@@ -1727,7 +1740,7 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private void EditBucket() {
+    private async void EditBucket() {
         try {
             CancelBucket();
             if (SelectedBucket == null) return;
@@ -1741,9 +1754,17 @@ public class MainViewModel : ViewModelBase {
                 CurrentBalance = SelectedBucket.CurrentBalance,
                 InitialBalance = SelectedBucket.InitialBalance,
                 AccountId = SelectedBucket.AccountId,
-                PaycheckId = SelectedBucket.PaycheckId,
-                IsArchived = SelectedBucket.IsArchived
+                IsArchived = SelectedBucket.IsArchived,
+
+                // New Projection Cadence Properties
+                TargetFrequency = SelectedBucket.TargetFrequency,
+                TargetAmount = SelectedBucket.TargetAmount,
+                NextDueDate = SelectedBucket.NextDueDate
             };
+
+            // Load existing allocations for the junction table
+            var allocations = await _budgetService.GetAllocationsForBucketAsync(SelectedBucket.Id);
+            EditableAllocations.ReplaceRange(allocations);
 
             // Populate selectable subcategories and mark currently assigned ones
             PopulateEditableSubCategories(SelectedBucket.Id);
@@ -1773,7 +1794,7 @@ public class MainViewModel : ViewModelBase {
             var item = new SelectableSubCategory {
                 Id = subCat.Id,
                 Name = subCat.Name,
-                CategoryName = subCat.CategoryName??"",
+                CategoryName = subCat.CategoryName ?? "",
                 CurrentBucketId = subCat.DefaultBucketId,
                 CurrentBucketName = currentBucketName,
                 EditingBucketId = EditingBucketClone?.Id ?? 0,
@@ -1792,7 +1813,6 @@ public class MainViewModel : ViewModelBase {
         try {
             // 1. Sanitize foreign keys
             if (EditingBucketClone.AccountId == 0) EditingBucketClone.AccountId = null;
-            if (EditingBucketClone.PaycheckId == 0) EditingBucketClone.PaycheckId = null;
 
             // 2. Enforce Bucket Type Rules directly on the object being saved
             NormalizeBucketTypeRules(EditingBucketClone);
@@ -1805,7 +1825,8 @@ public class MainViewModel : ViewModelBase {
 
             if (SelectedBucket != null) {
                 UpdateBucketFromClone(SelectedBucket, EditingBucketClone);
-                SelectedBucket.InitialBalance = SelectedBucket.CurrentBalance; //reset initial balance to new desire
+                SelectedBucket.InitialBalance =
+                    SelectedBucket.CurrentBalance; // Reset initial balance to new desired amount
                 await _budgetService.UpsertBucketAsync(SelectedBucket, selectedSubCategoryIds);
             }
             else {
@@ -1814,11 +1835,21 @@ public class MainViewModel : ViewModelBase {
 
             var selectedBucketId = SelectedBucket?.Id ?? EditingBucketClone.Id;
 
-            // 2. Re-sync the master Bucket's CurrentBalance
+            // 3. Save updated Paycheck Allocations (Junction table) for non-UpfrontFloor types
+            if (EditingBucketClone.Type != BucketType.UpfrontFloor) {
+                await _budgetService.SaveBucketPaycheckAllocationsAsync(
+                    selectedBucketId,
+                    EditingBucketClone.Type,
+                    EditableAllocations
+                );
+            }
+
+            // 4. Re-sync the master Bucket's CurrentBalance
             await _budgetService.RecalculateBucketBalanceAsync(selectedBucketId);
-            
+
             IsEditingBucket = false;
             EditingBucketClone = null;
+            EditableAllocations.Clear();
 
             await LoadBucketDataAsync();
 
@@ -1840,20 +1871,25 @@ public class MainViewModel : ViewModelBase {
     private void NormalizeBucketTypeRules(BudgetBucket bucket) {
         switch (bucket.Type) {
             case BucketType.UpfrontFloor:
-                bucket.PaycheckId = null;
                 bucket.ExpectedAmount = 0;
                 bucket.CurrentBalance = 0; // Upfront floor balance is tracked strictly via TargetBalance
+                bucket.TargetFrequency = null;
+                bucket.NextDueDate = null;
+                EditableAllocations.Clear(); // Enforce rule: No paycheck allocations for static floors
                 break;
 
             case BucketType.Standard:
                 bucket.TargetBalance = 0;
                 bucket.CurrentBalance = 0;
+                // Default to PaycheckFrequency if frequency was left unset
+                bucket.TargetFrequency ??= TargetFrequencyType.PaycheckFrequency;
                 break;
 
             case BucketType.AccumulatingDrawdown:
                 // Ensures valid bounds for accumulating funds
                 if (bucket.TargetBalance < 0) bucket.TargetBalance = 0;
                 if (bucket.Id <= 0) bucket.InitialBalance = bucket.CurrentBalance;
+                bucket.TargetFrequency ??= TargetFrequencyType.PaycheckFrequency;
                 break;
         }
     }
@@ -1865,13 +1901,18 @@ public class MainViewModel : ViewModelBase {
         target.TargetBalance = clone.TargetBalance;
         target.CurrentBalance = clone.CurrentBalance;
         target.AccountId = clone.AccountId;
-        target.PaycheckId = clone.PaycheckId;
+
+        // Updated Projection Cadence Properties
+        target.TargetFrequency = clone.TargetFrequency;
+        target.TargetAmount = clone.TargetAmount;
+        target.NextDueDate = clone.NextDueDate;
     }
 
     private void CancelBucket() {
         try {
             IsEditingBucket = false;
             EditingBucketClone = null;
+            EditableAllocations.Clear();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling bucket edit.");
@@ -1881,19 +1922,19 @@ public class MainViewModel : ViewModelBase {
     private async Task DeleteBucketAsync() {
         if (EditingBucketClone == null) return;
         var messageBoxResult = MessageBox.Show(
-            "Are you sure you want to delete this bucket?", // Message
-            "Delete Confirmation", // Title
-            MessageBoxButton.YesNo, // Buttons
-            MessageBoxImage.Warning // Icon
+            "Are you sure you want to delete this bucket?",
+            "Delete Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
         );
 
-        // Check the user's response
         if (messageBoxResult == MessageBoxResult.Yes) {
             try {
-                // User confirmed deletion, proceed with your delete logic here
                 await _budgetService.DeleteBucketAsync(EditingBucketClone.Id);
                 IsEditingBucket = false;
                 EditingBucketClone = null;
+                EditableAllocations.Clear();
+
                 await LoadBucketDataAsync();
                 await LoadPeriodDataAsync();
                 await LoadSubCategoryDataAsync();
@@ -1944,10 +1985,10 @@ public class MainViewModel : ViewModelBase {
             }
 
             var selectedPeriodBucketId = SelectedPeriodBucket?.Id;
-            
+
             // 2. Re-sync the master Bucket's CurrentBalance
             await _budgetService.RecalculateBucketBalanceAsync(EditingPeriodBucketClone.BucketId);
-            
+
             IsEditingPeriodBucket = false;
             EditingPeriodBucketClone = null;
 
@@ -2967,6 +3008,7 @@ public class MainViewModel : ViewModelBase {
             var projectionStartDate = ProjectionStartDate;
             var projectionEndDate = ProjectionEndDate;
             var useAutoSweep = UseAutoSweep;
+            var allocation = EditableAllocations;
 
             // Snapshot options reference on UI thread
             var snowballOptions = SnowballOptions;
@@ -2982,7 +3024,7 @@ public class MainViewModel : ViewModelBase {
                 var periodBuckets = await _budgetService.GetAllPeriodBucketsAsync();
 
                 cancellationToken.ThrowIfCancellationRequested();
-                
+
                 List<AccountReconciliation>? reconciliations = null;
 
                 var start = currentPeriodDate == DateTime.MinValue ? DateTime.Today : currentPeriodDate;
@@ -3032,6 +3074,7 @@ public class MainViewModel : ViewModelBase {
                     rawBucketTransactions.ToList(),
                     allTransactions,
                     start, end, accounts, paychecks.ToList(), bills.ToList(), buckets.ToList(),
+                    allocation.ToList(),
                     periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
                     showReconciled, true, useAutoSweep, null);
 
@@ -3044,24 +3087,39 @@ public class MainViewModel : ViewModelBase {
                     rawBucketTransactions.ToList(),
                     allTransactions,
                     start, end, accounts, paychecks.ToList(), bills.ToList(), buckets.ToList(),
+                    allocation.ToList(),
                     periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
                     showReconciled, true, useAutoSweep, snowballOptions);
 
                 var list = results.ToList();
                 var snowballList = snowballResults.ToList();
 
-                // Check for negative checking/savings accounts
-                var negAccounts = new HashSet<string>();
+                // Check for negative checking/savings accounts or floor cushion breaches
+                var breachedAccounts = new HashSet<string>();
                 foreach (var item in list) {
+                    if (item.Description.Contains("Necessity")) {
+                        var s = "";
+                    }
+                    // Option A: Catch items specifically marked as breaching their floor cushion
+                    if (item.IsBelowFloor) {
+                        var targetAcc = accounts.FirstOrDefault(a => a.Id == (item.FromAccountId ?? item.ToAccountId));
+                        if (targetAcc != null) {
+                            breachedAccounts.Add(targetAcc.Name);
+                        }
+                    }
+
+                    // Option B: Fallback check against raw balances or spendable balance per checking/savings account
                     foreach (var acc in accounts) {
                         if (acc.Type is not (AccountType.Checking or AccountType.Savings)) continue;
+
+                        // If checking/savings actual balance goes negative or item flags floor breach
                         if (item.AccountBalances.TryGetValue(acc.Name, out decimal balance) && balance < 0) {
-                            negAccounts.Add(acc.Name);
+                            breachedAccounts.Add(acc.Name);
                         }
                     }
                 }
 
-                return (list, snowballList, negAccounts);
+                return (list, snowballList, breachedAccounts);
             }, cancellationToken);
 
             // 3. CHECK IF CANCELED BEFORE MUTATING UI STATE
@@ -3094,8 +3152,8 @@ public class MainViewModel : ViewModelBase {
 
             if (negativeAccounts.Any()) {
                 string message =
-                    $"Warning: The following accounts go negative in the projection: {string.Join(", ", negativeAccounts)}";
-                ShowToast(message);
+                    $"Warning: The following accounts breach their balance floor in the projection: {string.Join(", ", negativeAccounts)}";
+                ShowWarningToast(message);
             }
         }
         catch (OperationCanceledException) {
@@ -3103,7 +3161,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error calculating projections.");
-            ShowToast("Failed to calculate projections. Check logs.");
+            ShowWarningToast("Failed to calculate projections. Check logs.");
         }
         finally {
             // Only turn off visual indicator if this run wasn't canceled mid-flight
@@ -3132,6 +3190,17 @@ public class MainViewModel : ViewModelBase {
 
             var toast = new ToastViewModel(message,
                 t => { Application.Current.Dispatcher.Invoke(() => Toasts.Remove(t)); }, ToastType.Success);
+            Toasts.Add(toast);
+        });
+    }
+    
+    public void ShowWarningToast(string message) {
+        Application.Current.Dispatcher.Invoke(() => {
+            // Avoid duplicate toasts with the same message
+            if (Toasts.Any(t => t.Message == message)) return;
+
+            var toast = new ToastViewModel(message,
+                t => { Application.Current.Dispatcher.Invoke(() => Toasts.Remove(t)); }, ToastType.Warning);
             Toasts.Add(toast);
         });
     }
@@ -3345,7 +3414,7 @@ public class MainViewModel : ViewModelBase {
     // Inside your ViewModel:
     private ICollectionView _filteredBillsView;
     public ICollectionView FilteredBillsView => _filteredBillsView;
-    
+
     private async Task LoadBillDataAsync() {
         Log.Information("Loading bill data.");
         _isLoadingBillData = true;
@@ -3396,11 +3465,10 @@ public class MainViewModel : ViewModelBase {
             _isLoadingBillData = false;
         }
     }
-    
-    private bool FilterBillItem(object item)
-    {
+
+    private bool FilterBillItem(object item) {
         if (item is not Bill bill) return false;
-    
+
         // Always show "None" if present
         if (bill.Id == 0) return true;
 
@@ -3710,32 +3778,42 @@ public class MainViewModel : ViewModelBase {
         try {
             var pBuckets = (await _budgetService.GetPeriodBucketsIncludingMonthlyAsync(CurrentPeriodDate)).ToList();
 
-            foreach (var bucket in Buckets.Where(b =>
-                         b.PaycheckId == null || (b.PaycheckId == SelectedPeriodPaycheckId && !ShowByMonth))) {
-                if (pBuckets.All(existing => existing.BucketId != bucket.Id)) {
-                    var pb = new PeriodBucket {
-                        BucketId = bucket.Id,
-                        BucketName = bucket.Name,
-                        PeriodDate = bucket.PaycheckId == null
-                            ? new DateTime(CurrentPeriodDate.Year, CurrentPeriodDate.Month, 1)
-                            : CurrentPeriodDate,
-                        ActualAmount = bucket.ExpectedAmount,
-                        IsPaid = false,
-                        FitId = Guid.NewGuid()
-                    };
-                    pBuckets.Add(pb);
+            foreach (var bucket in Buckets) {
+                // Load allocations for non-UpfrontFloor buckets
+                List<BucketPaycheckAllocation> allocations = new();
+                if (bucket.Type != BucketType.UpfrontFloor) {
+                    allocations = (await _budgetService.GetAllocationsForBucketAsync(bucket.Id)).ToList();
+                }
+
+                bool isLinkedToCurrentPaycheck = allocations.Any(a => a.PaycheckId == SelectedPeriodPaycheckId);
+                bool isStandaloneOrMonthly = !allocations.Any() || ShowByMonth;
+
+                if (isStandaloneOrMonthly || isLinkedToCurrentPaycheck) {
+                    if (pBuckets.All(existing => existing.BucketId != bucket.Id)) {
+                        var pb = new PeriodBucket {
+                            BucketId = bucket.Id,
+                            BucketName = bucket.Name,
+                            PeriodDate = !allocations.Any()
+                                ? new DateTime(CurrentPeriodDate.Year, CurrentPeriodDate.Month, 1)
+                                : CurrentPeriodDate,
+                            ActualAmount = bucket.ExpectedAmount,
+                            IsPaid = false,
+                            FitId = Guid.NewGuid(),
+                            BucketType = bucket.Type
+                        };
+                        pBuckets.Add(pb);
+                    }
                 }
             }
 
-
             foreach (var item in CurrentPeriodBuckets) {
-                item.PropertyChanged -= PeriodBill_PropertyChanged;
+                item.PropertyChanged -= PeriodBucket_PropertyChanged;
             }
 
             CurrentPeriodBuckets.Clear();
 
             foreach (var b in pBuckets) {
-                b.PropertyChanged += PeriodBill_PropertyChanged;
+                b.PropertyChanged += PeriodBucket_PropertyChanged;
             }
 
             CurrentPeriodBuckets.AddRange(pBuckets);
@@ -4151,7 +4229,7 @@ public class MainViewModel : ViewModelBase {
         else if (e.PropertyName == nameof(Transaction.Description)) {
             // 1. Refresh the ComboBox dropdown list based on current typed text
             FilteredBillsView?.Refresh();
-            
+
             // 2. Only auto-suggest subcategory if the typed text EXACTLY matches an existing bill/payee
             await TryAutoSuggestSubCategoryAsync();
         }
@@ -4188,8 +4266,7 @@ public class MainViewModel : ViewModelBase {
         // 3. Description must have actual text (at least 2 characters)
         if (EditingTransactionClone.Id == 0 &&
             !EditingTransactionClone.SubCategoryId.HasValue &&
-            typedText.Length >= 2) 
-        {
+            typedText.Length >= 2) {
             // Check if the typed text strictly matches a bill OR fetch subcategory for exact name
             var suggestedSubId = await _budgetService.GetSuggestedSubCategoryIdAsync(
                 typedText,
@@ -4287,7 +4364,7 @@ public class MainViewModel : ViewModelBase {
                 MessageBoxImage.Error);
         }
     }
-    
+
     #endregion
 
     #region Draw down
@@ -4298,70 +4375,80 @@ public class MainViewModel : ViewModelBase {
         try {
             var bucket = Buckets.FirstOrDefault(b => b.Id == projection.BucketId);
             if (bucket == null) return;
-            var pay = Paychecks.Single(p => p.Id == bucket.PaycheckId);
-            var transactionDate = projection.TransactionDate;
-            var nextPay = pay.StartDate;
-            while (nextPay <= projection.TransactionDate) {
-                transactionDate = nextPay;
-                nextPay = pay.Frequency switch {
-                    Frequency.Weekly => nextPay.AddDays(7),
-                    Frequency.BiWeekly => nextPay.AddDays(14),
-                    Frequency.Monthly => nextPay.AddMonths(1),
-                    _ => nextPay.AddYears(100) //that is optimistic
-                };
-            }
-            // 2. Commit transaction to database
-            await _budgetService.FundPeriodBucketAsync(bucket.Id, transactionDate, projection.Amount);
-            // 3. Optional: Play audio cue
-            SystemSounds.Asterisk.Play(); // Built-in system sound, or use System.Media.SoundPlayer for a custom WAV
 
-            // 4. Trigger Toast Notification
-            ShowSuccessToast($"Set aside {bucket.ExpectedAmount:C} for {bucket.Name}.");
+            // Resolve transaction date: use linked paycheck start date if available, or fallback to projection date
+            var allocations = await _budgetService.GetAllocationsForBucketAsync(bucket.Id);
+            var primaryAllocation = allocations.FirstOrDefault();
+
+            DateTime transactionDate = projection.TransactionDate;
+            if (primaryAllocation != null) {
+                var pay = Paychecks.FirstOrDefault(p => p.Id == primaryAllocation.PaycheckId);
+                if (pay != null) {
+                    var nextPay = pay.StartDate;
+                    while (nextPay <= projection.TransactionDate) {
+                        transactionDate = nextPay;
+                        nextPay = pay.Frequency switch {
+                            Frequency.Weekly => nextPay.AddDays(7),
+                            Frequency.BiWeekly => nextPay.AddDays(14),
+                            Frequency.Monthly => nextPay.AddMonths(1),
+                            _ => nextPay.AddYears(100)
+                        };
+                    }
+                }
+            }
+
+            // Commit transaction to database
+            await _budgetService.FundPeriodBucketAsync(bucket.Id, transactionDate, projection.Amount);
+            SystemSounds.Asterisk.Play();
+
+            ShowSuccessToast($"Set aside {projection.Amount:C} for {bucket.Name}.");
             await LoadBucketDataAsync();
             await LoadPeriodDataAsync();
-            // 5. Refresh grid / remove projection
             await CalculateProjectionsAsync();
         }
         catch (Exception ex) {
-            // Fail gracefully to UI
-            MessageBox.Show($"Failed to set aside money for envelope {ex.Message}", "Error", MessageBoxButton.OK,
+            MessageBox.Show($"Failed to set aside money for envelope: {ex.Message}", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
-    
+
     private async Task SkipFundEnvelopeAsync(ProjectionItem? projection) {
         if (projection == null || projection.Type != ProjectionEngine.ProjectionEventType.AccumulatingDrawdown) return;
 
         try {
             var bucket = Buckets.FirstOrDefault(b => b.Id == projection.BucketId);
             if (bucket == null) return;
-            var pay = Paychecks.Single(p => p.Id == bucket.PaycheckId);
-            var transactionDate = projection.TransactionDate;
-            var nextPay = pay.StartDate;
-            while (nextPay <= projection.TransactionDate) {
-                transactionDate = nextPay;
-                nextPay = pay.Frequency switch {
-                    Frequency.Weekly => nextPay.AddDays(7),
-                    Frequency.BiWeekly => nextPay.AddDays(14),
-                    Frequency.Monthly => nextPay.AddMonths(1),
-                    _ => nextPay.AddYears(100) //that is optimistic
-                };
-            }
-            // 2. Commit transaction to database
-            await _budgetService.FundPeriodBucketAsync(bucket.Id, transactionDate, 0);
-            // 3. Optional: Play audio cue
-            SystemSounds.Asterisk.Play(); // Built-in system sound, or use System.Media.SoundPlayer for a custom WAV
 
-            // 4. Trigger Toast Notification
-            ShowSuccessToast($"Set aside {bucket.ExpectedAmount:C} for {bucket.Name}.");
+            var allocations = await _budgetService.GetAllocationsForBucketAsync(bucket.Id);
+            var primaryAllocation = allocations.FirstOrDefault();
+
+            DateTime transactionDate = projection.TransactionDate;
+            if (primaryAllocation != null) {
+                var pay = Paychecks.FirstOrDefault(p => p.Id == primaryAllocation.PaycheckId);
+                if (pay != null) {
+                    var nextPay = pay.StartDate;
+                    while (nextPay <= projection.TransactionDate) {
+                        transactionDate = nextPay;
+                        nextPay = pay.Frequency switch {
+                            Frequency.Weekly => nextPay.AddDays(7),
+                            Frequency.BiWeekly => nextPay.AddDays(14),
+                            Frequency.Monthly => nextPay.AddMonths(1),
+                            _ => nextPay.AddYears(100)
+                        };
+                    }
+                }
+            }
+
+            await _budgetService.FundPeriodBucketAsync(bucket.Id, transactionDate, 0);
+            SystemSounds.Asterisk.Play();
+
+            ShowSuccessToast($"Skipped funding for {bucket.Name}.");
             await LoadBucketDataAsync();
             await LoadPeriodDataAsync();
-            // 5. Refresh grid / remove projection
             await CalculateProjectionsAsync();
         }
         catch (Exception ex) {
-            // Fail gracefully to UI
-            MessageBox.Show($"Failed to set aside money for envelope {ex.Message}", "Error", MessageBoxButton.OK,
+            MessageBox.Show($"Failed to skip funding for envelope: {ex.Message}", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }

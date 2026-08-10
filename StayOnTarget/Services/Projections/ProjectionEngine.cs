@@ -15,6 +15,7 @@ public interface IProjectionEngine {
         List<Paycheck> paychecks,
         List<Bill> bills,
         List<BudgetBucket> buckets,
+        List<BucketPaycheckAllocation> allocations,
         List<PeriodBill> periodBills,
         List<PeriodBucket> periodBuckets,
         List<Transaction> transactions,
@@ -24,6 +25,11 @@ public interface IProjectionEngine {
         bool useAutoSweep = false,
         SnowballStrategyOptions? snowballOptions = null,
         DateTime? referenceDate = null);
+
+    decimal GetSpendableBalance(
+        int accountId,
+        IReadOnlyDictionary<int, decimal> balances,
+        IReadOnlyDictionary<int, decimal> floors);
 }
 
 public class ProjectionEngine : IProjectionEngine {
@@ -54,6 +60,7 @@ public class ProjectionEngine : IProjectionEngine {
         List<Paycheck> paychecks,
         List<Bill> bills,
         List<BudgetBucket> buckets,
+        List<BucketPaycheckAllocation> allocations,
         List<PeriodBill> periodBills,
         List<PeriodBucket> periodBuckets,
         List<Transaction> transactions,
@@ -63,7 +70,6 @@ public class ProjectionEngine : IProjectionEngine {
         bool useAutoSweep = false,
         SnowballStrategyOptions? snowballOptions = null,
         DateTime? referenceDate = null) {
-        // Local dictionary to track dynamic balance during projection build without mutating input models
         var bucketBalances = buckets.ToDictionary(b => b.Id, b => b.CurrentBalance);
 
         var today = referenceDate ?? DateTime.Today;
@@ -78,22 +84,11 @@ public class ProjectionEngine : IProjectionEngine {
 
         var accountBalances = accounts.ToList().ToDictionary(a => a.Id, a => a.Balance);
 
-        // Deduct Upfront Floor reserves from available balances
-        var primaryCheckingId = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
-
-        foreach (var floorBucket in buckets.Where(b => b.Type == BucketType.UpfrontFloor && b.TargetBalance > 0)) {
-            var targetAccountId = floorBucket.AccountId ?? primaryCheckingId;
-            if (targetAccountId.HasValue && accountBalances.ContainsKey(targetAccountId.Value)) {
-                // Reserve floor target balance up front
-                accountBalances[targetAccountId.Value] -= floorBucket.TargetBalance;
-            }
-        }
-
         var accountNames = accounts.ToDictionary(a => a.Id, a => a.Name);
         var moneyAccountIds = accounts.Where(x => x.Type == AccountType.Checking || x.Type == AccountType.Savings)
             .Select(x => x.Id).ToList();
         var includedTotalAccounts = new HashSet<int>(accounts.Where(a => a.IncludeInTotal).Select(a => a.Id));
-        
+
         var unbalancedPaychecks = paychecks.Where(p => !p.IsBalanced).ToList();
         if (unbalancedPaychecks.Any()) {
             DateTime earliestUnbalanced = unbalancedPaychecks.Min(p => p.StartDate);
@@ -102,7 +97,6 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        // Build reconciliation lookup: latest valid reconciliation per account
         var reconLookup = new Dictionary<int, AccountReconciliation>();
         var allValidReconciliations = new List<AccountReconciliation>();
         if (reconciliations != null) {
@@ -115,42 +109,27 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        var events =
-            new List<ProjectionGridItem>();
+        var events = new List<ProjectionGridItem>();
 
         #region Prepare events that show in projections
 
-        //Events will be manipulated and adjusted later
-        // 1. Create events for Paychecks
         events.AddPaycheckEvents(accounts, paychecks, allPaycheckTransactions, current, endDate);
-
-        // 2. Create events for Bills & Transfers
         events.AddBillEvents(accounts, bills, allBillTransactions, periodBills, current, endDate);
-
-        // 3. Create events for Buckets
-        events.AddBucketEvents(accounts, paychecks, buckets, periodBuckets, bucketBalances, current, endDate);
-        // 4. Create events for Transactions
-        // We always use uniqueTransactions to build the events list for simulation.
+        events.AddBucketEvents(accounts, paychecks, buckets, periodBuckets, allocations, bucketBalances, current,
+            endDate);
         events.AddTransactionEvents(allTransactions);
-        // 5. Create events or Interest & Growth Setup
-        // Use all transactions for interest calculation to correctly identify manual adjustments
         events.AddInterestEvents(accounts, allTransactions, startDate, endDate);
-
-        // 6. Create events for reconciliations (points when an account balance is reset and verified so that balances do not have to run from the very beginning)
-
         events.AddReconciliationEvents(allValidReconciliations);
 
         #endregion
 
-        //order the events, being sure that paychecks are the first within a period
         var sortedEvents = events
             .OrderBy(e => e.Date)
             .ThenByDescending(e =>
                 e.Type == ProjectionEventType.Paycheck || (e.PaycheckId.HasValue && e.ToAccountId.HasValue))
             .ThenByDescending(e => e.Type == ProjectionEventType.Paycheck)
             .ToList();
-        var test2 = events.Where(x => x.Amount == -500).ToList();
-        // Tracking variables
+
         var accountBalanceDates = accounts.ToDictionary(a => a.Id, a => a.BalanceAsOf);
         var accumulatedGrowth = accounts.ToDictionary(a => a.Id, a => 0m);
         var ccDailyBalances = accounts.Where(a => a.Type == AccountType.CreditCard).ToDictionary(a => a.Id,
@@ -167,10 +146,6 @@ public class ProjectionEngine : IProjectionEngine {
             .ToDictionary(a => a.Id, a => a.Balance <= 0.01m);
         var mortgagePaidOff = accounts.Where(a => a.IsLoanAccount).ToDictionary(a => a.Id, a => false);
 
-        // Recalculate accountBalances based on BalanceAsOf (or reconciliation) and events before 'current'
-        //Account balance to start projection is either the balanceAsOf date of the account or the reconciledAsOf date of the account.
-        //The balance could require determining past events impact on balance up to the point the projection starts.
-        //Reconciliations help by setting the balance at a point in time so that the projection can start from a known balance.
         ProjectionEngineExtensions.AdjustForReconciliations(
             accountBalances,
             accountBalanceDates,
@@ -188,14 +163,24 @@ public class ProjectionEngine : IProjectionEngine {
 
         var runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
 
+        var primaryCheckingId = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
+
+        // Map upfront floor cushions across ALL accounts dynamically
+        var accountFloors = buckets
+            .Where(b => b.Type == BucketType.UpfrontFloor && b.TargetBalance > 0)
+            .GroupBy(b => b.AccountId ?? primaryCheckingId)
+            .Where(g => g.Key.HasValue)
+            .ToDictionary(
+                g => g.Key!.Value,
+                g => g.Sum(b => b.TargetBalance)
+            );
+
         var lastDate = current;
         var futureEvents = sortedEvents.Where(e => e.Date >= current).ToList();
 
-        // Ensure paycheckDates includes ALL boundary dates for auto-sweep, even if no events exist on those dates
         var paycheckDates = new List<DateTime>();
         foreach (var pay in paychecks) {
             var nextPay = pay.StartDate;
-            // Go back in time to find the start of the current period if necessary
             if (nextPay > startDate) {
                 while (nextPay > startDate) {
                     nextPay = pay.Frequency switch {
@@ -226,8 +211,6 @@ public class ProjectionEngine : IProjectionEngine {
             paycheckDates.Insert(0, current);
         }
 
-        //Associate each transaction associated with a bucket with the period date
-        //This will allow projected buckets to be reduced by actual spending later on.
         var bucketSpending = new Dictionary<(DateTime PeriodDate, int BucketId), decimal>();
         foreach (var transaction in allBucketTransactions) {
             if (transaction.BucketId.HasValue) {
@@ -243,7 +226,6 @@ public class ProjectionEngine : IProjectionEngine {
         var primaryChecking = accounts.FirstOrDefault(a => a.Type == AccountType.Checking && a.IsPrimary)?.Id;
         var creditCardAccountIds = accounts.Where(a => a.Type == AccountType.CreditCard).Select(a => a.Id).ToList();
 
-        // Final Sweep at the very end of the projection range
         if (useAutoSweep) {
             var finalDate = endDate.Date;
             if (!paycheckDates.Contains(finalDate)) {
@@ -273,15 +255,11 @@ public class ProjectionEngine : IProjectionEngine {
         var nextPaycheckIndex = 0;
         var nextPaycheckDate = paycheckDates.Count > 0 ? paycheckDates[0] : DateTime.MaxValue;
 
-
         foreach (var e in futureEvents) {
             if (useAutoSweep) {
-                // Check if we've passed into a new period
                 while (e.Date >= nextPaycheckDate && nextPaycheckDate != DateTime.MaxValue) {
                     var sweepDate = nextPaycheckDate.AddDays(-1);
-                    // DEBUG: Log or check if we are skipping due to Today check in tests
                     if (sweepDate >= startDate.Date && sweepDate >= today.Date) {
-                        // Advanced Snowball/Investment Strategy
                         if (effectiveSnowballOptions.EnableSnowball && primaryChecking.HasValue) {
                             SnowballStrategyProcessor.ProcessSurplus(
                                 sweepDate,
@@ -301,16 +279,15 @@ public class ProjectionEngine : IProjectionEngine {
                                 if (balance < 0) {
                                     var sweepAmount = -balance;
 
-                                    decimal threshold = effectiveSnowballOptions.CheckingSafetyThresholdPct *
-                                                        accountBalances[primaryChecking.Value];
+                                    // Dynamic spendable balance for source account
+                                    decimal spendableChecking = GetSpendableBalance(primaryChecking.Value,
+                                        accountBalances, accountFloors);
+                                    decimal pctSafetyThreshold = Math.Max(0m,
+                                        effectiveSnowballOptions.CheckingSafetyThresholdPct *
+                                        accountBalances[primaryChecking.Value]);
 
-                                    if (threshold < 0) threshold = 0;
+                                    decimal availableToSweep = spendableChecking - pctSafetyThreshold;
 
-                                    decimal checkingBalance = accountBalances[primaryChecking.Value];
-                                    // Calculate available surplus above the threshold
-                                    decimal availableToSweep = checkingBalance - threshold;
-
-                                    // Cap the sweep to either the full debt amount or what's available above threshold
                                     decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
 
                                     if (actualSweepAmount > 0.01m) {
@@ -326,7 +303,7 @@ public class ProjectionEngine : IProjectionEngine {
                                             Description = $"Auto-Sweep: {accountNames[ccId]}",
                                             FromAccountId = primaryChecking,
                                             ToAccountId = ccId,
-                                            Amount = Math.Abs(actualSweepAmount), //-actualSweepAmount,
+                                            Amount = Math.Abs(actualSweepAmount),
                                             Balance = runningBalance,
                                             IsSynthetic = true,
                                             AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key],
@@ -362,7 +339,6 @@ public class ProjectionEngine : IProjectionEngine {
 
             lastDate = e.Date;
 
-            // Apply Interest, add in interest events
             if (!ProjectionEngineExtensions.AddInterestProjection(
                     list,
                     ref runningBalance,
@@ -377,20 +353,14 @@ public class ProjectionEngine : IProjectionEngine {
                     includedTotalAccounts,
                     startDate)) continue;
 
-            // Apply Reconciliation, be sure to get the latest reconciliation balance as each event is handled
-            //Don't add reconciliation events to final projection. We want to make sure balances account for out-of-band changes
-            //to accounts in other systems. There could be fixes made to account balances from other systems not stringlty
-            //reflected in transactions in this system. Keep things aligned.
             if (!ProjectionEngineExtensions.AdjustBalanceForReconciliationBalances(ref runningBalance, e,
                     accounts,
                     accountBalances,
                     ccPreviousMonthPaidInFull,
                     includedTotalAccounts)) continue;
 
-            // Apply balances
             var currentEventAmount = e.Amount;
 
-            // Handle Mortgage Payoff Adjustment
             if (e.ToAccountId.HasValue && mortgagePaidOff.ContainsKey(e.ToAccountId.Value) &&
                 mortgagePaidOff[e.ToAccountId.Value]) {
                 var toAcc = accounts.FirstOrDefault(a => a.Id == e.ToAccountId.Value);
@@ -400,10 +370,6 @@ public class ProjectionEngine : IProjectionEngine {
                 }
             }
 
-            //Each projected bucket should be reduced by actual spending
-            //if the amount spent is greater than the projected amount, the projected amount is set to zero.
-            //we overspent the bucket, and to project further spending in this bucket category
-            //would require the user to adjust the period bucket. We cannot go negative, so the floor is zero.
             if (e is { Type: ProjectionEventType.Bucket, BucketId: not null } or
                 { Type: ProjectionEventType.AccumulatingDrawdown, BucketId: not null }) {
                 var bucket = buckets.FirstOrDefault(b => b.Id == e.BucketId);
@@ -422,7 +388,6 @@ public class ProjectionEngine : IProjectionEngine {
                 }
             }
 
-            // Handle ToAccountId balance update
             if (e.ToAccountId.HasValue && accountBalances.ContainsKey(e.ToAccountId.Value)) {
                 var toAcc = accounts.FirstOrDefault(a => a.Id == e.ToAccountId.Value);
                 if (toAcc != null) {
@@ -433,11 +398,9 @@ public class ProjectionEngine : IProjectionEngine {
                     var isInterestAdjustment = (e.Type == ProjectionEventType.Transaction && e.IsInterestAdjustment);
                     var isInterestOrRebalance = isDebt && (isRebalance || isInterestAdjustment);
 
-                    // 1. Interest charges or rebalances increase negative debt (push further into negative)
                     if (isInterestOrRebalance) {
                         accountBalances[e.ToAccountId.Value] -= amountChange;
                     }
-                    // 2. Loans / Mortgages (Payment coming in moves negative balance closer to $0.00)
                     else if (toAcc.IsLoanAccount == true) {
                         var principal = amountChange;
                         if (!isPrincipalOnly && toAcc.MortgageDetails != null) {
@@ -445,7 +408,6 @@ public class ProjectionEngine : IProjectionEngine {
                                 toAcc.MortgageDetails.Escrow + toAcc.MortgageDetails.MortgageInsurance;
                             principal = Math.Max(0, amountChange - escrowAndInsurance);
 
-                            // Using Math.Abs to safely compare remaining debt magnitude
                             if (Math.Abs(accountBalances[e.ToAccountId.Value]) <= principal) {
                                 principal = Math.Abs(accountBalances[e.ToAccountId.Value]);
                                 mortgagePaidOff[e.ToAccountId.Value] = true;
@@ -453,24 +415,21 @@ public class ProjectionEngine : IProjectionEngine {
                             }
                         }
 
-                        accountBalances[e.ToAccountId.Value] += principal; // + brings -$347,000 closer to $0.00
+                        accountBalances[e.ToAccountId.Value] += principal;
                     }
-                    // 3. Credit Cards, Personal Loans, & General Liabilities (Payments move balance closer to $0.00)
                     else if (isDebt) {
-                        accountBalances[e.ToAccountId.Value] += amountChange; // + brings -$3,000 closer to $0.00
+                        accountBalances[e.ToAccountId.Value] += amountChange;
 
                         if (toAcc.Type == AccountType.CreditCard && ccPaidThisCycle.ContainsKey(e.ToAccountId.Value)) {
                             ccPaidThisCycle[e.ToAccountId.Value] += amountChange;
                         }
                     }
-                    // 4. Asset Accounts (Checking, Savings, Cash): Inflows increase positive balance
                     else {
                         accountBalances[e.ToAccountId.Value] += amountChange;
                     }
                 }
             }
 
-            // Handle FromAccountId balance update
             var effectiveFromAccountId = e.FromAccountId ??
                                          ((e.Type == ProjectionEventType.Bill || e.Type == ProjectionEventType.Bucket ||
                                            e.Type == ProjectionEventType.AccumulatingDrawdown ||
@@ -480,17 +439,11 @@ public class ProjectionEngine : IProjectionEngine {
 
             if (effectiveFromAccountId.HasValue && accountBalances.ContainsKey(effectiveFromAccountId.Value)) {
                 var amountChange = Math.Abs(currentEventAmount);
-
-                // Money leaving an account always reduces the balance value 
-                // (Decreases cash for assets, increases debt for liabilities)
                 accountBalances[effectiveFromAccountId.Value] -= amountChange;
             }
 
             // Recalculate running balance from all included accounts
-            runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => {
-                var bal = accountBalances[a.Id];
-                return bal;
-            });
+            runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
 
             var item = new ProjectionItem {
                 Type = e.Type,
@@ -507,36 +460,55 @@ public class ProjectionEngine : IProjectionEngine {
                 SubCategoryId = e.SubCategoryId,
             };
 
-            if (
-                e.FromAccountId != null && moneyAccountIds.Contains(e.FromAccountId.Value) ||
-                (e.ToAccountId != null && moneyAccountIds.Contains(e.ToAccountId.Value)
-                )) {
+            // Use the effective source account (which falls back to primary checking for bills/buckets)
+            var effectiveFrom = e.FromAccountId ?? 
+                                ((e.Type == ProjectionEventType.Bill || e.Type == ProjectionEventType.Bucket || 
+                                  e.Type == ProjectionEventType.AccumulatingDrawdown || e.Type == ProjectionEventType.Transfer) 
+                                    ? primaryChecking 
+                                    : null);
+
+            var targetAccountId = effectiveFrom ?? e.ToAccountId;
+
+            if (targetAccountId.HasValue && accountBalances.ContainsKey(targetAccountId.Value)) {
+                var actualBalance = accountBalances[targetAccountId.Value];
+                var floorTarget = accountFloors.TryGetValue(targetAccountId.Value, out var fl) ? fl : 0m;
+
+                // Spendable balance for display (clamped to 0 for UI if desired, or allow negative)
+                var rawSpendable = actualBalance - floorTarget;
+                item.SpendableBalance = Math.Max(0m, rawSpendable);
+
+                // Explicitly check if floor target is greater than 0 AND actual balance is below that target
+                if (floorTarget > 0m && actualBalance < floorTarget) {
+                    var breachAmount = floorTarget - actualBalance;
+                    var accName = accountNames.TryGetValue(targetAccountId.Value, out var name) ? name : "Account";
+
+                    item.IsBelowFloor = true;
+                    item.IsWarning = true;
+                    item.WarningMessage = $"{accName} breached floor reserve by {breachAmount:C2} (Balance: {actualBalance:C2}, Floor Target: {floorTarget:C2})";
+                }
+            }
+            
+            if (e.FromAccountId != null && moneyAccountIds.Contains(e.FromAccountId.Value) ||
+                (e.ToAccountId != null && moneyAccountIds.Contains(e.ToAccountId.Value))) {
                 item.InOrOutOfMoneyAccount = true;
             }
 
-            if (
-                e.FromAccountId != null && moneyAccountIds.Contains(e.FromAccountId.Value)
-            ) {
+            if (e.FromAccountId != null && moneyAccountIds.Contains(e.FromAccountId.Value)) {
                 item.OutOfMoneyAccount = true;
             }
 
-            if (
-                e.ToAccountId != null && moneyAccountIds.Contains(e.ToAccountId.Value)
-            ) {
+            if (e.ToAccountId != null && moneyAccountIds.Contains(e.ToAccountId.Value)) {
                 item.InMoneyAccount = true;
             }
 
-            if (
-                e.FromAccountId != null && moneyAccountIds.Contains(e.FromAccountId.Value) &&
-                (e.ToAccountId != null && moneyAccountIds.Contains(e.ToAccountId.Value)
-                )) {
+            if (e.FromAccountId != null && moneyAccountIds.Contains(e.FromAccountId.Value) &&
+                (e.ToAccountId != null && moneyAccountIds.Contains(e.ToAccountId.Value))) {
                 item.InternalTransfer = true;
             }
 
             list.Add(item);
         }
 
-        // Process any remaining periods that didn't have events
         if (useAutoSweep) {
             while (nextPaycheckDate != DateTime.MaxValue && nextPaycheckDate <= endDate) {
                 var sweepDate = nextPaycheckDate.AddDays(-1);
@@ -560,17 +532,13 @@ public class ProjectionEngine : IProjectionEngine {
                         if (balance < 0 && primaryChecking.HasValue) {
                             var sweepAmount = -balance;
 
+                            decimal spendableChecking =
+                                GetSpendableBalance(primaryChecking.Value, accountBalances, accountFloors);
+                            decimal pctSafetyThreshold =
+                                Math.Max(0m, thresholdPct * accountBalances[primaryChecking.Value]);
 
-                            decimal threshold = thresholdPct * accountBalances[primaryChecking.Value];
+                            decimal availableToSweep = spendableChecking - pctSafetyThreshold;
 
-                            if (threshold < 0) threshold = 0;
-
-                            decimal checkingBalance = accountBalances[primaryChecking.Value];
-
-                            // Calculate available surplus above the threshold
-                            decimal availableToSweep = checkingBalance - threshold;
-
-                            // Cap the sweep to either the full debt amount or what's available above threshold
                             decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
 
                             if (actualSweepAmount > 0) {
@@ -586,7 +554,7 @@ public class ProjectionEngine : IProjectionEngine {
                                     Description = $"Auto-Sweep: {accountNames[ccId]}",
                                     FromAccountId = primaryChecking,
                                     ToAccountId = ccId,
-                                    Amount = Math.Abs(actualSweepAmount), //-actualSweepAmount,
+                                    Amount = Math.Abs(actualSweepAmount),
                                     Balance = runningBalance,
                                     IsSynthetic = true,
                                     AccountBalances =
@@ -596,23 +564,6 @@ public class ProjectionEngine : IProjectionEngine {
 
                                 list.Add(sweepItem);
                             }
-
-                            // accountBalances[primaryChecking.Value] -= sweepAmount;
-                            // accountBalances[ccId] += sweepAmount;
-                            // runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id)).Sum(a => accountBalances[a.Id]);
-                            //
-                            // list.Add(new ProjectionItem
-                            // {
-                            //     TransactionDate = sweepDate,
-                            //     Description = $"Auto-Sweep: {accountNames[ccId]}",
-                            //     FromAccountId = primaryChecking,
-                            //     ToAccountId = ccId,
-                            //     Amount = -sweepAmount,
-                            //     Balance = runningBalance,
-                            //     IsSynthetic = true,
-                            //     AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
-                            //     InOrOutOfMoneyAccount = true
-                            // });
                         }
                     }
                 }
@@ -624,7 +575,6 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        //Calculate the net income for this period. Not counting investment accounts unrealized gains/losses.
         for (var i = 0; i < paycheckDates.Count; i++) {
             var start = paycheckDates[i];
             var next = (i + 1 < paycheckDates.Count) ? paycheckDates[i + 1] : endDate;
@@ -637,23 +587,18 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        // Final Auto-Sweep at the end of the last period
         if (useAutoSweep && endDate >= DateTime.Today) {
             foreach (var ccId in creditCardAccountIds) {
                 var balance = accountBalances[ccId];
                 if (balance < 0 && primaryChecking.HasValue) {
                     var sweepAmount = -balance;
 
-                    decimal threshold = thresholdPct * accountBalances[primaryChecking.Value];
+                    decimal spendableChecking =
+                        GetSpendableBalance(primaryChecking.Value, accountBalances, accountFloors);
+                    decimal pctSafetyThreshold = Math.Max(0m, thresholdPct * accountBalances[primaryChecking.Value]);
 
-                    if (threshold < 0) threshold = 0;
+                    decimal availableToSweep = spendableChecking - pctSafetyThreshold;
 
-                    decimal checkingBalance = accountBalances[primaryChecking.Value];
-
-                    // Calculate available surplus above the threshold
-                    decimal availableToSweep = checkingBalance - threshold;
-
-                    // Cap the sweep to either the full debt amount or what's available above threshold
                     decimal actualSweepAmount = Math.Min(sweepAmount, availableToSweep);
 
                     if (actualSweepAmount > 0) {
@@ -669,7 +614,7 @@ public class ProjectionEngine : IProjectionEngine {
                             Description = $"Auto-Sweep: {accountNames[ccId]}",
                             FromAccountId = primaryChecking,
                             ToAccountId = ccId,
-                            Amount = Math.Abs(actualSweepAmount), //-actualSweepAmount,
+                            Amount = Math.Abs(actualSweepAmount),
                             Balance = runningBalance,
                             IsSynthetic = true,
                             AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
@@ -682,11 +627,9 @@ public class ProjectionEngine : IProjectionEngine {
             }
         }
 
-        //No more specific events in this projection, so what growth might occur in balances in accounts
-        //until the end of the projection
         if (lastDate < endDate) {
             ProjectionEngineExtensions.AccountForGrowthInRemainderOfProjection(
-                lastDate, //date of last format transaction or expected event
+                lastDate,
                 endDate,
                 ref runningBalance,
                 accounts,
@@ -705,11 +648,22 @@ public class ProjectionEngine : IProjectionEngine {
             });
         }
 
-        //Remove projected bucket events which get set to 0, along with other events that would clutter the projection
         if (removeZeroBalanceEntries) {
             list = list.Where(x => x.Amount != 0).ToList();
         }
 
         return list;
+    }
+
+    public decimal GetSpendableBalance(
+        int accountId, 
+        IReadOnlyDictionary<int, decimal> balances, 
+        IReadOnlyDictionary<int, decimal> floors)
+    {
+        var actual = balances.TryGetValue(accountId, out var bal) ? bal : 0m;
+        var floor = floors.TryGetValue(accountId, out var fl) ? fl : 0m;
+
+        // Returns unclipped difference (negative if floor is breached)
+        return actual - floor;
     }
 }

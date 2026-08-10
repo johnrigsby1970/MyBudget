@@ -507,20 +507,24 @@
                                                               StaysOpenOnEdit="True"
                                                               Margin="5">
                                                         <ComboBox.Style>
-                                                            <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+                                                            <Style TargetType="ComboBox"
+                                                                   BasedOn="{StaticResource {x:Type ComboBox}}">
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding EditingTransactionClone.Description}"
-                                                                            Value="{x:Static local:Constants.OpeningBalance}">
+                                                                    <DataTrigger
+                                                                        Binding="{Binding EditingTransactionClone.Description}"
+                                                                        Value="{x:Static local:Constants.OpeningBalance}">
                                                                         <Setter Property="IsEnabled" Value="False" />
                                                                     </DataTrigger>
-                                                                    
+
                                                                     <!-- Automatically pop open dropdown when focused/typing -->
-                                                                    <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                                                    <Trigger Property="IsKeyboardFocusWithin"
+                                                                             Value="True">
                                                                         <Setter Property="IsDropDownOpen" Value="True" />
                                                                     </Trigger>
 
-                                                                    <DataTrigger Binding="{Binding EditingTransactionClone.Description}"
-                                                                            Value="{x:Static local:Constants.OpeningBalance}">
+                                                                    <DataTrigger
+                                                                        Binding="{Binding EditingTransactionClone.Description}"
+                                                                        Value="{x:Static local:Constants.OpeningBalance}">
                                                                         <Setter Property="IsEnabled" Value="False" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
@@ -1031,8 +1035,11 @@
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Text" Value="Edit Period Budget" />
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding EditingPeriodBucketClone.IsAccumulatingDrawdown}" Value="True">
-                                                                    <Setter Property="Text" Value="Edit Envelope Set Aside Funding" />
+                                                                <DataTrigger
+                                                                    Binding="{Binding EditingPeriodBucketClone.IsAccumulatingDrawdown}"
+                                                                    Value="True">
+                                                                    <Setter Property="Text"
+                                                                            Value="Edit Envelope Set Aside Funding" />
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -1086,7 +1093,7 @@
                     </TabItem>
                     <TabItem Header="Envelopes">
                         <DockPanel>
-                            <!-- Bottom Action Bar (Unchanged) -->
+                            <!-- Bottom Action Bar -->
                             <Grid DockPanel.Dock="Bottom">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -1153,9 +1160,11 @@
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" />
                                         <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="140" />
-                                        <DataGridTextColumn Header="Paycheck Allocation"
-                                                            Binding="{Binding ExpectedAmount, StringFormat=C}"
+                                        <DataGridTextColumn Header="Target Cadence" Binding="{Binding TargetFrequency}"
                                                             Width="120" />
+                                        <DataGridTextColumn Header="Target Amount"
+                                                            Binding="{Binding TargetAmount, StringFormat=C}"
+                                                            Width="110" />
                                         <DataGridTextColumn Header="Target Floor"
                                                             Binding="{Binding TargetBalance, StringFormat=C}"
                                                             Width="100" />
@@ -1166,46 +1175,155 @@
                                 </DataGrid>
 
                                 <!-- EDIT FORM SECTION -->
-                                <StackPanel Grid.Row="1" Margin="10"
-                                            Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <TextBlock Text="Edit Envelope Configuration" FontWeight="Bold" Margin="0,0,0,5" />
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="450">
+                                    <StackPanel Margin="10"
+                                                Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="Edit Envelope Configuration" FontWeight="Bold"
+                                                   Margin="0,0,0,5" />
 
-                                    <!-- Row 1: Name and Type -->
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                                        <!-- Row 1: Name, Type, Paid From -->
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
 
-                                        <Label Grid.Column="0" Content="Name:" />
-                                        <TextBox Grid.Column="1"
-                                                 Text="{Binding EditingBucketClone.Name, UpdateSourceTrigger=PropertyChanged}"
-                                                 Margin="5" VerticalAlignment="Center" />
+                                            <Label Grid.Column="0" Content="Name:" VerticalAlignment="Center" />
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding EditingBucketClone.Name, UpdateSourceTrigger=PropertyChanged}"
+                                                     Margin="5" VerticalAlignment="Center" />
 
-                                        <Label Grid.Column="2" Content="Envelope Type:" />
-                                        <ComboBox Grid.Column="3"
-                                                  ItemsSource="{Binding BucketTypes}"
-                                                  SelectedItem="{Binding EditingBucketClone.Type, UpdateSourceTrigger=PropertyChanged}"
-                                                  Margin="5" VerticalAlignment="Center" />
-                                    </Grid>
+                                            <Label Grid.Column="2" Content="Envelope Type:" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="3" ItemsSource="{Binding BucketTypes}"
+                                                      SelectedItem="{Binding EditingBucketClone.Type, UpdateSourceTrigger=PropertyChanged}"
+                                                      Margin="5" VerticalAlignment="Center" />
 
-                                    <!-- Row 2: Dynamic Amount Configuration Fields -->
-                                    <Grid Margin="0,5">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                                            <Label Grid.Column="4" Content="Paid From:" VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="5" ItemsSource="{Binding ActiveAccountsWithNone}"
+                                                      SelectedValue="{Binding EditingBucketClone.AccountId}"
+                                                      SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5"
+                                                      VerticalAlignment="Center" />
+                                        </Grid>
 
-                                        <!-- Field 1: Expected Allocation / Budgeted (Hidden for Upfront Floors) -->
-                                        <Label Grid.Column="0" Content="Paycheck Budget:" VerticalAlignment="Center">
-                                            <Label.Style>
-                                                <Style TargetType="Label">
+                                        <!-- Row 2: Target Projection Cadence Fields -->
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Target Frequency -->
+                                            <Label Grid.Column="0" Content="Target Frequency:"
+                                                   VerticalAlignment="Center" />
+                                            <ComboBox Grid.Column="1"
+                                                      ItemsSource="{Binding TargetFrequencyTypes}"
+                                                      SelectedItem="{Binding EditingBucketClone.TargetFrequency, UpdateSourceTrigger=PropertyChanged}"
+                                                      Margin="5" VerticalAlignment="Center" />
+
+                                            <!-- Target Amount -->
+                                            <Label Grid.Column="2" Content="Target Amount:" VerticalAlignment="Center" />
+                                            <controls:NumericTextBox Grid.Column="3"
+                                                                     Text="{Binding EditingBucketClone.TargetAmount, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Margin="5" VerticalAlignment="Center" />
+
+                                            <!-- Next Due Date (Optional Anchor for Calendar Frequencies) -->
+                                            <Label Grid.Column="4" Content="Next Due Date:" VerticalAlignment="Center" />
+                                            <DatePicker Grid.Column="5"
+                                                        SelectedDate="{Binding EditingBucketClone.NextDueDate, UpdateSourceTrigger=PropertyChanged}"
+                                                        Margin="5" VerticalAlignment="Center" />
+                                        </Grid>
+
+                                        <!-- Row 3: Reserve & Floor Balances -->
+                                        <Grid Margin="0,5">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Target Floor Balance (Visible for Upfront and Accumulating Drawdown) -->
+                                            <Label Grid.Column="0" Content="Target Floor:" VerticalAlignment="Center">
+                                                <Label.Style>
+                                                    <Style TargetType="Label">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
+                                                                         Value="UpfrontFloor">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
+                                                                         Value="AccumulatingDrawdown">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Label.Style>
+                                            </Label>
+                                            <controls:NumericTextBox Grid.Column="1"
+                                                                     Text="{Binding EditingBucketClone.TargetBalance, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Margin="5" VerticalAlignment="Center">
+                                                <controls:NumericTextBox.Style>
+                                                    <Style TargetType="controls:NumericTextBox">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
+                                                                         Value="UpfrontFloor">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
+                                                                         Value="AccumulatingDrawdown">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </controls:NumericTextBox.Style>
+                                            </controls:NumericTextBox>
+
+                                            <!-- Current Balance (Only Visible for Accumulating Drawdown) -->
+                                            <Label Grid.Column="2" Content="Current Balance:"
+                                                   VerticalAlignment="Center">
+                                                <Label.Style>
+                                                    <Style TargetType="Label">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
+                                                                         Value="AccumulatingDrawdown">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Label.Style>
+                                            </Label>
+                                            <controls:NumericTextBox Grid.Column="3"
+                                                                     Text="{Binding EditingBucketClone.CurrentBalance, UpdateSourceTrigger=PropertyChanged}"
+                                                                     Margin="5" VerticalAlignment="Center">
+                                                <controls:NumericTextBox.Style>
+                                                    <Style TargetType="controls:NumericTextBox">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding EditingBucketClone.Type}"
+                                                                         Value="AccumulatingDrawdown">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </controls:NumericTextBox.Style>
+                                            </controls:NumericTextBox>
+                                        </Grid>
+
+                                        <!-- Paycheck Allocations Section (Hidden for Upfront Floors) -->
+                                        <StackPanel Margin="0,10,0,5">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
                                                     <Setter Property="Visibility" Value="Visible" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding EditingBucketClone.Type}"
@@ -1214,182 +1332,85 @@
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
-                                            </Label.Style>
-                                        </Label>
-                                        <controls:NumericTextBox Grid.Column="1"
-                                                                 Text="{Binding EditingBucketClone.ExpectedAmount, UpdateSourceTrigger=PropertyChanged}"
-                                                                 Margin="5" VerticalAlignment="Center">
-                                            <controls:NumericTextBox.Style>
-                                                <Style TargetType="controls:NumericTextBox">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="UpfrontFloor">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </controls:NumericTextBox.Style>
-                                        </controls:NumericTextBox>
+                                            </StackPanel.Style>
 
-                                        <!-- Field 2: Target Floor Balance (Visible for Upfront and Accumulating Drawdown) -->
-                                        <Label Grid.Column="2" Content="Target Floor:" VerticalAlignment="Center">
-                                            <Label.Style>
-                                                <Style TargetType="Label">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="UpfrontFloor">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="AccumulatingDrawdown">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Label.Style>
-                                        </Label>
-                                        <controls:NumericTextBox Grid.Column="3"
-                                                                 Text="{Binding EditingBucketClone.TargetBalance, UpdateSourceTrigger=PropertyChanged}"
-                                                                 Margin="5" VerticalAlignment="Center">
-                                            <controls:NumericTextBox.Style>
-                                                <Style TargetType="controls:NumericTextBox">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="UpfrontFloor">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="AccumulatingDrawdown">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </controls:NumericTextBox.Style>
-                                        </controls:NumericTextBox>
+                                            <TextBlock Text="Linked Paycheck Allocations:" FontWeight="SemiBold"
+                                                       Margin="0,0,0,5" />
+                                            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="3"
+                                                    Height="100">
+                                                <DataGrid ItemsSource="{Binding EditableAllocations}"
+                                                          AutoGenerateColumns="False" CanUserAddRows="True">
+                                                    <DataGrid.Columns>
+                                                        <DataGridTemplateColumn Header="Paycheck" Width="*">
+                                                            <!-- DISPLAY MODE -->
+                                                            <DataGridTemplateColumn.CellTemplate>
+                                                                <DataTemplate>
+                                                                    <TextBlock Text="{Binding PaycheckName}" 
+                                                                               VerticalAlignment="Center" 
+                                                                               Margin="4,0" />
+                                                                </DataTemplate>
+                                                            </DataGridTemplateColumn.CellTemplate>
 
-                                        <!-- Field 3: Current Balance (Only Visible for Accumulating Drawdown) -->
-                                        <Label Grid.Column="4" Content="Current Balance:" VerticalAlignment="Center">
-                                            <Label.Style>
-                                                <Style TargetType="Label">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="AccumulatingDrawdown">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Label.Style>
-                                        </Label>
-                                        <controls:NumericTextBox Grid.Column="5"
-                                                                 Text="{Binding EditingBucketClone.CurrentBalance, UpdateSourceTrigger=PropertyChanged}"
-                                                                 Margin="5" VerticalAlignment="Center">
-                                            <controls:NumericTextBox.Style>
-                                                <Style TargetType="controls:NumericTextBox">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="AccumulatingDrawdown">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </controls:NumericTextBox.Style>
-                                        </controls:NumericTextBox>
-                                    </Grid>
+                                                            <!-- EDIT MODE -->
+                                                            <DataGridTemplateColumn.CellEditingTemplate>
+                                                                <DataTemplate>
+                                                                    <ComboBox ItemsSource="{Binding DataContext.Paychecks, RelativeSource={RelativeSource AncestorType=TabItem}}"
+                                                                              SelectedValue="{Binding PaycheckId, UpdateSourceTrigger=PropertyChanged}"
+                                                                              SelectedValuePath="Id"
+                                                                              DisplayMemberPath="Name" 
+                                                                              IsDropDownOpen="True" />
+                                                                </DataTemplate>
+                                                            </DataGridTemplateColumn.CellEditingTemplate>
+                                                        </DataGridTemplateColumn>
+                                                        <DataGridTextColumn Header="Allocation Value"
+                                                                            Binding="{Binding AllocationValue, StringFormat=N2}"
+                                                                            Width="120" />
+                                                        <DataGridCheckBoxColumn Header="Active"
+                                                                Binding="{Binding IsActive}"
+                                                                Width="60" />
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
+                                            </Border>
+                                        </StackPanel>
 
-                                    <!-- Row 3: Paid From / Paycheck Associations -->
-                                    <Grid Margin="0,5">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-
-                                        <Label Content="Paid From:" VerticalAlignment="Center" />
-                                        <ComboBox Grid.Column="1" ItemsSource="{Binding ActiveAccountsWithNone}"
-                                                  SelectedValue="{Binding EditingBucketClone.AccountId}"
-                                                  SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5"
-                                                  VerticalAlignment="Center" />
-
-                                        <!-- Paycheck Association Label -->
-                                        <Label Grid.Column="2" Content="Paycheck Association:"
-                                               VerticalAlignment="Center">
-                                            <Label.Style>
-                                                <Style TargetType="Label">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="UpfrontFloor">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Label.Style>
-                                        </Label>
-
-                                        <!-- Paycheck Association ComboBox -->
-                                        <ComboBox Grid.Column="3" ItemsSource="{Binding PaychecksWithNone}"
-                                                  SelectedValue="{Binding EditingBucketClone.PaycheckId}"
-                                                  SelectedValuePath="Id" DisplayMemberPath="Name" Margin="5"
-                                                  VerticalAlignment="Center">
-                                            <ComboBox.Style>
-                                                <Style TargetType="ComboBox">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EditingBucketClone.Type}"
-                                                                     Value="UpfrontFloor">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </ComboBox.Style>
-                                        </ComboBox>
-                                    </Grid>
-
-                                    <!-- SubCategory Association Section (Unchanged) -->
-                                    <TextBlock Text="Associated Subcategories:" Margin="0,10,0,5" FontWeight="SemiBold" />
-                                    <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="3" Height="120">
-                                        <ListBox ItemsSource="{Binding EditableSubCategories}"
-                                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal" Margin="2">
-                                                        <CheckBox IsChecked="{Binding IsSelected}"
-                                                                  VerticalAlignment="Center">
-                                                            <StackPanel Orientation="Horizontal">
-                                                                <TextBlock Text="{Binding CategoryName}"
-                                                                           FontWeight="Bold" Margin="0,0,5,0" />
-                                                                <TextBlock Text=">" Margin="0,0,5,0" Foreground="Gray" />
-                                                                <TextBlock Text="{Binding Name}" />
-                                                            </StackPanel>
-                                                        </CheckBox>
-
-                                                        <TextBlock x:Name="StatusText"
-                                                                   Text="{Binding AssignmentStatusText}"
-                                                                   Margin="10,0,0,0"
-                                                                   VerticalAlignment="Center"
-                                                                   FontStyle="Italic"
-                                                                   Foreground="Gray" />
-                                                    </StackPanel>
-
-                                                    <DataTemplate.Triggers>
-                                                        <DataTrigger Binding="{Binding IsReassigned}" Value="True">
-                                                            <Setter TargetName="StatusText" Property="Foreground"
-                                                                    Value="DarkOrange" />
-                                                            <Setter TargetName="StatusText" Property="FontWeight"
-                                                                    Value="SemiBold" />
-                                                        </DataTrigger>
-                                                    </DataTemplate.Triggers>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
-                                        </ListBox>
-                                    </Border>
-                                </StackPanel>
+                                        <!-- SubCategory Association Section -->
+                                        <TextBlock Text="Associated Subcategories:" Margin="0,10,0,5"
+                                                   FontWeight="SemiBold" />
+                                        <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="3" Height="100">
+                                            <ListBox ItemsSource="{Binding EditableSubCategories}"
+                                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Margin="2">
+                                                            <CheckBox IsChecked="{Binding IsSelected}"
+                                                                      VerticalAlignment="Center">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Text="{Binding CategoryName}"
+                                                                               FontWeight="Bold" Margin="0,0,5,0" />
+                                                                    <TextBlock Text=">" Margin="0,0,5,0"
+                                                                               Foreground="Gray" />
+                                                                    <TextBlock Text="{Binding Name}" />
+                                                                </StackPanel>
+                                                            </CheckBox>
+                                                            <TextBlock x:Name="StatusText"
+                                                                       Text="{Binding AssignmentStatusText}"
+                                                                       Margin="10,0,0,0" VerticalAlignment="Center"
+                                                                       FontStyle="Italic" Foreground="Gray" />
+                                                        </StackPanel>
+                                                        <DataTemplate.Triggers>
+                                                            <DataTrigger Binding="{Binding IsReassigned}" Value="True">
+                                                                <Setter TargetName="StatusText" Property="Foreground"
+                                                                        Value="DarkOrange" />
+                                                                <Setter TargetName="StatusText" Property="FontWeight"
+                                                                        Value="SemiBold" />
+                                                            </DataTrigger>
+                                                        </DataTemplate.Triggers>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                        </Border>
+                                    </StackPanel>
+                                </ScrollViewer>
                             </Grid>
                         </DockPanel>
                     </TabItem>
@@ -2703,7 +2724,8 @@
                                                                 Command="{Binding DataContext.FundEnvelopeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                                 CommandParameter="{Binding}">
                                                                 Funds Set Aside
-                                                            </Hyperlink> or 
+                                                            </Hyperlink>
+                                                            or
                                                             <Hyperlink
                                                                 Command="{Binding DataContext.SkipFundEnvelopeCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                                 CommandParameter="{Binding}">

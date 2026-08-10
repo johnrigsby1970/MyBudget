@@ -8,7 +8,7 @@ public class BudgetBucket : ViewModelBase
     private string _name = string.Empty;
     private decimal _expectedAmount;
     private int? _accountId;
-    private int? _paycheckId;
+   // private int? _paycheckId;
     private bool _isArchived;
     
     // New Bucket Type Properties
@@ -45,16 +45,23 @@ public class BudgetBucket : ViewModelBase
         set => SetProperty(ref _accountId, value);
     }
     
-    public int? PaycheckId
-    {
-        get => _paycheckId;
-        set => SetProperty(ref _paycheckId, value);
-    }
+    // public int? PaycheckId
+    // {
+    //     get => _paycheckId;
+    //     set => SetProperty(ref _paycheckId, value);
+    // }
     
     public bool IsArchived
     {
         get => _isArchived;
         set => SetProperty(ref _isArchived, value);
+    }
+    
+    private bool _isActive;
+    public bool IsActive
+    {
+        get => _isActive;
+        set => SetProperty(ref _isActive, value);
     }
 
     public BucketType Type
@@ -87,4 +94,28 @@ public class BudgetBucket : ViewModelBase
         get => _initialBalance;
         set => SetProperty(ref _initialBalance, value);
     }
+    
+    private TargetFrequencyType? _targetFrequency;
+    public TargetFrequencyType? TargetFrequency
+    {
+        get => _targetFrequency;
+        set => SetProperty(ref _targetFrequency, value);
+    }
+    
+    private decimal _targetAmount;
+    public decimal TargetAmount
+    {
+        get => _targetAmount;
+        set => SetProperty(ref _targetAmount, value);
+    }
+    
+    private DateTime? _nextDueDate;
+    public DateTime? NextDueDate
+    {
+        get => _nextDueDate;
+        set => SetProperty(ref _nextDueDate, value);
+    }
+    
+    // Navigation collection for linked allocations
+    public List<BucketPaycheckAllocation> PaycheckAllocations { get; set; } = new();
 }
