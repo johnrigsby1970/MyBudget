@@ -60,8 +60,20 @@ public class MainViewModel : ViewModelBase {
     private int _selectedInnerTabIndex;
     private int _selectedProjectionTabIndex;
     private SnowballStrategyOptions _snowballOptions = new();
-
+    private NavigationItemViewModel? _selectedNavigationItem;
+    
     #region Properties
+    
+    public ObservableCollection<NavigationItemViewModel> NavigationItems { get; } = new();
+
+    public NavigationItemViewModel? SelectedNavigationItem {
+        get => _selectedNavigationItem;
+        set {
+            if (SetProperty(ref _selectedNavigationItem, value) && value != null) {
+                SelectedOuterTabIndex = value.TabIndex;
+            }
+        }
+    }
     
     public IEnumerable<TargetFrequencyType> TargetFrequencyTypes => 
         Enum.GetValues(typeof(TargetFrequencyType)).Cast<TargetFrequencyType>();
@@ -241,6 +253,8 @@ public class MainViewModel : ViewModelBase {
         ExportTransactionsCommand = new RelayCommand(ExportTransactions);
 
         InitializeDataCommand = new AsyncRelayCommand(InitializeDataAsync);
+        
+        InitializeNavigationMenu();
 
         // Initialize commands directly in the constructor
         OpenManageExcludedAccountsCommand = new RelayCommand(OpenManageExcludedAccounts);
@@ -836,7 +850,15 @@ public class MainViewModel : ViewModelBase {
 
     public int SelectedOuterTabIndex {
         get => _selectedOuterTabIndex;
-        set => SetProperty(ref _selectedOuterTabIndex, value);
+        set {
+            if (SetProperty(ref _selectedOuterTabIndex, value)) {
+                var match = NavigationItems.FirstOrDefault(x => x.TabIndex == value);
+                if (match != null && _selectedNavigationItem != match) {
+                    _selectedNavigationItem = match;
+                    OnPropertyChanged(nameof(SelectedNavigationItem));
+                }
+            }
+        }
     }
 
     public int SelectedInnerTabIndex {
@@ -1540,8 +1562,7 @@ public class MainViewModel : ViewModelBase {
             if (selectedBillId.HasValue) {
                 SelectedBill = Bills.FirstOrDefault(a => a.Id == selectedBillId);
             }
-
-            await LoadBillDataAsync();
+            
             await LoadPeriodDataAsync();
             RequestProjectionRecalculation();
         }
@@ -3744,12 +3765,9 @@ public class MainViewModel : ViewModelBase {
             var projectedBillsForPeriod = GetProjectedBillsForPeriod(CurrentPeriodDate);
 
             foreach (var pb in projectedBillsForPeriod) {
-                if (!pBills.Any(existing =>
-                        existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date)) { }
-                else {
-                    var periodBill = pBills.SingleOrDefault(existing =>
-                        existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date);
-                    UpdatePeriodBillFromClone(pb, periodBill!);
+                var periodBill = pBills.FirstOrDefault(existing => existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date);
+                if (periodBill != null) {
+                    UpdatePeriodBillFromClone(pb, periodBill);
                 }
             }
 
@@ -3880,6 +3898,49 @@ public class MainViewModel : ViewModelBase {
         catch (Exception ex) {
             Log.Error(ex, "Error initializing period.");
         }
+    }
+    
+    private void InitializeNavigationMenu() {
+        NavigationItems.Clear();
+
+        NavigationItems.Add(new NavigationItemViewModel {
+            Title = "Dashboard",
+            IconKind = "Speedometer",
+            TabIndex = 0
+        });
+        NavigationItems.Add(new NavigationItemViewModel {
+            Title = "Accounts",
+            IconKind = "Bank",
+            TabIndex = 1
+        });
+        NavigationItems.Add(new NavigationItemViewModel {
+            Title = "Bills",
+            IconKind = "Receipt",
+            TabIndex = 2
+        });
+        NavigationItems.Add(new NavigationItemViewModel {
+            Title = "Envelopes",
+            IconKind = "FolderStar",
+            TabIndex = 3
+        });
+        NavigationItems.Add(new NavigationItemViewModel {
+            Title = "Transactions",
+            IconKind = "FormatListBulleted",
+            TabIndex = 4
+        });
+        NavigationItems.Add(new NavigationItemViewModel {
+            Title = "Projections",
+            IconKind = "ChartLine",
+            TabIndex = 5
+        });
+        NavigationItems.Add(new NavigationItemViewModel {
+            Title = "Settings",
+            IconKind = "Cog",
+            TabIndex = 6
+        });
+
+        // Default selected menu item to Dashboard
+        SelectedNavigationItem = NavigationItems.FirstOrDefault();
     }
 
     private async Task NavigatePeriodAsync(int direction) {
