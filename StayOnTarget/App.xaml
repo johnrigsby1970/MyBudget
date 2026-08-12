@@ -43,7 +43,7 @@
             <!-- -->
             <!--     <Setter Property="SeparatorBrush" Value="#CBD5E1"/> -->
             <!-- </Style> -->
-            
+
             <Style TargetType="{x:Type DataGridColumnHeader}">
                 <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" />
                 <Setter Property="Background" Value="{DynamicResource DataGridHeaderBackgroundBrush}" />
@@ -56,7 +56,7 @@
                 <Setter Property="BorderThickness" Value="0,0,1,1" />
                 <Setter Property="SeparatorBrush" Value="{DynamicResource BorderColorBrush}" />
             </Style>
-            
+
             <Style x:Key="RightAlignedHeaderStyle"
                    TargetType="{x:Type DataGridColumnHeader}"
                    BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
@@ -217,6 +217,46 @@
                 </Style.Triggers>
             </Style>
 
+            <!-- Explicit Key for explicit usage -->
+            <Style x:Key="SecondaryToggleButtonStyle" TargetType="{x:Type ToggleButton}">
+                <Setter Property="Background" Value="{DynamicResource SurfaceBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter x:Name="contentPresenter"
+                                                  Focusable="False"
+                                                  HorizontalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <!-- Mouse Over State -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background"
+                                            Value="{DynamicResource SidebarHoverBrush}" />
+                                </Trigger>
+                                <!-- Checked State (Active Filter) -->
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="border" Property="Background" Value="#3B82F6" />
+                                    <Setter TargetName="border" Property="BorderBrush" Value="#2563EB" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- 3. DANGER BUTTON STYLE -->
             <Style x:Key="DangerButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource BaseButtonStyle}">
                 <Setter Property="Background" Value="{DynamicResource ButtonDangerBackgroundBrush}" />
@@ -359,7 +399,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            
+
             <Style TargetType="{x:Type Label}">
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />

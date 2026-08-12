@@ -144,11 +144,7 @@ public class MainViewModel : ViewModelBase {
         _budgetService = budgetService;
         _reconciliationService = reconciliationService;
         _projectionEngine = new ProjectionEngine();
-        //_snowballOptions.PropertyChanged += (s, e) => { _ = CalculateProjectionsAsync(); };
-        // if (SnowballOptions != null)
-        // {
-        //     SnowballOptions.PropertyChanged += OnSnowballOptionsPropertyChanged;
-        // }
+
         // InitializeDataAsync handles loading from budgetService and attaching the listener.
         ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => CanEditAccount);
         ReconcileAccountCommand =
