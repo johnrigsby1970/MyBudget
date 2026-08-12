@@ -134,12 +134,18 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _isBillDescriptionExpanded, value);
     }
 
+    private bool _isDarkMode;
+    public bool IsDarkMode {
+        get => _isDarkMode;
+        set => SetProperty(ref _isDarkMode, value);
+    }
+    
     public static MainViewModel? Instance { get; private set; }
 
     public MainViewModel(
         BudgetService budgetService,
         ReconciliationService reconciliationService) {
-        SetTheme(false);
+        
         Instance = this;
         _budgetService = budgetService;
         _reconciliationService = reconciliationService;
@@ -220,6 +226,7 @@ public class MainViewModel : ViewModelBase {
         ShowAmortizationCommand =
             new RelayCommand<Account>(a => ShowAmortization(a as Account ?? throw new InvalidOperationException()));
         ShowAboutCommand = new RelayCommand(ShowAbout);
+        SetThemeCommand = new RelayCommand(ToggleTheme);
         ExitCommand = new RelayCommand(Exit);
         BackupCommand = new RelayCommand(Backup);
         SetOneYearCommand = new RelayCommand(() => SetProjectionEndDate(1));
@@ -262,6 +269,11 @@ public class MainViewModel : ViewModelBase {
         _filteredBillsView.Filter = FilterBillItem;
     }
 
+    public void ToggleTheme() {
+        IsDarkMode = !IsDarkMode;
+        SetTheme(IsDarkMode);
+    }
+    
     private CancellationTokenSource? _recalculationCts;
 
     // <summary>
@@ -1252,6 +1264,8 @@ public class MainViewModel : ViewModelBase {
 
     public IRelayCommand ShowAboutCommand { get; }
 
+    public IRelayCommand SetThemeCommand { get; }
+    
     public IRelayCommand ExitCommand { get; }
 
     public IRelayCommand BackupCommand { get; }

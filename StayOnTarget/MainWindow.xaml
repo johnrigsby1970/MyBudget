@@ -237,61 +237,61 @@
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
 
-        <Style x:Key="ToggleButtonStyle" TargetType="{x:Type ToggleButton}">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ToggleButton}">
-                        <Viewbox>
-                            <Border x:Name="Border" CornerRadius="10"
-                                    Background="{DynamicResource SurfaceBackgroundBrush}"
-                                    Width="40" Height="20">
-                                <Border.Effect>
-                                    <DropShadowEffect ShadowDepth="0.5" Direction="0" Opacity="0.3" />
-                                </Border.Effect>
-                                <Ellipse x:Name="Ellipse" Fill="{DynamicResource SurfaceBackgroundBrush}" Stretch="Uniform"
-                                         Margin="2 1 2 1"
-                                         Stroke="Gray" StrokeThickness="0.2"
-                                         HorizontalAlignment="Stretch">
-                                    <Ellipse.Effect>
-                                        <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.3" Direction="260" />
-                                    </Ellipse.Effect>
-                                </Ellipse>
-                            </Border>
-                        </Viewbox>
-                        <ControlTemplate.Triggers>
-                            <EventTrigger RoutedEvent="Checked">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <ColorAnimation Storyboard.TargetName="Border"
-                                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                        To="#FF4CD661"
-                                                        Duration="0:0:0.1" />
-                                        <ThicknessAnimation Storyboard.TargetName="Ellipse"
-                                                            Storyboard.TargetProperty="Margin"
-                                                            To="20 1 2 1"
-                                                            Duration="0:0:0.1" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                            <EventTrigger RoutedEvent="Unchecked">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <ColorAnimation Storyboard.TargetName="Border"
-                                                        Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)"
-                                                        To="White"
-                                                        Duration="0:0:0.1" />
-                                        <ThicknessAnimation Storyboard.TargetName="Ellipse"
-                                                            Storyboard.TargetProperty="Margin"
-                                                            To="2 1 2 1"
-                                                            Duration="0:0:0.1" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+    <!--     <Style x:Key="ToggleButtonStyle" TargetType="{x:Type ToggleButton}"> -->
+    <!--         <Setter Property="Template"> -->
+    <!--             <Setter.Value> -->
+    <!--                 <ControlTemplate TargetType="{x:Type ToggleButton}"> -->
+    <!--                     <Viewbox> -->
+    <!--                         <Border x:Name="Border" CornerRadius="10" -->
+    <!--                                 Background="{DynamicResource SurfaceBackgroundBrush}" -->
+    <!--                                 Width="40" Height="20"> -->
+    <!--                             <Border.Effect> -->
+    <!--                                 <DropShadowEffect ShadowDepth="0.5" Direction="0" Opacity="0.3" /> -->
+    <!--                             </Border.Effect> -->
+    <!--                             <Ellipse x:Name="Ellipse" Fill="{DynamicResource SurfaceBackgroundBrush}" Stretch="Uniform" -->
+    <!--                                      Margin="2 1 2 1" -->
+    <!--                                      Stroke="Gray" StrokeThickness="0.2" -->
+    <!--                                      HorizontalAlignment="Stretch"> -->
+    <!--                                 <Ellipse.Effect> -->
+    <!--                                     <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.3" Direction="260" /> -->
+    <!--                                 </Ellipse.Effect> -->
+    <!--                             </Ellipse> -->
+    <!--                         </Border> -->
+    <!--                     </Viewbox> -->
+    <!--                     <ControlTemplate.Triggers> -->
+    <!--                         <EventTrigger RoutedEvent="Checked"> -->
+    <!--                             <BeginStoryboard> -->
+    <!--                                 <Storyboard> -->
+    <!--                                     <ColorAnimation Storyboard.TargetName="Border" -->
+    <!--                                                     Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" -->
+    <!--                                                     To="#FF4CD661" -->
+    <!--                                                     Duration="0:0:0.1" /> -->
+    <!--                                     <ThicknessAnimation Storyboard.TargetName="Ellipse" -->
+    <!--                                                         Storyboard.TargetProperty="Margin" -->
+    <!--                                                         To="20 1 2 1" -->
+    <!--                                                         Duration="0:0:0.1" /> -->
+    <!--                                 </Storyboard> -->
+    <!--                             </BeginStoryboard> -->
+    <!--                         </EventTrigger> -->
+    <!--                         <EventTrigger RoutedEvent="Unchecked"> -->
+    <!--                             <BeginStoryboard> -->
+    <!--                                 <Storyboard> -->
+    <!--                                     <ColorAnimation Storyboard.TargetName="Border" -->
+    <!--                                                     Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" -->
+    <!--                                                     To="White" -->
+    <!--                                                     Duration="0:0:0.1" /> -->
+    <!--                                     <ThicknessAnimation Storyboard.TargetName="Ellipse" -->
+    <!--                                                         Storyboard.TargetProperty="Margin" -->
+    <!--                                                         To="2 1 2 1" -->
+    <!--                                                         Duration="0:0:0.1" /> -->
+    <!--                                 </Storyboard> -->
+    <!--                             </BeginStoryboard> -->
+    <!--                         </EventTrigger> -->
+    <!--                     </ControlTemplate.Triggers> -->
+    <!--                 </ControlTemplate> -->
+    <!--             </Setter.Value> -->
+    <!--         </Setter> -->
+    <!--     </Style> -->
     </Window.Resources>
 
     <Grid Margin="10">
@@ -307,6 +307,9 @@
                 <MenuItem Header="_Backup" Command="{Binding BackupCommand}" />
                 <Separator />
                 <MenuItem Header="_Exit" Command="{Binding ExitCommand}" />
+            </MenuItem>
+            <MenuItem Header="_Settings">
+                <MenuItem Header="_SetTheme" Command="{Binding SetThemeCommand}" />
             </MenuItem>
             <MenuItem Header="_Help">
                 <MenuItem Header="_About" Command="{Binding ShowAboutCommand}" />
