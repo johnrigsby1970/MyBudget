@@ -6,8 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
-using LiveChartsCore.Kernel.Sketches;
-using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using LiveChartsCore.SkiaSharpView.WPF;
@@ -18,8 +16,6 @@ using StayOnTarget.ViewModels;
 
 namespace StayOnTarget;
 
-//https://github.com/Live-Charts/LiveCharts2?tab=MIT-1-ov-file#readme
-//https://livecharts.dev/docs/WPF/2.0.0-rc6.1/samples.lines.straight
 public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyChanged {
     public static readonly DependencyProperty ProjectionsProperty =
         DependencyProperty.Register(nameof(Projections), typeof(ObservableCollection<ProjectionItem>),
@@ -51,20 +47,19 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
         }
     }
 
+    // Theme Colors for SkiaSharp Paints
+    private static readonly SKColor LabelColor = SKColor.Parse("#94A3B8"); // SecondaryTextBrush Slate 400
+    private static readonly SKColor SeparatorColor = SKColor.Parse("#1E293B"); // GridLineBrush Slate 800
+    private static readonly SKColor TotalBlue = SKColor.Parse("#38BDF8"); // Vibrant Sky Blue
+
     public IEnumerable<Axis> XAxes { get; set; } = new[] {
         new Axis {
+            LabelsPaint = new SolidColorPaint(GetLabelColor()),
+            SeparatorsPaint = new SolidColorPaint(GetGridLineColor(), 1), // Soft 1px grid lines
             Labeler = value => {
-                // 1. Guard against NaN/Infinity
                 if (double.IsNaN(value) || double.IsInfinity(value)) return string.Empty;
-
-                // 2. Safely cast to long
                 var ticks = (long)value;
-
-                // 3. Ensure the tick value fits within valid DateTime boundaries
-                if (ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks) {
-                    return string.Empty;
-                }
-
+                if (ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks) return string.Empty;
                 return new DateTime(ticks).ToString("M/d/yy");
             },
             LabelsRotation = 45,
@@ -74,36 +69,39 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
 
     public IEnumerable<Axis> YAxes { get; set; } = new[] {
         new Axis {
-            Labeler = value => value.ToString("C")
+            LabelsPaint = new SolidColorPaint(GetLabelColor()),
+            SeparatorsPaint = new SolidColorPaint(GetGridLineColor(), 1), // Soft 1px grid lines
+            Labeler = value => value.ToString("C0")
         }
     };
-
     private readonly CartesianChart _chart;
 
     public ProjectionLiveChartControl() {
         InitializeComponent();
+        
         _chart = new CartesianChart {
-            LegendPosition = LiveChartsCore.Measure.LegendPosition.Bottom
+            LegendPosition = LiveChartsCore.Measure.LegendPosition.Bottom,
+            // Style the Legend text for Dark Mode
+            LegendTextPaint = new SolidColorPaint(LabelColor),
+            // Make the Chart Background transparent to blend with your theme
+            Background = System.Windows.Media.Brushes.Transparent
         };
+        
         MainGrid.Children.Add(_chart);
         _chart.SetBinding(CartesianChart.SeriesProperty, new System.Windows.Data.Binding("Series") { Source = this });
         _chart.SetBinding(CartesianChart.XAxesProperty, new System.Windows.Data.Binding("XAxes") { Source = this });
         _chart.SetBinding(CartesianChart.YAxesProperty, new System.Windows.Data.Binding("YAxes") { Source = this });
         
-        // Handle responsiveness on size changes
         SizeChanged += OnControlSizeChanged;
     }
-    
+
     private void OnControlSizeChanged(object sender, SizeChangedEventArgs e) {
-        // Choose your threshold width (e.g., 600px)
-        const double minimumHeightForLegend = 500;
+        const double minimumHeightForLegend = 350;
         const double minimumWidthForLegend = 500;
 
-        if (e.NewSize.Width < minimumWidthForLegend || e.NewSize.Height < minimumHeightForLegend) {
-            _chart.LegendPosition = LiveChartsCore.Measure.LegendPosition.Hidden;
-        } else {
-            _chart.LegendPosition = LiveChartsCore.Measure.LegendPosition.Bottom;
-        }
+        _chart.LegendPosition = (e.NewSize.Width < minimumWidthForLegend || e.NewSize.Height < minimumHeightForLegend)
+            ? LiveChartsCore.Measure.LegendPosition.Hidden
+            : LiveChartsCore.Measure.LegendPosition.Bottom;
     }
 
     private static void OnDataChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) {
@@ -141,18 +139,20 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
 
             var seriesList = new List<ISeries>();
 
-            // Total Balance Series
+            // Total Balance Gradient Fill (Pop Effect)
+            var blueGradient = new SKColor[] { TotalBlue.WithAlpha(90), TotalBlue.WithAlpha(5) };
+
+            // 1. Total Balance Line (Thicker, Vibrant Sky Blue with Area Gradient)
             seriesList.Add(new LineSeries<DateTimePoint> {
                 Name = "Total Balance",
                 Values = projections.Select(p => new DateTimePoint(p.TransactionDate, (double)p.Balance)).ToArray(),
-                Stroke = new SolidColorPaint(SKColors.DodgerBlue, 3),
-                Fill = null,
+                Stroke = new SolidColorPaint(TotalBlue, 3),
+                Fill = new LinearGradientPaint(blueGradient, new SKPoint(0.5f, 0), new SKPoint(0.5f, 1)),
                 GeometrySize = 0,
-                LineSmoothness = 0,
-                GeometryStroke = new SolidColorPaint(SKColors.DodgerBlue, 3)
+                LineSmoothness = 0.2
             });
 
-            // Individual Account Series
+            // 2. Individual Account Lines
             foreach (var acc in accounts) {
                 SKColor color;
                 var hex = acc.HexColor;
@@ -172,9 +172,7 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
                     Stroke = paint,
                     Fill = null,
                     GeometrySize = 0,
-                    LineSmoothness = 0,
-                    GeometryStroke = paint
-                    // GeometryFill = paint
+                    LineSmoothness = 0.2
                 });
             }
 
@@ -185,6 +183,23 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
         }
     }
 
+    // Get grid line color dynamically from theme or fallback to a soft light gray (#E2E8F0)
+    private static SKColor GetGridLineColor() {
+        if (Application.Current?.TryFindResource("GridLineBrush") is SolidColorBrush brush) {
+            var c = brush.Color;
+            return new SKColor(c.R, c.G, c.B, c.A);
+        }
+        return SKColor.Parse("#E2E8F0"); // Ultra-soft light mode grid lines
+    }
+
+    private static SKColor GetLabelColor() {
+        if (Application.Current?.TryFindResource("SecondaryTextBrush") is SolidColorBrush brush) {
+            var c = brush.Color;
+            return new SKColor(c.R, c.G, c.B, c.A);
+        }
+        return SKColor.Parse("#64748B"); // Slate label text
+    }
+    
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged(string propertyName) {

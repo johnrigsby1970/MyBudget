@@ -11,56 +11,57 @@
            xmlns:controls="clr-namespace:StayOnTarget.Controls"
            mc:Ignorable="d"
            Title="Import &amp; Reconcile QFX Transactions" Height="650" Width="900"
-           WindowStartupLocation="CenterScreen">
+           WindowStartupLocation="CenterScreen"
+           Background="{DynamicResource WindowBackgroundBrush}">
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Loaded">
             <i:InvokeCommandAction Command="{Binding InitializeDataCommand}" />
         </i:EventTrigger>
     </i:Interaction.Triggers>
     <av:Window.Resources>
-        <Style TargetType="{x:Type DataGrid}">
-            <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0" />
-            <Setter Property="VerticalGridLinesBrush" Value="#E2E8F0" />
-        
-            <Setter Property="BorderBrush" Value="#CBD5E1" />
-            <Setter Property="BorderThickness" Value="1" />
-        
-            <Setter Property="AlternatingRowBackground" Value="#F8FAFC" />
-        
-            <Setter Property="RowBackground" Value="White" />
-            <Setter Property="Background" Value="White" />
-            <Setter Property="GridLinesVisibility" Value="All" />
-        </Style>
+        <!-- <Style TargetType="{x:Type DataGrid}"> -->
+        <!--     <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0" /> -->
+        <!--     <Setter Property="VerticalGridLinesBrush" Value="#E2E8F0" /> -->
+        <!-- -->
+        <!--     <Setter Property="BorderBrush" Value="#CBD5E1" /> -->
+        <!--     <Setter Property="BorderThickness" Value="1" /> -->
+        <!-- -->
+        <!--     <Setter Property="AlternatingRowBackground" Value="#F8FAFC" /> -->
+        <!-- -->
+        <!--     <Setter Property="RowBackground" Value="White" /> -->
+        <!--     <Setter Property="Background" Value="White" /> -->
+        <!--     <Setter Property="GridLinesVisibility" Value="All" /> -->
+        <!-- </Style> -->
 
-        <Style TargetType="{x:Type DataGridRow}">
-            <Style.Resources>
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#3B82F6" />
-                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#3B82F6" />
-                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
-                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White" />
-            </Style.Resources>
-        </Style>
-        <Style TargetType="{x:Type DataGridColumnHeader}">
-            <Setter Property="Background" Value="#E2E8F0" />
-        
-            <Setter Property="Foreground" Value="#1E293B" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="12" />
-        
-            <Setter Property="Padding" Value="8,6,8,6" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-        
-            <Setter Property="BorderBrush" Value="#CBD5E1" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
-        
-            <Setter Property="SeparatorBrush" Value="#CBD5E1"/>
-        </Style>
-        <Style x:Key="RightAlignedHeaderStyle" 
-               TargetType="{x:Type DataGridColumnHeader}" 
-               BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-    
-            <Setter Property="HorizontalContentAlignment" Value="Right" />
-        </Style>
+        <!-- <Style TargetType="{x:Type DataGridRow}"> -->
+        <!--     <Style.Resources> -->
+        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#3B82F6" /> -->
+        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#3B82F6" /> -->
+        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" /> -->
+        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White" /> -->
+        <!--     </Style.Resources> -->
+        <!-- </Style> -->
+        <!-- <Style TargetType="{x:Type DataGridColumnHeader}"> -->
+        <!--     <Setter Property="Background" Value="#E2E8F0" /> -->
+        <!-- -->
+        <!--     <Setter Property="Foreground" Value="#1E293B" /> -->
+        <!--     <Setter Property="FontWeight" Value="SemiBold" /> -->
+        <!--     <Setter Property="FontSize" Value="12" /> -->
+        <!-- -->
+        <!--     <Setter Property="Padding" Value="8,6,8,6" /> -->
+        <!--     <Setter Property="HorizontalContentAlignment" Value="Left" /> -->
+        <!-- -->
+        <!--     <Setter Property="BorderBrush" Value="#CBD5E1" /> -->
+        <!--     <Setter Property="BorderThickness" Value="0,0,1,1" /> -->
+        <!-- -->
+        <!--     <Setter Property="SeparatorBrush" Value="#CBD5E1"/> -->
+        <!-- </Style> -->
+        <!-- <Style x:Key="RightAlignedHeaderStyle"  -->
+        <!--        TargetType="{x:Type DataGridColumnHeader}"  -->
+        <!--        BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"> -->
+        <!-- -->
+        <!--     <Setter Property="HorizontalContentAlignment" Value="Right" /> -->
+        <!-- </Style> -->
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -218,7 +219,7 @@
                 </GroupBox>
 
                 <GridSplitter Grid.Row="2" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                              Background="#DDD" Margin="0,5" />
+                              Background="{StaticResource GridSplitterBrush}" Margin="0,5" />
 
                 <Grid Grid.Row="3">
                     <Grid.ColumnDefinitions>
@@ -252,15 +253,15 @@
                     </GroupBox>
 
                     <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                        <Button Content="Link Selections"
+                        <Button Content="Link Selections" Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding LinkTransactionsCommand}"
                                 Padding="10,8" Margin="0,0,0,10" />
 
-                        <Button Content="Import Selected Transaction"
+                        <Button Content="Import Selected Transaction" Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding ImportAsNewCommand}"
                                 Padding="10,8" Margin="0,0,0,15" />
                         
-                        <Button Content="Clear Match"
+                        <Button Content="Clear Match" Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding  ClearMatchCommand}"
                                 Padding="10,8" Margin="0,0,0,15" />
 
@@ -271,7 +272,7 @@
                 </Grid>
 
                 <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
-                    <Button Content="Open Transaction File..."
+                    <Button Content="Open Transaction File..." Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding ImportFileCommand}"
                             Padding="10,4"
                             Margin="0,0,10,0"
@@ -289,11 +290,11 @@
                     <!--         Margin="0,0,10,0" -->
                     <!--         HorizontalAlignment="Right" /> -->
 
-                    <Button Content="Update Transactions" 
+                    <Button Content="Update Transactions"  Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding SaveCommand}"
                             Width="120" Padding="5" IsDefault="True" 
                             Margin="0,0,10,0" />
-                    <Button Content="Close" Width="80" Padding="5" IsCancel="True" />
+                    <Button Content="Close" Style="{StaticResource SecondaryButtonStyle}" Width="80" Padding="5" IsCancel="True" />
                 </StackPanel>
             </av:Grid>
         </DockPanel>
@@ -360,8 +361,8 @@
                     </DataGrid>
         
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-                        <Button Content="Cancel" Command="{Binding CancelCsvImportCommand}" Width="80" Margin="0,0,10,0" />
-                        <Button Content="Load" Command="{Binding ConfirmCsvImportCommand}" Width="100" FontWeight="Bold" />
+                        <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCsvImportCommand}" Width="80" Margin="0,0,10,0" />
+                        <Button Content="Load" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ConfirmCsvImportCommand}" Width="100" FontWeight="Bold" />
                     </StackPanel>
                 </StackPanel>
             </Border>

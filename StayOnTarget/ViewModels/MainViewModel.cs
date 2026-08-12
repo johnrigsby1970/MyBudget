@@ -139,6 +139,7 @@ public class MainViewModel : ViewModelBase {
     public MainViewModel(
         BudgetService budgetService,
         ReconciliationService reconciliationService) {
+        SetTheme(false);
         Instance = this;
         _budgetService = budgetService;
         _reconciliationService = reconciliationService;
@@ -4515,4 +4516,19 @@ public class MainViewModel : ViewModelBase {
     }
 
     #endregion
+    
+        
+    public static void SetTheme(bool isDark)
+    {
+        var newThemeUri = new Uri(
+            isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml", 
+            UriKind.Relative
+        );
+
+        var appResources = Application.Current.Resources.MergedDictionaries;
+    
+        // Clear existing theme dictionary and load the new one
+        appResources.Clear();
+        appResources.Add(new ResourceDictionary { Source = newThemeUri });
+    }
 }

@@ -92,14 +92,14 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBox Text="{Binding ExportFilePath}" VerticalAlignment="Center" Padding="5,3" />
-                <Button Grid.Column="1" Content="Browse..." Command="{Binding BrowseCommand}" Margin="5,0,0,0" Padding="10,3" />
+                <Button Grid.Column="1" Content="Browse..."  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding BrowseCommand}" Margin="5,0,0,0" Padding="10,3" />
             </Grid>
         </StackPanel>
 
         <!-- Footer Actions -->
         <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Export" Command="{Binding ExportCommand}" Width="80" Height="30" Margin="0,0,10,0" Background="#3b82f6" Foreground="White" FontWeight="SemiBold" />
-            <Button Content="Cancel" Command="{Binding CancelCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Width="80" Height="30" />
+            <Button Content="Export" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding ExportCommand}" Width="80" Height="30" Margin="0,0,10,0" Background="#3b82f6" Foreground="White" FontWeight="SemiBold" />
+            <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}" CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}" Width="80" Height="30" />
         </StackPanel>
     </Grid>
 </Window>

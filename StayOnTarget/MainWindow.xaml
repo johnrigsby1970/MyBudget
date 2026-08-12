@@ -17,13 +17,33 @@
         xmlns:helpers1="clr-namespace:StayOnTarget.Helpers"
         xmlns:controls="clr-namespace:StayOnTarget.Controls"
         mc:Ignorable="d"
-        Title="Stay On Target" Height="600" Width="1000" MinWidth="1000">
+        Title="Stay On Target" Height="600" Width="1000" MinWidth="1000"
+        Background="{DynamicResource WindowBackgroundBrush}">
+    
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Loaded">
             <i:InvokeCommandAction Command="{Binding InitializeDataCommand}" />
         </i:EventTrigger>
     </i:Interaction.Triggers>
+
     <Window.Resources>
+        <!-- Dynamic Theme Color Keys -->
+        <!-- <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FFFFFF" /> -->
+        <!-- <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#F8FAFC" /> -->
+        <!-- <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#FFFFFF" /> -->
+        <!-- <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#E2E8F0" /> -->
+        <!-- <SolidColorBrush x:Key="SidebarHoverBrush" Color="#F1F5F9" /> -->
+        <!-- -->
+        <!-- <SolidColorBrush x:Key="PrimaryTextBrush" Color="#0F172A" /> -->
+        <!-- <SolidColorBrush x:Key="SecondaryTextBrush" Color="#64748B" /> -->
+        <!-- <SolidColorBrush x:Key="BorderColorBrush" Color="#CBD5E1" /> -->
+        <!-- <SolidColorBrush x:Key="GridLineBrush" Color="#E2E8F0" /> -->
+        <!-- -->
+        <!-- <SolidColorBrush x:Key="DataGridHeaderBackgroundBrush" Color="#E2E8F0" /> -->
+        <!-- <SolidColorBrush x:Key="DataGridRowBackgroundBrush" Color="#FFFFFF" /> -->
+        <!-- <SolidColorBrush x:Key="DataGridAltRowBackgroundBrush" Color="#F8FAFC" /> -->
+        <!-- <SolidColorBrush x:Key="ModalBackgroundBrush" Color="#FFFFFF" /> -->
+
         <ObjectDataProvider x:Key="EnumSurplusCalculationMethod"
                             MethodName="GetValues"
                             ObjectType="{x:Type sys:Enum}">
@@ -31,47 +51,92 @@
                 <x:Type TypeName="models:SnowballStrategyOptions+SurplusCalculationMethod" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
-        <Style TargetType="{x:Type DataGrid}">
-            <Setter Property="FontWeight" Value="Normal" />
-            <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0" />
-            <Setter Property="VerticalGridLinesBrush" Value="#E2E8F0" />
 
-            <Setter Property="BorderBrush" Value="#CBD5E1" />
-            <Setter Property="BorderThickness" Value="1" />
-
-            <Setter Property="AlternatingRowBackground" Value="#F8FAFC" />
-
-            <Setter Property="RowBackground" Value="White" />
-            <Setter Property="Background" Value="White" />
-            <Setter Property="GridLinesVisibility" Value="All" />
-        </Style>
-        <Style x:Key="ModernUnderlineTabItemStyle" TargetType="{x:Type TabItem}">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type TabItem}">
-                        <Grid x:Name="Panel" Background="Transparent" Margin="0,0,14,0" SnapsToDevicePixels="True">
-                            <Border x:Name="Border" Padding="2,4,2,6">
-                                <ContentPresenter x:Name="ContentSite"
-                                                  ContentSource="Header"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalAlignment="Center" />
-                            </Border>
-                            <Border x:Name="Underline" Height="2" VerticalAlignment="Bottom" Background="Transparent" />
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="#0284C7" />
-                            </Trigger>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="#0F172A" />
-                                <Setter Property="FontWeight" Value="SemiBold" />
-                                <Setter TargetName="Underline" Property="Background" Value="#3b82f6" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <!-- <Style TargetType="{x:Type DataGrid}"> -->
+        <!--     <Setter Property="FontWeight" Value="Normal" /> -->
+        <!--     <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource GridLineBrush}" /> -->
+        <!--     <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource GridLineBrush}" /> -->
+        <!--     <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" /> -->
+        <!--     <Setter Property="BorderThickness" Value="1" /> -->
+        <!--     <Setter Property="AlternatingRowBackground" Value="{DynamicResource DataGridAltRowBackgroundBrush}" /> -->
+        <!--     <Setter Property="RowBackground" Value="{DynamicResource DataGridRowBackgroundBrush}" /> -->
+        <!--     <Setter Property="Background" Value="{DynamicResource DataGridRowBackgroundBrush}" /> -->
+        <!--     <Setter Property="Foreground" Value="{DynamicResource DataGridRowForegroundBrush}" /> -->
+        <!--     <Setter Property="GridLinesVisibility" Value="All" /> -->
+        <!--     <Setter Property="HeadersVisibility" Value="Column" /> -->
+        <!--     <Setter Property="RowHeaderWidth" Value="0" /> -->
+        <!-- </Style> -->
+        <!-- -->
+        <!-- ~1~ 3. Implicit ScrollBar Style (Applies to Horizontal & Vertical automatically) @1@ -->
+        <!-- <Style TargetType="{x:Type ScrollBar}"> -->
+        <!--     <Setter Property="Background" Value="{DynamicResource TrackBackgroundBrush}"/> -->
+        <!--     <Setter Property="Template"> -->
+        <!--         <Setter.Value> -->
+        <!--             <ControlTemplate TargetType="{x:Type ScrollBar}"> -->
+        <!--                 <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="true"> -->
+        <!--                     ~1~ Track holds the actual draggable Thumb @1@ -->
+        <!--                     <Track x:Name="PART_Track" IsDirectionReversed="false" > -->
+        <!--                         <Track.Thumb> -->
+        <!--                             <Thumb Style="{DynamicResource CustomScrollThumb}"/> -->
+        <!--                         </Track.Thumb> -->
+        <!--                     </Track> -->
+        <!--                 </Grid> -->
+        <!--             </ControlTemplate> -->
+        <!--         </Setter.Value> -->
+        <!--     </Setter> -->
+        <!-- </Style> -->
+        <!-- -->
+        <!-- <Style x:Key="CustomScrollThumb" TargetType="{x:Type Thumb}"> -->
+        <!--     <Setter Property="OverridesDefaultStyle" Value="true"/> -->
+        <!--     <Setter Property="Template"> -->
+        <!--         <Setter.Value> -->
+        <!--             <ControlTemplate TargetType="{x:Type Thumb}"> -->
+        <!--                 ~1~ Visual representation of the draggable bar @1@ -->
+        <!--                 <Border x:Name="rectangle"  -->
+        <!--                         Background="{DynamicResource ThumbNormalBrush}"  -->
+        <!--                         CornerRadius="4"  -->
+        <!--                         Margin="2"/> -->
+        <!--                 <ControlTemplate.Triggers> -->
+        <!--                     <Trigger Property="IsMouseOver" Value="true"> -->
+        <!--                         <Setter TargetName="rectangle" Property="Background" Value="{DynamicResource ThumbHoverBrush}"/> -->
+        <!--                     </Trigger> -->
+        <!--                 </ControlTemplate.Triggers> -->
+        <!--             </ControlTemplate> -->
+        <!--         </Setter.Value> -->
+        <!--     </Setter> -->
+        <!-- </Style> -->
+        <!-- -->
+        <!-- ~1~ <Style TargetType="DataGridRowHeader"> @1@ -->
+        <!-- ~1~     <Setter Property="Background" Value="Red" /> @1@ -->
+        <!-- ~1~ </Style> @1@ -->
+        <!-- -->
+        <!-- <Style x:Key="ModernUnderlineTabItemStyle" TargetType="{x:Type TabItem}"> -->
+        <!--     <Setter Property="Template"> -->
+        <!--         <Setter.Value> -->
+        <!--             <ControlTemplate TargetType="{x:Type TabItem}"> -->
+        <!--                 <Grid x:Name="Panel" Background="Transparent" Margin="0,0,14,0" SnapsToDevicePixels="True"> -->
+        <!--                     <Border x:Name="Border" Padding="2,4,2,6"> -->
+        <!--                         <ContentPresenter x:Name="ContentSite" -->
+        <!--                                           ContentSource="Header" -->
+        <!--                                           VerticalAlignment="Center" -->
+        <!--                                           HorizontalAlignment="Center" /> -->
+        <!--                     </Border> -->
+        <!--                     <Border x:Name="Underline" Height="2" VerticalAlignment="Bottom" Background="Transparent" /> -->
+        <!--                 </Grid> -->
+        <!--                 <ControlTemplate.Triggers> -->
+        <!--                     <Trigger Property="IsMouseOver" Value="True"> -->
+        <!--                         <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="#0284C7" /> -->
+        <!--                     </Trigger> -->
+        <!--                     <Trigger Property="IsSelected" Value="True"> -->
+        <!--                         <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="{DynamicResource PrimaryTextBrush}" /> -->
+        <!--                         <Setter Property="FontWeight" Value="SemiBold" /> -->
+        <!--                         <Setter TargetName="Underline" Property="Background" Value="#3B82F6" /> -->
+        <!--                     </Trigger> -->
+        <!--                 </ControlTemplate.Triggers> -->
+        <!--             </ControlTemplate> -->
+        <!--         </Setter.Value> -->
+        <!--     </Setter> -->
+        <!-- </Style> -->
 
         <Style x:Key="InnerTabControlStyle" TargetType="{x:Type TabControl}">
             <Setter Property="Background" Value="Transparent" />
@@ -79,34 +144,32 @@
             <Setter Property="Padding" Value="0,6,0,0" />
             <Setter Property="FontWeight" Value="Normal" />
         </Style>
-        <Style TargetType="{x:Type DataGridColumnHeader}">
-            <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="Background" Value="#E2E8F0" />
 
-            <Setter Property="Foreground" Value="#1E293B" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="FontSize" Value="12" />
+        <!-- <Style TargetType="{x:Type DataGridColumnHeader}"> -->
+        <!--     <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" /> -->
+        <!--     <Setter Property="Background" Value="{DynamicResource DataGridHeaderBackgroundBrush}" /> -->
+        <!--     <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /> -->
+        <!--     <Setter Property="FontWeight" Value="SemiBold" /> -->
+        <!--     <Setter Property="FontSize" Value="12" /> -->
+        <!--     <Setter Property="Padding" Value="8,6,8,6" /> -->
+        <!--     <Setter Property="HorizontalContentAlignment" Value="Left" /> -->
+        <!--     <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" /> -->
+        <!--     <Setter Property="BorderThickness" Value="0,0,1,1" /> -->
+        <!--     <Setter Property="SeparatorBrush" Value="{DynamicResource BorderColorBrush}" /> -->
+        <!-- </Style> -->
+        <!-- -->
+        <!-- <Style x:Key="RightAlignedHeaderStyle" -->
+        <!--        TargetType="{x:Type DataGridColumnHeader}" -->
+        <!--        BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"> -->
+        <!--     <Setter Property="HorizontalContentAlignment" Value="Right" /> -->
+        <!-- </Style> -->
+        <!-- -->
+        <!-- <Style x:Key="CenterAlignedHeaderStyle" -->
+        <!--        TargetType="{x:Type DataGridColumnHeader}" -->
+        <!--        BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"> -->
+        <!--     <Setter Property="HorizontalContentAlignment" Value="Center" /> -->
+        <!-- </Style> -->
 
-            <Setter Property="Padding" Value="8,6,8,6" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-
-            <Setter Property="BorderBrush" Value="#CBD5E1" />
-            <Setter Property="BorderThickness" Value="0,0,1,1" />
-
-            <Setter Property="SeparatorBrush" Value="#CBD5E1" />
-        </Style>
-        <Style x:Key="RightAlignedHeaderStyle"
-               TargetType="{x:Type DataGridColumnHeader}"
-               BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-
-            <Setter Property="HorizontalContentAlignment" Value="Right" />
-        </Style>
-        <Style x:Key="CenterAlignedHeaderStyle"
-               TargetType="{x:Type DataGridColumnHeader}"
-               BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
-
-            <Setter Property="HorizontalContentAlignment" Value="Center" />
-        </Style>
         <converters:MarkBillAsPaidVisibilityConverter x:Key="MarkBillAsPaidVisibilityConverter" />
         <converters:NullOrZeroToVisibilityConverter x:Key="NullOrZeroToVisibilityConverter" />
         <converters:SetContainsAccountIdConverter x:Key="SetContainsAccountIdConverter" />
@@ -128,17 +191,20 @@
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" />
+
         <CollectionViewSource x:Key="SortedBills" Source="{Binding Bills}">
             <CollectionViewSource.SortDescriptions>
                 <scm:SortDescription PropertyName="Name" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
+
         <CollectionViewSource x:Key="SortedCurrentPeriodTransactions"
                               Source="{Binding CurrentPeriodTransactions}">
             <CollectionViewSource.SortDescriptions>
                 <scm:SortDescription PropertyName="TransactionDate" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
+
         <ObjectDataProvider x:Key="EnumFrequency"
                             MethodName="GetValues"
                             ObjectType="{x:Type models:Frequency}">
@@ -146,6 +212,7 @@
                 <x:Type TypeName="models:Frequency" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
+
         <ObjectDataProvider x:Key="EnumSurplusAllocationTarget"
                             MethodName="GetValues"
                             ObjectType="{x:Type sys:Enum}">
@@ -153,6 +220,7 @@
                 <x:Type TypeName="models:SurplusAllocationTarget" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
+
         <ObjectDataProvider x:Key="EnumSnowballSortStrategy"
                             MethodName="GetValues"
                             ObjectType="{x:Type sys:Enum}">
@@ -160,6 +228,7 @@
                 <x:Type TypeName="models:SnowballSortStrategy" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
+
         <ObjectDataProvider x:Key="EnumInvestmentStrategy"
                             MethodName="GetValues"
                             ObjectType="{x:Type sys:Enum}">
@@ -174,12 +243,12 @@
                     <ControlTemplate TargetType="{x:Type ToggleButton}">
                         <Viewbox>
                             <Border x:Name="Border" CornerRadius="10"
-                                    Background="#FFFFFFFF"
+                                    Background="{DynamicResource SurfaceBackgroundBrush}"
                                     Width="40" Height="20">
                                 <Border.Effect>
                                     <DropShadowEffect ShadowDepth="0.5" Direction="0" Opacity="0.3" />
                                 </Border.Effect>
-                                <Ellipse x:Name="Ellipse" Fill="#FFFFFFFF" Stretch="Uniform"
+                                <Ellipse x:Name="Ellipse" Fill="{DynamicResource SurfaceBackgroundBrush}" Stretch="Uniform"
                                          Margin="2 1 2 1"
                                          Stroke="Gray" StrokeThickness="0.2"
                                          HorizontalAlignment="Stretch">
@@ -232,7 +301,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Menu Grid.Row="0" Grid.ColumnSpan="2">
+        <Menu Grid.Row="0" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceBackgroundBrush}" Foreground="{DynamicResource PrimaryTextBrush}">
             <MenuItem Header="_File">
                 <MenuItem Header="_Export Transactions..." Command="{Binding ExportTransactionsCommand}" />
                 <MenuItem Header="_Backup" Command="{Binding BackupCommand}" />
@@ -285,6 +354,8 @@
 
                 <!-- 1. LEFT NAVIGATION RAIL -->
                 <Border x:Name="SidebarBorder" Grid.Column="0" 
+                        Background="{DynamicResource SidebarBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderColorBrush}"
                         BorderThickness="0,0,1,0" 
                         Margin="0,0,8,0">
                     <ListBox SelectedIndex="{Binding SelectedOuterTabIndex, FallbackValue=0}"
@@ -295,6 +366,7 @@
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="Padding" Value="10,8" />
                                 <Setter Property="Margin" Value="2,2" />
+                                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="ListBoxItem">
@@ -306,11 +378,11 @@
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsSelected" Value="True">
-                                                    <Setter TargetName="ItemBorder" Property="Background" Value="#E2E8F0" />
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SidebarSelectedBrush}" />
                                                     <Setter Property="FontWeight" Value="SemiBold" />
                                                 </Trigger>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="ItemBorder" Property="Background" Value="#F1F5F9" />
+                                                    <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource SidebarHoverBrush}" />
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -346,16 +418,16 @@
                                             <StackPanel DockPanel.Dock="Top" Margin="5" HorizontalAlignment="Center">
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="5">
                                                     <CheckBox Content="Show by Month" IsChecked="{Binding ShowByMonth}"
-                                                              VerticalAlignment="Center" Margin="5" />
+                                                              VerticalAlignment="Center" Margin="5" Foreground="{DynamicResource PrimaryTextBrush}" />
                                                     <ComboBox ItemsSource="{Binding PeriodPaychecks}" DisplayMemberPath="Name"
                                                               SelectedValuePath="Id"
                                                               SelectedValue="{Binding SelectedPeriodPaycheckId}" Width="150" Margin="5"
                                                               Visibility="{Binding ShowByMonth, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
                                                 </StackPanel>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                    <Button Content=" &lt; " Command="{Binding PrevPeriodCommand}" Width="40" Margin="5" />
-                                                    <TextBlock Text="{Binding PeriodDisplay}" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" Margin="10,0" />
-                                                    <Button Content=" &gt; " Command="{Binding NextPeriodCommand}" Width="40" Margin="5" />
+                                                    <Button Content=" &lt; " Style="{StaticResource SecondaryButtonStyle}" Command="{Binding PrevPeriodCommand}" Width="40" Margin="5" />
+                                                    <TextBlock Text="{Binding PeriodDisplay}" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" FontWeight="Bold" FontSize="14" Margin="10,0" />
+                                                    <Button Content=" &gt; " Style="{StaticResource SecondaryButtonStyle}" Command="{Binding NextPeriodCommand}" Width="40" Margin="5" />
                                                 </StackPanel>
                                             </StackPanel>
                                             <TabControl Style="{StaticResource InnerTabControlStyle}"
@@ -370,9 +442,9 @@
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,5,0,0">
-                                                                <Button Content="Delete" Command="{Binding DeleteTransactionCommand}" Width="80" Margin="2" Background="Red" Foreground="White">
+                                                                <Button Content="Delete" Command="{Binding DeleteTransactionCommand}" Width="80" Margin="2">
                                                                     <Button.Style>
-                                                                        <Style TargetType="Button">
+                                                                        <Style TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}">
                                                                             <Setter Property="Visibility" Value="Visible" />
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding EditingTransactionClone.TransactionId, Converter={StaticResource NullToVisibilityConverter}}" Value="Collapsed">
@@ -387,8 +459,8 @@
                                                                 </Button>
                                                             </StackPanel>
                                                             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
-                                                                <Button Content="Add" Command="{Binding AddTransactionCommand}" Visibility="{Binding IsNotEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" Width="80" Margin="2" />
-                                                                <Button Content="Edit" Command="{Binding EditTransactionCommand}" Width="80" Margin="2">
+                                                                <Button Content="Add" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddTransactionCommand}" Visibility="{Binding IsNotEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" Width="80" Margin="2" />
+                                                                <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding EditTransactionCommand}" Width="80" Margin="2">
                                                                     <Button.Visibility>
                                                                         <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                             <Binding Path="CanEditTransaction" />
@@ -396,8 +468,8 @@
                                                                         </MultiBinding>
                                                                     </Button.Visibility>
                                                                 </Button>
-                                                                <Button Content="Save" Command="{Binding SaveTransactionCommand}" Width="80" Margin="2" Background="CornflowerBlue" Foreground="White" IsEnabled="{Binding IsEditingTransactionEnabled}" Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                                <Button Content="Cancel" Command="{Binding CancelTransactionCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Save" Command="{Binding SaveTransactionCommand}" Width="80" Margin="2" Style="{StaticResource PrimaryButtonStyle}" IsEnabled="{Binding IsEditingTransactionEnabled}" Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Cancel" Command="{Binding CancelTransactionCommand}" Width="80" Margin="2" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                             </StackPanel>
                                                         </Grid>
 
@@ -553,7 +625,7 @@
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
-                                                                <Button Content="Delete" Command="{Binding DeletePeriodBillCommand}" Width="80" Margin="2" Background="Red" Foreground="White" Visibility="{Binding IsEditingPeriodBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Delete" Command="{Binding DeletePeriodBillCommand}" Width="80" Margin="2" Style="{StaticResource DangerButtonStyle}" Visibility="{Binding IsEditingPeriodBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                             </StackPanel>
                                                             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
                                                                 <Button Content="Edit" Command="{Binding EditPeriodBillCommand}" Width="80" Margin="2">
@@ -564,8 +636,8 @@
                                                                         </MultiBinding>
                                                                     </Button.Visibility>
                                                                 </Button>
-                                                                <Button Content="Save" Command="{Binding SavePeriodBillCommand}" Width="80" Margin="2" Background="CornflowerBlue" Foreground="White" Visibility="{Binding IsEditingPeriodBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                                <Button Content="Cancel" Command="{Binding CancelPeriodBillCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingPeriodBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Save" Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SavePeriodBillCommand}" Width="80" Margin="2"  Visibility="{Binding IsEditingPeriodBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Cancel"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelPeriodBillCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingPeriodBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                             </StackPanel>
                                                         </Grid>
 
@@ -670,9 +742,9 @@
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left" Margin="5">
-                                                                <Button Content="Delete" Command="{Binding DeletePeriodBucketCommand}" Width="80" Margin="2" Background="Red" Foreground="White">
+                                                                <Button Content="Delete" Command="{Binding DeletePeriodBucketCommand}" Width="80" Margin="2">
                                                                     <Button.Style>
-                                                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                                        <Style TargetType="Button"  BasedOn="{StaticResource DangerButtonStyle}">
                                                                             <Setter Property="Visibility" Value="Collapsed" />
                                                                             <Style.Triggers>
                                                                                 <MultiDataTrigger>
@@ -697,8 +769,8 @@
                                                                         </MultiBinding>
                                                                     </Button.Visibility>
                                                                 </Button>
-                                                                <Button Content="Save" Command="{Binding SavePeriodBucketCommand}" Visibility="{Binding IsEditingPeriodBucket, Converter={StaticResource BooleanToVisibilityConverter}}" Width="80" Margin="2" Background="CornflowerBlue" Foreground="White" />
-                                                                <Button Content="Cancel" Command="{Binding CancelPeriodBucketCommand}" Visibility="{Binding IsEditingPeriodBucket, Converter={StaticResource BooleanToVisibilityConverter}}" Width="80" Margin="2" />
+                                                                <Button Content="Save"  Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SavePeriodBucketCommand}" Visibility="{Binding IsEditingPeriodBucket, Converter={StaticResource BooleanToVisibilityConverter}}" Width="80" Margin="2" />
+                                                                <Button Content="Cancel"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelPeriodBucketCommand}" Visibility="{Binding IsEditingPeriodBucket, Converter={StaticResource BooleanToVisibilityConverter}}" Width="80" Margin="2" />
                                                             </StackPanel>
                                                         </Grid>
 
@@ -847,9 +919,9 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                            <Button Content="Delete" Command="{Binding DeleteAccountCommand}" Width="80" Margin="2" Background="Red" Foreground="White">
+                                                            <Button Content="Delete" Command="{Binding DeleteAccountCommand}" Width="80" Margin="2" >
                                                                 <Button.Style>
-                                                                    <Style TargetType="Button">
+                                                                    <Style TargetType="Button"  BasedOn="{StaticResource DangerButtonStyle}">
                                                                         <Setter Property="Visibility" Value="Visible" />
                                                                         <Style.Triggers>
                                                                             <DataTrigger Binding="{Binding EditingAccountClone.Id, Converter={StaticResource IntToVisibilityConverter}}" Value="Collapsed">
@@ -862,7 +934,7 @@
                                                                     </Style>
                                                                 </Button.Style>
                                                             </Button>
-                                                            <Button Content="Reconcile" Command="{Binding ReconcileAccountCommand}" Width="80" Margin="2">
+                                                            <Button Content="Reconcile" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ReconcileAccountCommand}" Width="80" Margin="2">
                                                                 <Button.Visibility>
                                                                     <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                         <Binding Path="CanEditAccount" />
@@ -870,7 +942,7 @@
                                                                     </MultiBinding>
                                                                 </Button.Visibility>
                                                             </Button>
-                                                            <Button Content="Import" Command="{Binding ImportAccountCommand}" Width="80" Margin="2">
+                                                            <Button Content="Import" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ImportAccountCommand}" Width="80" Margin="2">
                                                                 <Button.Visibility>
                                                                     <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                         <Binding Path="CanEditAccount" />
@@ -880,8 +952,8 @@
                                                             </Button>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                            <Button Content="Add" Command="{Binding AddAccountCommand}" Width="80" Margin="2" Visibility="{Binding IsNotEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Edit" Command="{Binding EditAccountCommand}" Width="80" Margin="2">
+                                                            <Button Content="Add" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddAccountCommand}" Width="80" Margin="2" Visibility="{Binding IsNotEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding EditAccountCommand}" Width="80" Margin="2">
                                                                 <Button.Visibility>
                                                                     <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                         <Binding Path="CanEditAccount" />
@@ -889,8 +961,8 @@
                                                                     </MultiBinding>
                                                                 </Button.Visibility>
                                                             </Button>
-                                                            <Button Content="Save" Command="{Binding SaveAccountCommand}" Background="CornflowerBlue" Foreground="White" Width="80" Margin="2" Visibility="{Binding IsEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Cancel" Command="{Binding CancelAccountCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Save"  Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveAccountCommand}"  Width="80" Margin="2" Visibility="{Binding IsEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Cancel"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelAccountCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                         </StackPanel>
                                                     </Grid>
                                                     <Grid>
@@ -903,7 +975,7 @@
                                                                 <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding EditAccountCommand}" />
                                                             </DataGrid.InputBindings>
                                                             <DataGrid.Columns>
-                                                                <DataGridTemplateColumn Header="Name" MinWidth="150" Width="*">
+                                                                <DataGridTemplateColumn Header="Name" MinWidth="150" Width="Auto">
                                                                     <DataGridTemplateColumn.CellTemplate>
                                                                         <DataTemplate>
                                                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -922,24 +994,24 @@
                                                                         </Style>
                                                                     </DataGridTextColumn.ElementStyle>
                                                                 </DataGridTextColumn>
-                                                                <DataGridTemplateColumn Width="110" MinWidth="110" Header="Actions">
+                                                                <DataGridTemplateColumn Width="Auto" MinWidth="110" Header="Actions">
                                                                     <DataGridTemplateColumn.CellTemplate>
                                                                         <DataTemplate>
                                                                             <StackPanel Orientation="Horizontal">
-                                                                                <Button Content="Loan Amortization" Command="{Binding DataContext.ShowAmortizationCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Visibility="{Binding Type, ConverterParameter=Mortgage, Converter={StaticResource AccountTypeToVisibilityConverter}}" />
+                                                                                <Button Content="Loan Amortization" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding DataContext.ShowAmortizationCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Visibility="{Binding Type, ConverterParameter=Mortgage, Converter={StaticResource AccountTypeToVisibilityConverter}}" />
                                                                             </StackPanel>
                                                                         </DataTemplate>
                                                                     </DataGridTemplateColumn.CellTemplate>
                                                                 </DataGridTemplateColumn>
-                                                                <DataGridTextColumn Header="Bank" Binding="{Binding BankName}" Width="*" MinWidth="100" />
-                                                                <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="80" MinWidth="80" />
-                                                                <DataGridCheckBoxColumn Header="Include in Total" Binding="{Binding IncludeInTotal}" Width="60" MinWidth="60">
-                                                                    <DataGridCheckBoxColumn.HeaderTemplate>
-                                                                        <DataTemplate>
-                                                                            <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" />
-                                                                        </DataTemplate>
-                                                                    </DataGridCheckBoxColumn.HeaderTemplate>
-                                                                </DataGridCheckBoxColumn>
+                                                                <!-- <DataGridTextColumn Header="Bank" Binding="{Binding BankName}" Width="*" MinWidth="100" /> -->
+                                                                <!-- <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="80" MinWidth="80" /> -->
+                                                                <!-- <DataGridCheckBoxColumn Header="Include in Total" Binding="{Binding IncludeInTotal}" Width="60" MinWidth="60"> -->
+                                                                <!--     <DataGridCheckBoxColumn.HeaderTemplate> -->
+                                                                <!--         <DataTemplate> -->
+                                                                <!--             <TextBlock Text="{Binding}" TextWrapping="Wrap" TextAlignment="Center" /> -->
+                                                                <!--         </DataTemplate> -->
+                                                                <!--     </DataGridCheckBoxColumn.HeaderTemplate> -->
+                                                                <!-- </DataGridCheckBoxColumn> -->
                                                             </DataGrid.Columns>
                                                         </DataGrid>
                                                         <StackPanel Grid.Row="1" Margin="5" Visibility="{Binding IsEditingAccount, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -1072,8 +1144,8 @@
                                                             </Button>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                            <Button Content="Add" Command="{Binding AddPaycheckCommand}" Width="80" Margin="2" Visibility="{Binding IsNotEditingPaycheck, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Edit" Command="{Binding EditPaycheckCommand}" Width="80" Margin="2">
+                                                            <Button Content="Add"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddPaycheckCommand}" Width="80" Margin="2" Visibility="{Binding IsNotEditingPaycheck, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding EditPaycheckCommand}" Width="80" Margin="2">
                                                                 <Button.Visibility>
                                                                     <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                         <Binding Path="CanEditPaycheck" />
@@ -1081,8 +1153,8 @@
                                                                     </MultiBinding>
                                                                 </Button.Visibility>
                                                             </Button>
-                                                            <Button Content="Save" Command="{Binding SavePaycheckCommand}" Width="80" Margin="2" Background="CornflowerBlue" Foreground="White" Visibility="{Binding IsEditingPaycheck, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Cancel" Command="{Binding CancelPaycheckCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingPaycheck, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Save"  Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SavePaycheckCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingPaycheck, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Cancel"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelPaycheckCommand}" Width="80" Margin="2" Visibility="{Binding IsEditingPaycheck, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                         </StackPanel>
                                                     </Grid>
                                                     <Grid>
@@ -1185,8 +1257,8 @@
                                                             </Button>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                            <Button Content="Add" Command="{Binding AddBillCommand}" Margin="5" Width="80" Visibility="{Binding IsNotEditingBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Edit" Command="{Binding EditBillCommand}" Margin="5" Width="80">
+                                                            <Button Content="Add" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddBillCommand}" Margin="5" Width="80" Visibility="{Binding IsNotEditingBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding EditBillCommand}" Margin="5" Width="80">
                                                                 <Button.Visibility>
                                                                     <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                         <Binding Path="CanEditBill" />
@@ -1194,8 +1266,8 @@
                                                                     </MultiBinding>
                                                                 </Button.Visibility>
                                                             </Button>
-                                                            <Button Content="Save" Command="{Binding SaveBillCommand}" Margin="5" Width="80" Background="CornflowerBlue" Foreground="White" Visibility="{Binding IsEditingBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Cancel" Command="{Binding CancelBillCommand}" Margin="5" Width="80" Visibility="{Binding IsEditingBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Save"  Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveBillCommand}" Margin="5" Width="80" Visibility="{Binding IsEditingBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Cancel"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelBillCommand}" Margin="5" Width="80" Visibility="{Binding IsEditingBill, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                         </StackPanel>
                                                     </Grid>
                                                     <Grid>
@@ -1337,8 +1409,8 @@
                                                             </Button>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                            <Button Content="Add" Command="{Binding AddBucketCommand}" Margin="5" Width="80" Visibility="{Binding IsNotEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Edit" Command="{Binding EditBucketCommand}" Margin="5" Width="80">
+                                                            <Button Content="Add" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddBucketCommand}" Margin="5" Width="80" Visibility="{Binding IsNotEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding EditBucketCommand}" Margin="5" Width="80">
                                                                 <Button.Visibility>
                                                                     <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                         <Binding Path="CanEditBucket" />
@@ -1346,8 +1418,8 @@
                                                                     </MultiBinding>
                                                                 </Button.Visibility>
                                                             </Button>
-                                                            <Button Content="Save" Command="{Binding SaveBucketCommand}" Margin="5" Width="80" Background="CornflowerBlue" Foreground="White" Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                            <Button Content="Cancel" Command="{Binding CancelBucketCommand}" Margin="5" Width="80" Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Save"  Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveBucketCommand}" Margin="5" Width="80" Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            <Button Content="Cancel"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelBucketCommand}" Margin="5" Width="80" Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                         </StackPanel>
                                                     </Grid>
 
@@ -1431,8 +1503,8 @@
                                                                 </Button.Style>
                                                             </Button>
                                                             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                                                                <Button Content="Add" Command="{Binding AddCategoryCommand}" Margin="2,5" Width="60" Visibility="{Binding IsNotEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                                <Button Content="Edit" Command="{Binding EditCategoryCommand}" Margin="2,5" Width="60">
+                                                                <Button Content="Add" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding AddCategoryCommand}" Margin="2,5" Width="60" Visibility="{Binding IsNotEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Edit" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding EditCategoryCommand}" Margin="2,5" Width="60">
                                                                     <Button.Visibility>
                                                                         <MultiBinding Converter="{StaticResource BooleanAndToVisibilityConverter}">
                                                                             <Binding Path="CanEditCategory" />
@@ -1440,8 +1512,8 @@
                                                                         </MultiBinding>
                                                                     </Button.Visibility>
                                                                 </Button>
-                                                                <Button Content="Save" Command="{Binding SaveCategoryCommand}" Margin="2,5" Width="60" Background="CornflowerBlue" Foreground="White" Visibility="{Binding IsEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                                                                <Button Content="Cancel" Command="{Binding CancelCategoryCommand}" Margin="2,5" Width="60" Visibility="{Binding IsEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Save"  Style="{StaticResource PrimaryButtonStyle}" Command="{Binding SaveCategoryCommand}" Margin="2,5" Width="60" Visibility="{Binding IsEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Cancel"  Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCategoryCommand}" Margin="2,5" Width="60" Visibility="{Binding IsEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                             </StackPanel>
                                                         </Grid>
                                                         <DataGrid ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory}" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True">
@@ -1451,7 +1523,7 @@
                                                         </DataGrid>
                                                     </DockPanel>
 
-                                                    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="LightGray" />
+                                                    <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Style="{StaticResource ModernGridSplitterStyle}" />
 
                                                     <!-- Right Subcategories -->
                                                     <DockPanel Grid.Column="2" Margin="5">
@@ -1459,7 +1531,7 @@
                                                             <DataGrid.Columns>
                                                                 <DataGridTextColumn Header="Category" Binding="{Binding CategoryName}" Width="120" />
                                                                 <DataGridTextColumn Header="Subcategory" Binding="{Binding Name}" Width="*" />
-                                                                <DataGridTextColumn Header="Default Envelope" Binding="{Binding DefaultBucketName}" Width="140" />
+                                                                <!-- <DataGridTextColumn Header="Default Envelope" Binding="{Binding DefaultBucketName}" Width="140" /> -->
                                                             </DataGrid.Columns>
                                                         </DataGrid>
                                                     </DockPanel>
@@ -1473,19 +1545,19 @@
                     </ContentControl>
 
                     <!-- Bill Warning Widget -->
-                    <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8"
+                    <Border Grid.Row="1" Background="{DynamicResource SurfaceBackgroundBrush}" BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1" CornerRadius="8"
                             Margin="0,10,0,0" Padding="12"
                             Visibility="{Binding ShowWarningWidget, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
-                            <TextBlock Text="Bill Alerts" FontWeight="SemiBold" FontSize="14" Foreground="#0F172A" Margin="0,0,0,10" />
+                            <TextBlock Text="Bill Alerts" FontWeight="SemiBold" FontSize="14" Foreground="{DynamicResource PrimaryTextBrush}" Margin="0,0,0,10" />
                             <UniformGrid Columns="2" Margin="0,0,0,12">
                                 <StackPanel Orientation="Horizontal" Margin="0,0,8,0">
                                     <Viewbox Width="20" Height="20" Margin="0,0,8,0">
                                         <Path Data="M3 2v18h2V12h11l1-2-1-2H5V2H3zm4 4h7.5l.5 1-.5 1H7V6z" Fill="#EF4444" />
                                     </Viewbox>
                                     <StackPanel>
-                                        <TextBlock Text="Past Due" FontSize="11" Foreground="#64748B" FontWeight="Medium" />
-                                        <TextBlock Text="{Binding PastDueCount}" FontSize="18" FontWeight="Bold" Foreground="#0F172A" />
+                                        <TextBlock Text="Past Due" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="Medium" />
+                                        <TextBlock Text="{Binding PastDueCount}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" />
                                     </StackPanel>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
@@ -1493,59 +1565,12 @@
                                         <Path Data="M3 2v18h2V12h11l1-2-1-2H5V2H3zm4 4h7.5l.5 1-.5 1H7V6z" Fill="#EAB308" />
                                     </Viewbox>
                                     <StackPanel>
-                                        <TextBlock Text="Upcoming" FontSize="11" Foreground="#64748B" FontWeight="Medium" />
-                                        <TextBlock Text="{Binding UpcomingCount}" FontSize="18" FontWeight="Bold" Foreground="#0F172A" />
+                                        <TextBlock Text="Upcoming" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" FontWeight="Medium" />
+                                        <TextBlock Text="{Binding UpcomingCount}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" />
                                     </StackPanel>
                                 </StackPanel>
                             </UniformGrid>
-                            <Separator Background="#CBD5E1" Margin="0,0,0,10" Opacity="0.5" />
-                            <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding UnpaidPastDueBills}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="6" Margin="0,0,0,6" Padding="8,6">
-                                                <Border.InputBindings>
-                                                    <MouseBinding MouseAction="LeftDoubleClick" Command="{Binding DataContext.MapsToBillCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
-                                                </Border.InputBindings>
-                                                <DockPanel>
-                                                    <TextBlock Text="{Binding DueDate, StringFormat=MMM dd}" DockPanel.Dock="Right" Foreground="#EF4444" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding BillName}" Foreground="#1E293B" FontWeight="Medium" FontSize="12" TextTrimming="CharacterEllipsis" />
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Envelope Warning Widget -->
-                    <Border Grid.Row="1" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8"
-                            Margin="0,10,0,0" Padding="12"
-                            Visibility="{Binding ShowEnvelopeWarningWidget, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="Envelope Alerts" FontWeight="SemiBold" FontSize="14" Foreground="#0F172A" Margin="0,0,0,10" />
-                            <UniformGrid Columns="2" Margin="0,0,0,12">
-                                <StackPanel Orientation="Horizontal" Margin="0,0,8,0">
-                                    <Viewbox Width="20" Height="20" Margin="0,0,8,0">
-                                        <Path Data="M3 2v18h2V12h11l1-2-1-2H5V2H3zm4 4h7.5l.5 1-.5 1H7V6z" Fill="#EF4444" />
-                                    </Viewbox>
-                                    <StackPanel>
-                                        <TextBlock Text="Over Budget" FontSize="11" Foreground="#64748B" FontWeight="Medium" />
-                                        <TextBlock Text="{Binding BudgetExceededCount}" FontSize="18" FontWeight="Bold" Foreground="#0F172A" />
-                                    </StackPanel>
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <Viewbox Width="20" Height="20" Margin="0,0,8,0">
-                                        <Path Data="M3 2v18h2V12h11l1-2-1-2H5V2H3zm4 4h7.5l.5 1-.5 1H7V6z" Fill="#22C55E" />
-                                    </Viewbox>
-                                    <StackPanel>
-                                        <TextBlock Text="Almost Full" FontSize="11" Foreground="#64748B" FontWeight="Medium" />
-                                        <TextBlock Text="{Binding EnvelopeNearingFullCount}" FontSize="18" FontWeight="Bold" Foreground="#0F172A" />
-                                    </StackPanel>
-                                </StackPanel>
-                            </UniformGrid>
-                            <Separator Background="#CBD5E1" Margin="0,0,0,10" Opacity="0.5" />
+                            <Separator Background="{DynamicResource BorderColorBrush}" Margin="0,0,0,10" Opacity="0.5" />
                             <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding BudgetBustedBuckets}">
                                     <ItemsControl.ItemTemplate>
@@ -1579,11 +1604,11 @@
                 </Grid>
             </Grid>
 
-            <GridSplitter Grid.Column="1" Width="2" HorizontalAlignment="Stretch" Background="LightGray" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" ShowsPreview="True" />
+            <GridSplitter Grid.Column="1" Width="2" HorizontalAlignment="Stretch" Style="{StaticResource ModernGridSplitterStyle}" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" ShowsPreview="True" />
 
             <!-- Right Panel: Projections -->
             <DockPanel Grid.Column="2" Margin="10,0,0,0">
-                <Label DockPanel.Dock="Top" Content="{Binding YearsProjecting, Converter={StaticResource ProjectionYearsLabelConverter}}" FontWeight="Bold" />
+                <Label DockPanel.Dock="Top" Content="{Binding YearsProjecting, Converter={StaticResource ProjectionYearsLabelConverter}}" Foreground="{DynamicResource PrimaryTextBrush}" FontWeight="Bold" />
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -1591,7 +1616,7 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="6,4" Margin="0,4,0,8" Grid.Row="0">
+                    <Border Background="{DynamicResource SurfaceBackgroundBrush}" BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1" CornerRadius="4" Padding="6,4" Margin="0,4,0,8" Grid.Row="0">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -1603,20 +1628,20 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Label Content="Start:" VerticalAlignment="Center" Margin="5,0,0,0" />
+                                <Label Content="Start:" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="5,0,0,0" />
                                 <DatePicker SelectedDate="{Binding ProjectionStartDate, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, TargetNullValue=''}" VerticalAlignment="Center" Margin="5,0,0,0" />
-                                <Label Content="End:" VerticalAlignment="Center" Margin="12,0,0,0" />
+                                <Label Content="End:" Foreground="{DynamicResource PrimaryTextBrush}" VerticalAlignment="Center" Margin="12,0,0,0" />
                                 <DatePicker DisplayDateStart="{x:Static System:DateTime.Today}" SelectedDate="{Binding ProjectionEndDate}" VerticalAlignment="Center" Margin="5,0,0,0" />
                             </StackPanel>
 
                             <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <Button Command="{Binding SetOneYearCommand}" Content="1 yr" Padding="10,4" Background="White" BorderBrush="#CBD5E1" />
-                                <Button Command="{Binding SetFiveYearCommand}" Content="5 yr" Padding="10,4" Background="White" BorderBrush="#CBD5E1" Margin="-1,0,0,0" />
-                                <Button Command="{Binding SetTenYearCommand}" Content="10 yr" Padding="10,4" Background="White" BorderBrush="#CBD5E1" Margin="-1,0,0,0" />
-                                <Button Command="{Binding SetThirtyYearCommand}" Content="30 yr" Padding="10,4" Background="White" BorderBrush="#CBD5E1" Margin="-1,0,0,0" />
+                                <Button Command="{Binding SetOneYearCommand}" Content="1 yr" Padding="10,4" Style="{StaticResource SecondaryButtonStyle}" />
+                                <Button Command="{Binding SetFiveYearCommand}" Content="5 yr" Padding="10,4"  Style="{StaticResource SecondaryButtonStyle}" Margin="-1,0,0,0" />
+                                <Button Command="{Binding SetTenYearCommand}" Content="10 yr" Padding="10,4"  Style="{StaticResource SecondaryButtonStyle}" Margin="-1,0,0,0" />
+                                <Button Command="{Binding SetThirtyYearCommand}" Content="30 yr" Padding="10,4"  Style="{StaticResource SecondaryButtonStyle}" Margin="-1,0,0,0" />
                             </StackPanel>
 
-                            <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Content="Pay off credit cards using excess checking each period" IsChecked="{Binding UseAutoSweep}" VerticalAlignment="Center" Margin="5,6,5,2" />
+                            <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Content="Pay off credit cards using excess checking each period" Foreground="{DynamicResource PrimaryTextBrush}" IsChecked="{Binding UseAutoSweep}" VerticalAlignment="Center" Margin="5,6,5,2" />
                         </Grid>
                     </Border>
 
@@ -1733,7 +1758,7 @@
                                         </DataGridTextColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
-                                <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="2" HorizontalAlignment="Stretch" Background="LightGray" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" ShowsPreview="True" />
+                                <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="2" HorizontalAlignment="Stretch" Style="{StaticResource ModernGridSplitterStyle}" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" ShowsPreview="True" />
 
                                 <Grid Grid.Row="2" Margin="0,5,0,0">
                                     <local:ProjectionLiveChartControl Visibility="{Binding IsProjecting, Converter={StaticResource InverseBooleanToVisibilityConverter}}" Projections="{Binding Projections}" Accounts="{Binding VisibleAccounts}" />
@@ -1861,7 +1886,7 @@
                                                 </DataGridTextColumn>
                                             </DataGrid.Columns>
                                         </DataGrid>
-                                        <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="2" HorizontalAlignment="Stretch" Background="LightGray" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" ShowsPreview="True" />
+                                        <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="2" HorizontalAlignment="Stretch" Style="{StaticResource ModernGridSplitterStyle}" VerticalAlignment="Stretch" ResizeBehavior="PreviousAndNext" ShowsPreview="True" />
 
                                         <Grid Grid.Row="2" Margin="0,5,0,0">
                                             <local:ProjectionLiveChartControl Visibility="{Binding IsSnowballProjecting, Converter={StaticResource InverseBooleanToVisibilityConverter}}" Projections="{Binding SnowballProjections}" Accounts="{Binding VisibleAccounts}" />
@@ -2047,22 +2072,24 @@
 
             <Border Background="#80000000" MouseDown="CloseOverlayOnBackdropClick" />
 
-            <Border Width="420" MaxHeight="520" HorizontalAlignment="Center" VerticalAlignment="Center" Background="White" CornerRadius="8" Padding="20" BorderBrush="#CBD5E1" BorderThickness="1">
+            <Border Width="420" MaxHeight="520" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                    Background="{DynamicResource ModalBackgroundBrush}" CornerRadius="8" Padding="20" 
+                    BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.25" Color="Black" />
                 </Border.Effect>
 
                 <Grid RowDefinitions="Auto, *, Auto">
                     <StackPanel Grid.Row="0" Margin="0,0,0,15">
-                        <TextBlock Text="Manage Excluded Accounts" FontSize="18" FontWeight="Bold" Foreground="#0F172A" />
-                        <TextBlock Text="Checked accounts will be skipped by the Snowball/Avalanche engine during surplus sweeps." FontSize="12" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <TextBlock Text="Manage Excluded Accounts" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource PrimaryTextBrush}" />
+                        <TextBlock Text="Checked accounts will be skipped by the Snowball/Avalanche engine during surplus sweeps." FontSize="12" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,4,0,0" />
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,15">
                         <ItemsControl ItemsSource="{Binding ExcludableAccounts}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="10,8" Margin="0,0,0,6" Background="#F8FAFC" CornerRadius="6" BorderBrush="#E2E8F0" BorderThickness="1">
+                                    <Border Padding="10,8" Margin="0,0,0,6" Background="{DynamicResource SurfaceBackgroundBrush}" CornerRadius="6" BorderBrush="{DynamicResource BorderColorBrush}" BorderThickness="1">
                                         <DockPanel LastChildFill="True">
                                             <CheckBox DockPanel.Dock="Left" VerticalAlignment="Center" Margin="0,0,10,0" IsChecked="{Binding IsExcludedInSnowball, Mode=TwoWay}" Command="{Binding DataContext.ToggleAccountExclusionCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}" />
 
@@ -2071,8 +2098,8 @@
                                             </Border>
 
                                             <StackPanel VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#1E293B" FontSize="13" />
-                                                <TextBlock FontSize="11" Foreground="#64748B">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="13" />
+                                                <TextBlock FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}">
                                                     <Run Text="Balance: " />
                                                     <Run Text="{Binding Balance, StringFormat=C0}" FontWeight="Bold" />
                                                 </TextBlock>
@@ -2085,15 +2112,20 @@
                     </ScrollViewer>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Done" Command="{Binding CloseManageExcludedAccountsCommand}" Width="90" Height="32" Foreground="White" FontWeight="SemiBold" Cursor="Hand">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border Background="#2563EB" CornerRadius="5">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                </ControlTemplate>
-                            </Button.Template>
-                        </Button>
+                        <!-- <Button Content="Done" Command="{Binding CloseManageExcludedAccountsCommand}" Width="90" Height="32" Foreground="White" FontWeight="SemiBold" Cursor="Hand"> -->
+                        <!--     <Button.Template> -->
+                        <!--         <ControlTemplate TargetType="Button"> -->
+                        <!--             <Border Background="#2563EB" CornerRadius="5"> -->
+                        <!--                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /> -->
+                        <!--             </Border> -->
+                        <!--         </ControlTemplate> -->
+                        <!--     </Button.Template> -->
+                        <!-- </Button> -->
+                        <Button Content="Done"
+                                Command="{Binding CloseManageExcludedAccountsCommand}"
+                                Style="{StaticResource PrimaryButtonStyle}"
+                                Width="90"
+                                Height="32"  />
                     </StackPanel>
                 </Grid>
             </Border>

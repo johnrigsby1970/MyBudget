@@ -1,0 +1,79 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#334155" />
+    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="BorderColorBrush" Color="#334155" />
+    <SolidColorBrush x:Key="GridLineBrush" Color="#334155" />
+    <SolidColorBrush x:Key="DataGridHeaderBackgroundBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="DataGridRowBackgroundBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="DataGridAltRowBackgroundBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="ModalBackgroundBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="DataGridRowForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="TrackBackgroundBrush" Color="#111827" />
+    <SolidColorBrush x:Key="ThumbNormalBrush" Color="#3C4655" />
+    <SolidColorBrush x:Key="ThumbHoverBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="PrimaryAccentBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="SuccessBorderBrush" Color="#373737" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#43BB26" />
+    <SolidColorBrush x:Key="SuccessTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="WarningBorderBrush" Color="#EAAC45" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#F9C200" />
+    <SolidColorBrush x:Key="WarningTextBrush" Color="#3C4655" />
+    <SolidColorBrush x:Key="ErrorBorderBrush" Color="#B31E1F" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#CE1311" />
+    <SolidColorBrush x:Key="ErrorTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="InfoBorderBrush" Color="#5597D5" />
+    <SolidColorBrush x:Key="InfoBrush" Color="#5bc0de" />
+    <SolidColorBrush x:Key="InfoTextBrush" Color="#3C4655" />
+    <SolidColorBrush x:Key="NeutralBorderBrush" Color="#3C4655" />
+    <SolidColorBrush x:Key="NeutralBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="NeutralTextBrush" Color="#3C4655" />
+    
+    <SolidColorBrush x:Key="GridSplitterBrush" Color="#3C4655" />
+    
+    <!-- Primary Button (Dark) -->
+    <SolidColorBrush x:Key="ButtonPrimaryBackgroundBrush" Color="#3B82F6" />
+    <SolidColorBrush x:Key="ButtonPrimaryForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonPrimaryBorderBrush" Color="#3B82F6" />
+    <SolidColorBrush x:Key="ButtonPrimaryHoverBackgroundBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="ButtonPrimaryPressedBackgroundBrush" Color="#1D4ED8" />
+
+    <!-- Secondary Button (Dark) -->
+    <SolidColorBrush x:Key="ButtonSecondaryBackgroundBrush" Color="#334155" />
+    <SolidColorBrush x:Key="ButtonSecondaryForegroundBrush" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="ButtonSecondaryBorderBrush" Color="#475569" />
+    <SolidColorBrush x:Key="ButtonSecondaryHoverBackgroundBrush" Color="#475569" />
+    <SolidColorBrush x:Key="ButtonSecondaryPressedBackgroundBrush" Color="#64748B" />
+
+    <!-- Danger Button (Dark) -->
+    <SolidColorBrush x:Key="ButtonDangerBackgroundBrush" Color="#EF4444" />
+    <SolidColorBrush x:Key="ButtonDangerForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonDangerBorderBrush" Color="#EF4444" />
+    <SolidColorBrush x:Key="ButtonDangerHoverBackgroundBrush" Color="#DC2626" />
+    <SolidColorBrush x:Key="ButtonDangerPressedBackgroundBrush" Color="#B91C1C" />
+
+    <!-- Danger Subdued Button (Dark) -->
+    <SolidColorBrush x:Key="ButtonDangerSubduedBackgroundBrush" Color="#451A1A" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedForegroundBrush" Color="#FCA5A5" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedBorderBrush" Color="#991B1B" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedHoverBackgroundBrush" Color="#7F1D1D" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedPressedBackgroundBrush" Color="#991B1B" />
+    
+    <!-- Accent / Wizard Next & Finish Button (Dark) -->
+    <SolidColorBrush x:Key="ButtonAccentBackgroundBrush" Color="#14B8A6" />        <!-- Teal 500 (Brighter for Dark Mode) -->
+    <SolidColorBrush x:Key="ButtonAccentForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonAccentBorderBrush" Color="#14B8A6" />
+    <SolidColorBrush x:Key="ButtonAccentHoverBackgroundBrush" Color="#0D9488" />
+    <SolidColorBrush x:Key="ButtonAccentPressedBackgroundBrush" Color="#0F766E" />
+    
+    <!-- GridSplitter Colors (Dark Theme) -->
+    <SolidColorBrush x:Key="SplitterBackgroundBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="SplitterLineBrush" Color="#334155" />          <!-- Slate 700 -->
+    <SolidColorBrush x:Key="SplitterGripBrush" Color="#64748B" />          <!-- Slate 500 -->
+    <SolidColorBrush x:Key="SplitterHoverBrush" Color="#60A5FA" />         <!-- Brighter Accent Blue -->
+</ResourceDictionary>

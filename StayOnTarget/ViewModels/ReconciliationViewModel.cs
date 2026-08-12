@@ -178,6 +178,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
             if (SetProperty(ref _endingBalance, value)) {
                 OnPropertyChanged(nameof(ReconcileButtonText));
                 OnPropertyChanged(nameof(CanExecuteReconcile));
+                OnPropertyChanged(nameof(CanSave));
                 OnPropertyChanged(nameof(Difference));
             }
         }
@@ -240,6 +241,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
             if (SetProperty(ref _newReconciledBalance, value)) {
                 OnPropertyChanged(nameof(CanExecuteReconcile));
                 OnPropertyChanged(nameof(ReconcileButtonText));
+                OnPropertyChanged(nameof(CanSave));
                 OnPropertyChanged(nameof(Difference));
             }
         }
@@ -252,6 +254,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
             if (SetProperty(ref _targetBalance, value)) {
                 OnPropertyChanged(nameof(CanExecuteReconcile));
                 OnPropertyChanged(nameof(ReconcileButtonText));
+                OnPropertyChanged(nameof(CanSave));
                 OnPropertyChanged(nameof(Difference));
             }
         }
@@ -266,6 +269,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _newReconciledDate, value)) {
                 OnPropertyChanged(nameof(CanExecuteReconcile));
+                OnPropertyChanged(nameof(CanSave));
                 OnPropertyChanged(nameof(ReconcileButtonText));
             }
         }
@@ -326,9 +330,11 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public bool CanExecuteAdjustBalance => AdjustmentTransactionAmount != null;
 
     public bool CanExecuteReconcile =>
-        ReconciliationTransactions.Any(x => x.IsCleared);// && NewReconciledBalance != null 
+        ReconciliationTransactions.Any(x => x.IsCleared) && NewReconciledBalance == TargetBalance;// && NewReconciledBalance != null 
                                         // && TargetBalance != null && NewReconciledBalance == TargetBalance ; //ReconciliationTransactions.Any();// && NewReconciledBalance != null && NewReconciledDate != null &&
     // NewReconciledDate >= OpeningBalanceAsOf;
+
+    public bool CanSave => ReconciliationTransactions.Any(x => x.IsCleared);
 
 
     public bool CanExecuteCorrectOpeningBalance => OpeningBalance != null && OpeningBalanceAsOf != null &&
@@ -355,7 +361,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
             }
 
             // If there are still uncleared items remaining
-            return "Save Cleared";
+            return "Save Progress";
         }
     }
 

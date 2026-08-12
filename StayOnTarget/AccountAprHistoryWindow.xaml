@@ -104,14 +104,13 @@
                                 <Button Content="Add" Command="{Binding AddCommand}" 
                                         Width="80"
                                         Margin="2"
-                                        Background="CornflowerBlue"
-                                        Foreground="White">
+                                        Style="{StaticResource SecondaryButtonStyle}">
                                 </Button>
                             </StackPanel>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                                 <Button Content="OK" Width="75" Margin="0,0,10,0" Click="OkButton_Click" IsDefault="True"
-                                        Background="CornflowerBlue" Foreground="White" />
-                                <Button Content="Cancel" Width="75" Click="CancelButton_Click" IsCancel="True" />
+                                        Style="{StaticResource PrimaryButtonStyle}"/>
+                                <Button Content="Cancel" Width="75" Click="CancelButton_Click" IsCancel="True" Style="{StaticResource SecondaryButtonStyle}" />
                             </StackPanel>
                         </Grid>
                 

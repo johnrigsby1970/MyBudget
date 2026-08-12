@@ -1,6 +1,8 @@
+using System.Net.Mime;
 using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
+using StayOnTarget.Themes;
 
 namespace StayOnTarget.ViewModels;
 
@@ -14,10 +16,23 @@ public class ToastViewModel : ViewModelBase
     public Brush Border { get; set; } = Brushes.DarkRed;
     public Brush Text { get; set; } = Brushes.Black;
     
-    public static SolidColorBrush DangerBrush { get; set; } = Brushes.Red;
-    public static SolidColorBrush SuccessBrush { get; set; } = Brushes.YellowGreen;
-    public static SolidColorBrush WarningBrush { get; set; } = Brushes.LightGoldenrodYellow;
-    public static SolidColorBrush InfoBrush { get; set; } = Brushes.LightSkyBlue;
+    public static SolidColorBrush DangerBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.ErrorBrush)! as SolidColorBrush ;
+    public static SolidColorBrush SuccessBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.SuccessBrush)! as SolidColorBrush ;
+    public static SolidColorBrush WarningBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.WarningBrush)! as SolidColorBrush ;
+    public static SolidColorBrush InfoBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.InfoBrush)! as SolidColorBrush ;
+    public static SolidColorBrush NeutralBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.NeutralBrush)! as SolidColorBrush ;
+    
+    public static SolidColorBrush DangerBorderBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.ErrorBorderBrush)! as SolidColorBrush ;
+    public static SolidColorBrush SuccessBorderBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.SuccessBorderBrush)! as SolidColorBrush ;
+    public static SolidColorBrush WarningBorderBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.WarningBorderBrush)! as SolidColorBrush ;
+    public static SolidColorBrush InfoBorderBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.InfoBorderBrush)! as SolidColorBrush ;
+    public static SolidColorBrush NeutralBorderBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.NeutralBorderBrush)! as SolidColorBrush ;
+    
+    public static SolidColorBrush DangerTextBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.ErrorTextBrush)! as SolidColorBrush ;
+    public static SolidColorBrush SuccessTextBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.SuccessTextBrush)! as SolidColorBrush ;
+    public static SolidColorBrush WarningTextBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.WarningTextBrush)! as SolidColorBrush ;
+    public static SolidColorBrush InfoTextBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.InfoTextBrush)! as SolidColorBrush ;
+    public static SolidColorBrush NeutralTextBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.NeutralTextBrush)! as SolidColorBrush ;
     
     public IRelayCommand CloseCommand { get; }
 
@@ -51,11 +66,11 @@ public class ToastViewModel : ViewModelBase
 
     private void SetProperties(ToastType toastType) {
         switch (toastType) {
-            case ToastType.Info: Background = InfoBrush; Text = Brushes.White; Border = Brushes.DeepSkyBlue; break;
-            case ToastType.Danger: Background = DangerBrush; Text = Brushes.White; Border = Brushes.Firebrick;break;
-            case ToastType.Success: Background = SuccessBrush;Text = Brushes.White; Border = Brushes.Black; break;
-            case ToastType.Warning: Background = WarningBrush; Text = Brushes.DimGray; Border = Brushes.Black;break;
-            case ToastType.Neutral: Background = Brushes.LightGray; Text = Brushes.Black; Border = Brushes.DimGray;break;
+            case ToastType.Info: Background = InfoBrush; Text = InfoTextBrush; Border = InfoBorderBrush; break;
+            case ToastType.Danger: Background = DangerBrush; Text = DangerTextBrush; Border = DangerBorderBrush;break;
+            case ToastType.Success: Background = SuccessBrush;Text = SuccessTextBrush; Border = SuccessBorderBrush; break;
+            case ToastType.Warning: Background = WarningBrush; Text = WarningTextBrush; Border = WarningBorderBrush;break;
+            case ToastType.Neutral: Background = NeutralBrush; Text = NeutralTextBrush; Border = NeutralBorderBrush;break;
         }
     }
 }

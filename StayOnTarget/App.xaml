@@ -4,12 +4,374 @@
              xmlns:local="clr-namespace:StayOnTarget">
     <Application.Resources>
         <ResourceDictionary>
+            <Style TargetType="{x:Type DataGrid}">
+                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource GridLineBrush}" />
+                <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource GridLineBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="AlternatingRowBackground" Value="{DynamicResource DataGridAltRowBackgroundBrush}" />
+                <Setter Property="RowBackground" Value="{DynamicResource DataGridRowBackgroundBrush}" />
+                <Setter Property="Background" Value="{DynamicResource DataGridRowBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource DataGridRowForegroundBrush}" />
+                <Setter Property="GridLinesVisibility" Value="All" />
+                <Setter Property="HeadersVisibility" Value="Column" />
+                <Setter Property="RowHeaderWidth" Value="0" />
+            </Style>
+
+            <Style TargetType="{x:Type DataGridRow}">
+                <Style.Resources>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#3B82F6" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#3B82F6" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}"
+                                     Color="White" />
+                </Style.Resources>
+            </Style>
+            <!-- <Style TargetType="{x:Type DataGridColumnHeader}"> -->
+            <!--     <Setter Property="Background" Value="#E2E8F0" /> -->
+            <!-- -->
+            <!--     <Setter Property="Foreground" Value="#1E293B" /> -->
+            <!--     <Setter Property="FontWeight" Value="SemiBold" /> -->
+            <!--     <Setter Property="FontSize" Value="12" /> -->
+            <!-- -->
+            <!--     <Setter Property="Padding" Value="8,6,8,6" /> -->
+            <!--     <Setter Property="HorizontalContentAlignment" Value="Left" /> -->
+            <!-- -->
+            <!--     <Setter Property="BorderBrush" Value="#CBD5E1" /> -->
+            <!--     <Setter Property="BorderThickness" Value="0,0,1,1" /> -->
+            <!-- -->
+            <!--     <Setter Property="SeparatorBrush" Value="#CBD5E1"/> -->
+            <!-- </Style> -->
+            
+            <Style TargetType="{x:Type DataGridColumnHeader}">
+                <Setter Property="TextBlock.TextTrimming" Value="CharacterEllipsis" />
+                <Setter Property="Background" Value="{DynamicResource DataGridHeaderBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Padding" Value="8,6,8,6" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,1,1" />
+                <Setter Property="SeparatorBrush" Value="{DynamicResource BorderColorBrush}" />
+            </Style>
+            
+            <Style x:Key="RightAlignedHeaderStyle"
+                   TargetType="{x:Type DataGridColumnHeader}"
+                   BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+
+                <Setter Property="HorizontalContentAlignment" Value="Right" />
+            </Style>
+            <Style x:Key="CenterAlignedHeaderStyle"
+                   TargetType="{x:Type DataGridColumnHeader}"
+                   BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+            </Style>
+
+            <!-- 3. Implicit ScrollBar Style (Applies to Horizontal & Vertical automatically) -->
+            <Style TargetType="{x:Type ScrollBar}">
+                <Setter Property="Background" Value="{DynamicResource TrackBackgroundBrush}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ScrollBar}">
+                            <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="true">
+                                <!-- Track automatically manages IsDirectionReversed based on ScrollBar Orientation when left unbound, 
+                         or explicitly controlled via Triggers below -->
+                                <Track x:Name="PART_Track">
+                                    <Track.Thumb>
+                                        <Thumb Style="{DynamicResource CustomScrollThumb}" />
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <!-- Vertical ScrollBars in WPF must have IsDirectionReversed="True" on the Track -->
+                                <Trigger Property="Orientation" Value="Vertical">
+                                    <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="True" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="CustomScrollThumb" TargetType="{x:Type Thumb}">
+                <Setter Property="OverridesDefaultStyle" Value="true" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Thumb}">
+                            <!-- Visual representation of the draggable bar -->
+                            <Border x:Name="rectangle"
+                                    Background="{DynamicResource ThumbNormalBrush}"
+                                    CornerRadius="4"
+                                    Margin="2" />
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="true">
+                                    <Setter TargetName="rectangle" Property="Background"
+                                            Value="{DynamicResource ThumbHoverBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- <Style TargetType="DataGridRowHeader"> -->
+            <!--     <Setter Property="Background" Value="Red" /> -->
+            <!-- </Style> -->
+
+            <Style x:Key="ModernUnderlineTabItemStyle" TargetType="{x:Type TabItem}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type TabItem}">
+                            <Grid x:Name="Panel" Background="Transparent" Margin="0,0,14,0" SnapsToDevicePixels="True">
+                                <Border x:Name="Border" Padding="2,4,2,6">
+                                    <ContentPresenter x:Name="ContentSite"
+                                                      ContentSource="Header"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Center" />
+                                </Border>
+                                <Border x:Name="Underline" Height="2" VerticalAlignment="Bottom"
+                                        Background="Transparent" />
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="#0284C7" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="ContentSite" Property="TextElement.Foreground"
+                                            Value="{DynamicResource PrimaryTextBrush}" />
+                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                    <Setter TargetName="Underline" Property="Background" Value="#3B82F6" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+
+            <!-- Base Button Style (Handles Padding, Template, Triggers) -->
+            <Style x:Key="BaseButtonStyle" TargetType="{x:Type Button}">
+                <Setter Property="Padding" Value="12,6" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="5"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter x:Name="contentPresenter"
+                                                  Focusable="False"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  RecognizesAccessKey="True"
+                                                  SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 1. PRIMARY BUTTON STYLE -->
+            <Style x:Key="PrimaryButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource BaseButtonStyle}">
+                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ButtonPrimaryForegroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonPrimaryHoverBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonPrimaryPressedBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- 2. SECONDARY BUTTON STYLE -->
+            <Style x:Key="SecondaryButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource BaseButtonStyle}">
+                <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ButtonSecondaryForegroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryHoverBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryPressedBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- 3. DANGER BUTTON STYLE -->
+            <Style x:Key="DangerButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource BaseButtonStyle}">
+                <Setter Property="Background" Value="{DynamicResource ButtonDangerBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ButtonDangerForegroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonDangerBorderBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonDangerHoverBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonDangerPressedBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- 4. DANGER SUBDUED BUTTON STYLE -->
+            <Style x:Key="DangerSubduedButtonStyle" TargetType="{x:Type Button}"
+                   BasedOn="{StaticResource BaseButtonStyle}">
+                <Setter Property="Background" Value="{DynamicResource ButtonDangerSubduedBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ButtonDangerSubduedForegroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonDangerSubduedBorderBrush}" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonDangerSubduedHoverBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background"
+                                Value="{DynamicResource ButtonDangerSubduedPressedBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.5" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- ACCENT BUTTON STYLE (Wizard Next / Finish) -->
+            <Style x:Key="AccentButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource BaseButtonStyle}">
+                <Setter Property="Background" Value="{DynamicResource ButtonAccentBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource ButtonAccentForegroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ButtonAccentBorderBrush}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonAccentHoverBackgroundBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonAccentHoverBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource ButtonAccentPressedBackgroundBrush}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonAccentPressedBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.4" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="ModernGridSplitterStyle" TargetType="{x:Type GridSplitter}">
+                <Setter Property="Background" Value="{DynamicResource SplitterBackgroundBrush}" />
+                <Setter Property="HorizontalAlignment" Value="Center" />
+                <Setter Property="VerticalAlignment" Value="Stretch" />
+                <Setter Property="Width" Value="6" />
+                <Setter Property="Cursor" Value="SizeWE" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type GridSplitter}">
+                            <Border x:Name="RootBorder"
+                                    Background="{TemplateBinding Background}"
+                                    Width="{TemplateBinding Width}"
+                                    HorizontalAlignment="Center">
+                                <Grid x:Name="GridContainer" HorizontalAlignment="Center">
+                                    <!-- Center Divider Line -->
+                                    <Rectangle x:Name="DividerLine"
+                                               Width="1"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Stretch"
+                                               Fill="{DynamicResource SplitterLineBrush}" />
+
+                                    <!-- Center Grip Indicator (3 Vertical Dots) -->
+                                    <StackPanel x:Name="GripHandle"
+                                                Orientation="Vertical"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Center"
+                                                IsHitTestVisible="False">
+                                        <Ellipse x:Name="Dot1" Width="3" Height="3" Margin="0,2"
+                                                 Fill="{DynamicResource SplitterGripBrush}" />
+                                        <Ellipse x:Name="Dot2" Width="3" Height="3" Margin="0,2"
+                                                 Fill="{DynamicResource SplitterGripBrush}" />
+                                        <Ellipse x:Name="Dot3" Width="3" Height="3" Margin="0,2"
+                                                 Fill="{DynamicResource SplitterGripBrush}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Interactive Triggers -->
+                            <ControlTemplate.Triggers>
+                                <!-- Hover State -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="DividerLine" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                    <Setter TargetName="Dot1" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                    <Setter TargetName="Dot2" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                    <Setter TargetName="Dot3" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                </Trigger>
+
+                                <!-- Active Drag / Pressed State -->
+                                <Trigger Property="IsDragging" Value="True">
+                                    <Setter TargetName="DividerLine" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                    <Setter TargetName="DividerLine" Property="Width" Value="2" />
+                                    <Setter TargetName="Dot1" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                    <Setter TargetName="Dot2" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                    <Setter TargetName="Dot3" Property="Fill"
+                                            Value="{DynamicResource SplitterHoverBrush}" />
+                                </Trigger>
+
+                                <!-- Horizontal Orientation Adapter -->
+                                <Trigger Property="ResizeDirection" Value="Rows">
+                                    <Setter Property="Width" Value="Auto" />
+                                    <Setter Property="Height" Value="6" />
+                                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                    <Setter Property="VerticalAlignment" Value="Center" />
+                                    <Setter Property="Cursor" Value="SizeNS" />
+                                    <Setter TargetName="DividerLine" Property="Width" Value="Auto" />
+                                    <Setter TargetName="DividerLine" Property="Height" Value="1" />
+                                    <Setter TargetName="GripHandle" Property="Orientation" Value="Horizontal" />
+                                    <Setter TargetName="Dot1" Property="Margin" Value="2,0" />
+                                    <Setter TargetName="Dot2" Property="Margin" Value="2,0" />
+                                    <Setter TargetName="Dot3" Property="Margin" Value="2,0" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            
+            <Style TargetType="{x:Type Label}">
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
+            <Style TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            </Style>
+
             <ResourceDictionary.MergedDictionaries>
                 <!-- MahApps.Metro resource dictionaries. Make sure that all file names are Case Sensitive! -->
-                <!-- <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" /> -->
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
-                <!-- Theme setting -->
-                <!-- <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Light.Blue.xaml" /> -->
+                <ResourceDictionary Source="Themes/LightTheme.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

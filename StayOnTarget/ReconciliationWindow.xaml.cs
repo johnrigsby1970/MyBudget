@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using Serilog;
 using StayOnTarget.Models;
@@ -73,6 +74,23 @@ public partial class ReconciliationWindow : Window {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during CancelButton_Click.");
+        }
+    }
+
+    private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e) {
+        // If the click did not hit an input control (like another TextBox), move focus to the window
+        if (Keyboard.FocusedElement is TextBox textBox)
+        {
+            // Check if the click occurred outside the active TextBox
+            if (e.OriginalSource is FrameworkElement clickedElement && clickedElement != textBox)
+            {
+                // Explicitly force the Text binding to push its value to the ViewModel
+                BindingExpression binding = textBox.GetBindingExpression(TextBox.TextProperty);
+                binding?.UpdateSource();
+
+                // Clear focus from the text box
+                Keyboard.ClearFocus();
+            }
         }
     }
 
