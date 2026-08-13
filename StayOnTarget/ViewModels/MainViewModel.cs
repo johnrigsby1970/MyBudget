@@ -337,6 +337,11 @@ public class MainViewModel : ViewModelBase {
             await LoadSnowballOptionsAsync();
 
             await LoadDataAsync();
+            
+            await Task.Yield();
+            
+            // Ensure excludable account checkboxes sync with loaded SnowballOptions.ExcludedAccountIds
+            RefreshExcludableAccounts();
 
             await Task.Yield();
 
@@ -1335,6 +1340,7 @@ public class MainViewModel : ViewModelBase {
     public IRelayCommand ToggleAccountExclusionCommand { get; }
 
     private void OpenManageExcludedAccounts() {
+        RefreshExcludableAccounts();
         IsManageExclusionsOpen = true;
     }
 
@@ -1357,8 +1363,16 @@ public class MainViewModel : ViewModelBase {
         if (acc != null) {
             acc.IsExcludedInSnowball = SnowballOptions.ExcludedAccountIds.Contains(accountId);
         }
-
-        OnPropertyChanged(nameof(SnowballOptions));
+        //ToggleAccountExclusion mutates an internal collection/HashSet (SnowballOptions.ExcludedAccountIds)
+        //on the existing object instance. Because the object reference itself hasn't changed,
+        //OnPropertyChanged(nameof(SnowballOptions)) does not trigger the setter logic, nor does
+        //it fire SnowballOptions.PropertyChanged. As a result, OnSnowballOptionsPropertyChanged never runs,
+        //and the database never saves the new JSON string
+        // FIX: Explicitly invoke the PropertyChanged handler to persist to DB & trigger recalculation
+        OnSnowballOptionsPropertyChanged(
+            SnowballOptions, 
+            new PropertyChangedEventArgs(nameof(SnowballStrategyOptions.ExcludedAccountIds))
+        );
     }
 
     #endregion
@@ -3191,6 +3205,9 @@ public class MainViewModel : ViewModelBase {
             OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
             OnPropertyChanged(nameof(TotalRequiredReserves));
             OnPropertyChanged(nameof(UnallocatedSurplusCash));
+            OnPropertyChanged(nameof(AvailableSurplusPool));
+            OnPropertyChanged(nameof(TotalActiveSweepAmount));
+            OnPropertyChanged(nameof(RetainedCheckingBuffer));
             OnPropertyChanged(nameof(RecommendedDebtAllocation));
             OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
 
@@ -3201,6 +3218,12 @@ public class MainViewModel : ViewModelBase {
             OnPropertyChanged(nameof(ReadinessStatusHeaderBrush));
             OnPropertyChanged(nameof(ReadinessStatusBackgroundBrush));
             OnPropertyChanged(nameof(ReadinessStatusBorderBrush));
+            OnPropertyChanged(nameof(StrategyDisplayName));
+            
+            OnPropertyChanged(nameof(IsMinimumBalanceCushionBreached));
+            OnPropertyChanged(nameof(HasOverspentEnvelopes));
+            OnPropertyChanged(nameof(IsUnpaidBillsAlert));
+            OnPropertyChanged(nameof(IsTotalCommittedFundsBreached));
             
             if (negativeAccounts.Any()) {
                 string message =
@@ -3422,6 +3445,9 @@ public class MainViewModel : ViewModelBase {
             // Batch update both collections (1 layout pass per collection)
             Accounts.AddRange(accounts);
             VisibleAccounts.AddRange(visibleList);
+            
+            //To populate accounts available for debt planning exclusion
+            RefreshExcludableAccounts();
 
             // 4. Re-populate AccountsWithNone
             AccountsWithNone.Clear();
@@ -3458,8 +3484,15 @@ public class MainViewModel : ViewModelBase {
             OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
             OnPropertyChanged(nameof(TotalRequiredReserves));
             OnPropertyChanged(nameof(UnallocatedSurplusCash));
+            OnPropertyChanged(nameof(AvailableSurplusPool));
+            OnPropertyChanged(nameof(TotalActiveSweepAmount));
+            OnPropertyChanged(nameof(RetainedCheckingBuffer));
             OnPropertyChanged(nameof(RecommendedDebtAllocation));
             OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
+            OnPropertyChanged(nameof(IsMinimumBalanceCushionBreached));
+            OnPropertyChanged(nameof(HasOverspentEnvelopes));
+            OnPropertyChanged(nameof(IsUnpaidBillsAlert));
+            OnPropertyChanged(nameof(IsTotalCommittedFundsBreached));
             Log.Information("Account data loaded successfully. Accounts: {AccountCount}",
                 Accounts.Count);
         }
@@ -3782,8 +3815,15 @@ public class MainViewModel : ViewModelBase {
             OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
             OnPropertyChanged(nameof(TotalRequiredReserves));
             OnPropertyChanged(nameof(UnallocatedSurplusCash));
+            OnPropertyChanged(nameof(AvailableSurplusPool));
+            OnPropertyChanged(nameof(TotalActiveSweepAmount));
+            OnPropertyChanged(nameof(RetainedCheckingBuffer));
             OnPropertyChanged(nameof(RecommendedDebtAllocation));
             OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
+            OnPropertyChanged(nameof(IsMinimumBalanceCushionBreached));
+            OnPropertyChanged(nameof(HasOverspentEnvelopes));
+            OnPropertyChanged(nameof(IsUnpaidBillsAlert));
+            OnPropertyChanged(nameof(IsTotalCommittedFundsBreached));
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period data.");
@@ -4598,11 +4638,77 @@ public class MainViewModel : ViewModelBase {
 
     public decimal UnallocatedSurplusCash => Math.Max(0, TotalLiquidCash - TotalRequiredReserves);
 
-    public decimal RecommendedDebtAllocation =>
-        UnallocatedSurplusCash * (decimal)SnowballOptions.SurplusSweepPercentage;
+    /// <summary>
+    /// Total extra cash determined as available for sweeping or holding.
+    /// </summary>
+    public decimal AvailableSurplusPool => UnallocatedSurplusCash;
 
-    public decimal RecommendedInvestmentAllocation => UnallocatedSurplusCash - RecommendedDebtAllocation;
+    /// <summary>
+    /// The actual dollar amount that WILL be swept out of checking based on the slider percentage/hybrid rules.
+    /// </summary>
+    public decimal TotalActiveSweepAmount {
+        get {
+            if (!SnowballOptions.EnableSnowball || UnallocatedSurplusCash <= 0) return 0m;
 
+            return SnowballOptions.SurplusMethod switch {
+                SnowballStrategyOptions.SurplusCalculationMethod.FixedMonthlyAmount => 
+                    Math.Min(UnallocatedSurplusCash, SnowballOptions.FixedMonthlySurplusAmount),
+
+                SnowballStrategyOptions.SurplusCalculationMethod.Hybrid => 
+                    Math.Min(UnallocatedSurplusCash * (decimal)SnowballOptions.SurplusSweepPercentage, 
+                        SnowballOptions.FixedMonthlySurplusAmount),
+
+                _ => UnallocatedSurplusCash * (decimal)SnowballOptions.SurplusSweepPercentage
+            };
+        }
+    }
+    
+    /// <summary>
+    /// Cash that stays in Checking as a floating buffer because the sweep percentage is less than 100%.
+    /// </summary>
+    public decimal RetainedCheckingBuffer => Math.Max(0m, UnallocatedSurplusCash - TotalActiveSweepAmount);
+    
+    /// <summary>
+    /// Portion of active sweep applied to debt in waterfall order.
+    /// </summary>
+    public decimal RecommendedDebtAllocation {
+        get {
+            if (!SnowballOptions.EnableSnowball || SnowballOptions.PrimaryTarget == SurplusAllocationTarget.InvestSurplus) 
+                return 0m;
+
+            var totalDebt = Accounts
+                .Where(a => a.IsLiability && a.Balance < 0)
+                .Sum(a => Math.Abs(a.Balance));
+
+            // Waterfall Step 1: Debt takes up to its total balance from the active sweep
+            return Math.Min(TotalActiveSweepAmount, totalDebt);
+        }
+    }
+
+    /// <summary>
+    /// Portion of active sweep that overflows into investments after all debt is satisfied.
+    /// </summary>
+    public decimal RecommendedInvestmentAllocation {
+        get {
+            if (!SnowballOptions.EnableSnowball || SnowballOptions.PrimaryTarget == SurplusAllocationTarget.PayDownDebt) 
+                return 0m;
+
+            if (SnowballOptions.PrimaryTarget == SurplusAllocationTarget.InvestSurplus) {
+                return TotalActiveSweepAmount;
+            }
+
+            // Waterfall Step 2: Investments only receive what overflows past debt payoff
+            return Math.Max(0m, TotalActiveSweepAmount - RecommendedDebtAllocation);
+        }
+    }
+
+    public string StrategyDisplayName => SnowballOptions.PrimaryTarget switch {
+        SurplusAllocationTarget.PayDownDebt => "Pay Down Debt Only",
+        SurplusAllocationTarget.InvestSurplus => "Invest Surplus Only",
+        SurplusAllocationTarget.Hybrid => "Waterfall (Debt First, Then Invest)",
+        _ => "Custom Strategy"
+    };
+    
     #endregion
 
     #region Dashboard Cash Readiness & Action Suggestions
@@ -4740,6 +4846,36 @@ public class MainViewModel : ViewModelBase {
             return "All account requirements and budgets are fully satisfied by current liquid balances.";
         }
     }
+
+    #endregion
+    
+    #region Reserve Alert Status Properties
+
+    /// <summary>
+    /// Returns true if primary checking falls below the minimum required cushion floor.
+    /// </summary>
+    public bool IsMinimumBalanceCushionBreached {
+        get {
+            var checking = Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking && a.IsPrimary) 
+                           ?? Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking);
+            return checking != null && checking.Balance < EnvelopeFloorRequirements;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if any standard envelope in the current period has been overspent.
+    /// </summary>
+    public bool HasOverspentEnvelopes => CurrentPeriodBuckets.Any(pb => pb.BucketType == BucketType.Standard && pb.BudgetExceeded);
+
+    /// <summary>
+    /// Returns true if any period bill is past due.
+    /// </summary>
+    public bool IsUnpaidBillsAlert => PastDueCount > 0;
+
+    /// <summary>
+    /// Returns true if total liquid cash falls short of meeting all committed reserve requirements.
+    /// </summary>
+    public bool IsTotalCommittedFundsBreached => TotalLiquidCash < TotalRequiredReserves;
 
     #endregion
 

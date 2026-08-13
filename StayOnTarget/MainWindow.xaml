@@ -419,226 +419,364 @@
                         <ContentControl.Style>
                             <Style TargetType="ContentControl">
                                 <!-- Default (Index 0): Dashboard / Current Period & Cash Requirements View -->
-<Setter Property="Content">
-    <Setter.Value>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="10">
-                
-                <!-- Header Title -->
-                <TextBlock Text="Cash Overview &amp; Planned Money" 
-                           FontSize="18" FontWeight="Bold" 
-                           Foreground="{StaticResource PrimaryTextBrush}" 
-                           Margin="0,0,0,12" />
+                                <Setter Property="Content">
+                                    <Setter.Value>
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                      HorizontalScrollBarVisibility="Disabled">
+                                            <StackPanel Margin="10">
 
-                <!-- CASH READINESS & ACTION SUGGESTION CARD -->
-                <Border Background="{Binding ReadinessStatusBackgroundBrush}" 
-                        BorderBrush="{Binding ReadinessStatusBorderBrush}" 
-                        BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,16">
-                    <StackPanel>
-                        <DockPanel Margin="0,0,0,6">
-                            <TextBlock Text="{Binding ReadinessStatusTitle}" 
-                                       FontSize="14" FontWeight="Bold" 
-                                       Foreground="{Binding ReadinessStatusHeaderBrush}" 
-                                       VerticalAlignment="Center" />
-            
-                            <TextBlock Text="{Binding LowestProjectedCheckingBalance, StringFormat='Lowest Checking Point: {0:C}'}" 
-                                       FontSize="11" FontWeight="SemiBold" 
-                                       Foreground="{StaticResource SecondaryTextBrush}" 
-                                       DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                        </DockPanel>
+                                                <!-- Header Title -->
+                                                <TextBlock Text="Cash Overview &amp; Planned Money"
+                                                           FontSize="18" FontWeight="Bold"
+                                                           Foreground="{StaticResource PrimaryTextBrush}"
+                                                           Margin="0,0,0,12" />
 
-                        <TextBlock Text="{Binding ReadinessSuggestionMessage}" 
-                                   FontSize="12" Foreground="{StaticResource PrimaryTextBrush}" 
-                                   TextWrapping="Wrap" LineHeight="18" />
-                    </StackPanel>
-                </Border>
-                
-                <!-- 1. TOP CARDS: LIQUID CASH vs UNALLOCATED SURPLUS -->
-                <UniformGrid Columns="2" Margin="0,0,0,16">
-                    <!-- Total Liquid Cash -->
-                    <Border Background="{StaticResource SurfaceBackgroundBrush}" 
-                            BorderBrush="{StaticResource BorderColorBrush}" 
-                            BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,6,0">
-                        <StackPanel>
-                            <TextBlock Text="TOTAL LIQUID CASH" FontSize="11" FontWeight="Bold" 
-                                       Foreground="{StaticResource SecondaryTextBrush}" />
-                            <TextBlock Text="{Binding TotalLiquidCash, StringFormat=C}" 
-                                       FontSize="24" FontWeight="Bold" 
-                                       Foreground="{StaticResource PrimaryTextBrush}" Margin="0,4,0,0" />
-                            <TextBlock Text="Checking &amp; Savings Total Balance" FontSize="11" 
-                                       Foreground="{StaticResource SecondaryTextBrush}" Margin="0,2,0,0" />
-                        </StackPanel>
-                    </Border>
+                                                <!-- CASH READINESS & ACTION SUGGESTION CARD -->
+                                                <Border Background="{Binding ReadinessStatusBackgroundBrush}"
+                                                        BorderBrush="{Binding ReadinessStatusBorderBrush}"
+                                                        BorderThickness="1" CornerRadius="8" Padding="14"
+                                                        Margin="0,0,0,16">
+                                                    <StackPanel>
+                                                        <DockPanel Margin="0,0,0,6">
+                                                            <TextBlock Text="{Binding ReadinessStatusTitle}"
+                                                                       FontSize="14" FontWeight="Bold"
+                                                                       Foreground="{Binding ReadinessStatusHeaderBrush}"
+                                                                       VerticalAlignment="Center" />
 
-                    <!-- Unallocated / Surplus Cash -->
-                    <Border Background="{DynamicResource SurfaceBackgroundBrush}" 
-                            BorderBrush="{DynamicResource BorderColorBrush}" 
-                            BorderThickness="1" CornerRadius="8" Padding="14" Margin="6,0,0,0">
-                        <StackPanel>
-                            <TextBlock Text="EXTRA CASH" FontSize="11" FontWeight="Bold" 
-                                       Foreground="{StaticResource SecondaryTextBrush}" />
-                            <TextBlock Text="{Binding UnallocatedSurplusCash, StringFormat=C}" 
-                                       FontSize="24" FontWeight="Bold" 
-                                       Foreground="#22C55E" Margin="0,4,0,0" />
-                            <TextBlock Text="Available to Invest or Pay Down Debt" FontSize="11" 
-                                       Foreground="{StaticResource SecondaryTextBrush}" Margin="0,2,0,0" />
-                        </StackPanel>
-                    </Border>
-                </UniformGrid>
+                                                            <TextBlock
+                                                                Text="{Binding LowestProjectedCheckingBalance, StringFormat='Lowest Checking Point: {0:C}'}"
+                                                                FontSize="11" FontWeight="SemiBold"
+                                                                Foreground="{StaticResource SecondaryTextBrush}"
+                                                                DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                                                VerticalAlignment="Center" />
+                                                        </DockPanel>
 
-                <!-- 2. REQUIRED ACCOUNTS RESERVES BREAKDOWN -->
-                <Border Background="{DynamicResource SurfaceBackgroundBrush}" 
-                        BorderBrush="{DynamicResource BorderColorBrush}" 
-                        BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,16">
-                    <StackPanel>
-                        <TextBlock Text="Money Already Spoken For" 
-                                   FontSize="14" FontWeight="SemiBold" 
-                                   Foreground="{StaticResource PrimaryTextBrush}" Margin="0,0,0,12" />
+                                                        <TextBlock Text="{Binding ReadinessSuggestionMessage}"
+                                                                   FontSize="12"
+                                                                   Foreground="{StaticResource PrimaryTextBrush}"
+                                                                   TextWrapping="Wrap" LineHeight="18" />
+                                                    </StackPanel>
+                                                </Border>
 
-                        <!-- Reserve Items List -->
-                        <Grid Margin="0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Minimum Balance Cushion" FontWeight="Medium" 
-                                           Foreground="{StaticResource PrimaryTextBrush}" />
-                                <TextBlock Text="Cash kept in checking/savings as a safety buffer" FontSize="11" 
-                                           Foreground="{StaticResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding EnvelopeFloorRequirements, StringFormat=C}" 
-                                       FontWeight="Bold" Foreground="#EF4444" VerticalAlignment="Center" />
-                        </Grid>
+                                                <!-- 1. TOP CARDS: LIQUID CASH vs UNALLOCATED SURPLUS -->
+                                                <UniformGrid Columns="2" Margin="0,0,0,16">
+                                                    <!-- Total Liquid Cash -->
+                                                    <Border Background="{StaticResource SurfaceBackgroundBrush}"
+                                                            BorderBrush="{StaticResource BorderColorBrush}"
+                                                            BorderThickness="1" CornerRadius="8" Padding="14"
+                                                            Margin="0,0,6,0">
+                                                        <StackPanel>
+                                                            <TextBlock Text="TOTAL LIQUID CASH" FontSize="11"
+                                                                       FontWeight="Bold"
+                                                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                                                            <TextBlock Text="{Binding TotalLiquidCash, StringFormat=C}"
+                                                                       FontSize="24" FontWeight="Bold"
+                                                                       Foreground="{StaticResource PrimaryTextBrush}"
+                                                                       Margin="0,4,0,0" />
+                                                            <TextBlock Text="Checking &amp; Savings Total Balance"
+                                                                       FontSize="11"
+                                                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                                                       Margin="0,2,0,0" />
+                                                        </StackPanel>
+                                                    </Border>
 
-                        <Separator Background="{DynamicResource BorderColorBrush}" Margin="0,8" Opacity="0.5" />
+                                                    <!-- Unallocated / Surplus Cash -->
+                                                    <Border Background="{DynamicResource SurfaceBackgroundBrush}"
+                                                            BorderBrush="{DynamicResource BorderColorBrush}"
+                                                            BorderThickness="1" CornerRadius="8" Padding="14"
+                                                            Margin="6,0,0,0">
+                                                        <StackPanel>
+                                                            <TextBlock Text="EXTRA CASH" FontSize="11"
+                                                                       FontWeight="Bold"
+                                                                       Foreground="{StaticResource SecondaryTextBrush}" />
+                                                            <TextBlock
+                                                                Text="{Binding UnallocatedSurplusCash, StringFormat=C}"
+                                                                FontSize="24" FontWeight="Bold"
+                                                                Foreground="#22C55E" Margin="0,4,0,0" />
+                                                            <TextBlock Text="Available to Invest or Pay Down Debt"
+                                                                       FontSize="11"
+                                                                       Foreground="{StaticResource SecondaryTextBrush}"
+                                                                       Margin="0,2,0,0" />
+                                                        </StackPanel>
+                                                    </Border>
+                                                </UniformGrid>
 
-                        <Grid Margin="0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Savings Goals &amp; Future Funds" FontWeight="Medium" 
-                                           Foreground="{StaticResource PrimaryTextBrush}" />
-                                <TextBlock Text="Money saved and put aside for larger or upcoming plans" FontSize="11" 
-                                           Foreground="{StaticResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding AccumulatingDrawdownReserves, StringFormat=C}" 
-                                       FontWeight="Bold" Foreground="#EF4444" VerticalAlignment="Center" />
-                        </Grid>
+                                                <!-- 2. REQUIRED ACCOUNTS RESERVES BREAKDOWN -->
+                                                <!-- 2. REQUIRED ACCOUNTS RESERVES BREAKDOWN -->
+                                                <Border Background="{DynamicResource SurfaceBackgroundBrush}"
+                                                        BorderBrush="{DynamicResource BorderColorBrush}"
+                                                        BorderThickness="1" CornerRadius="8" Padding="16"
+                                                        Margin="0,0,0,16">
+                                                    <StackPanel>
+                                                        <TextBlock Text="Money Already Spoken For"
+                                                                   FontSize="14" FontWeight="SemiBold"
+                                                                   Foreground="{StaticResource PrimaryTextBrush}"
+                                                                   Margin="0,0,0,12" />
 
-                        <Separator Background="{DynamicResource BorderColorBrush}" Margin="0,8" Opacity="0.5" />
+                                                        <!-- 1. Minimum Balance Cushion -->
+                                                        <Grid Margin="0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="Minimum Balance Cushion"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{StaticResource PrimaryTextBrush}" />
+                                                                <TextBlock
+                                                                    Text="Cash kept in checking/savings as a safety buffer"
+                                                                    FontSize="11"
+                                                                    Foreground="{StaticResource SecondaryTextBrush}" />
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding EnvelopeFloorRequirements, StringFormat=C}"
+                                                                       FontWeight="Bold"
+                                                                       VerticalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground"
+                                                                                Value="{StaticResource PrimaryTextBrush}" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger
+                                                                                Binding="{Binding IsMinimumBalanceCushionBreached}"
+                                                                                Value="True">
+                                                                                <Setter Property="Foreground"
+                                                                                    Value="#EF4444" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Grid>
 
-                        <Grid Margin="0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Unpaid Period Bills" FontWeight="Medium" 
-                                           Foreground="{StaticResource PrimaryTextBrush}" />
-                                <TextBlock Text="Required balance to satisfy remaining bills this period" FontSize="11" 
-                                           Foreground="{StaticResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding UpcomingBillsRequirements, StringFormat=C}" 
-                                       FontWeight="Bold" Foreground="#EF4444" VerticalAlignment="Center" />
-                        </Grid>
+                                                        <Separator Background="{DynamicResource BorderColorBrush}"
+                                                                   Margin="0,8" Opacity="0.5" />
 
-                        <Separator Background="{DynamicResource BorderColorBrush}" Margin="0,8" Opacity="0.5" />
+                                                        <!-- 2. Savings Goals & Future Funds -->
+                                                        <Grid Margin="0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="Savings Goals &amp; Future Funds"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{StaticResource PrimaryTextBrush}" />
+                                                                <TextBlock
+                                                                    Text="Money saved and put aside for larger or upcoming plans"
+                                                                    FontSize="11"
+                                                                    Foreground="{StaticResource SecondaryTextBrush}" />
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding AccumulatingDrawdownReserves, StringFormat=C}"
+                                                                       FontWeight="Bold"
+                                                                       Foreground="{StaticResource PrimaryTextBrush}"
+                                                                       VerticalAlignment="Center" />
+                                                        </Grid>
 
-                        <Grid Margin="0,4">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Remaining Everyday Budget" FontWeight="Medium" 
-                                           Foreground="{StaticResource PrimaryTextBrush}" />
-                                <TextBlock Text="Required balance to satisfy remaining budgeted envelope spending this period" FontSize="11" 
-                                           TextWrapping="Wrap"
-                                           Foreground="{StaticResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding UnspentStandardEnvelopeRequirements, StringFormat=C}" 
-                                       FontWeight="Bold" Foreground="#EF4444" VerticalAlignment="Center" />
-                        </Grid>
+                                                        <Separator Background="{DynamicResource BorderColorBrush}"
+                                                                   Margin="0,8" Opacity="0.5" />
 
-                        <Separator Background="{DynamicResource BorderColorBrush}" Margin="0,8" Opacity="0.5" />
-                        
-                        <!-- Total Required Reserves Summary Row -->
-                        <Grid Margin="0,4,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                            <TextBlock Text="Total Committed Funds:" 
-                                       FontWeight="Bold" FontSize="13" 
-                                       Foreground="{StaticResource PrimaryTextBrush}" />
-                            <TextBlock Text="Total cash reserved for cushions, savings goals, bills, and everyday budget" FontSize="11" 
-                                       TextWrapping="Wrap"
-                                        Foreground="{StaticResource SecondaryTextBrush}" />
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding TotalRequiredReserves, StringFormat=C}" 
-                                       FontWeight="Bold" FontSize="13" 
-                                       Foreground="#EF4444" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
+                                                        <!-- 3. Unpaid Period Bills -->
+                                                        <Grid Margin="0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="Unpaid Period Bills"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{StaticResource PrimaryTextBrush}" />
+                                                                <TextBlock
+                                                                    Text="Required balance to satisfy remaining bills this period"
+                                                                    FontSize="11"
+                                                                    Foreground="{StaticResource SecondaryTextBrush}" />
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding UpcomingBillsRequirements, StringFormat=C}"
+                                                                       FontWeight="Bold"
+                                                                       VerticalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground"
+                                                                                Value="{StaticResource PrimaryTextBrush}" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger
+                                                                                Binding="{Binding IsUnpaidBillsAlert}"
+                                                                                Value="True">
+                                                                                <Setter Property="Foreground"
+                                                                                    Value="#EF4444" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Grid>
 
-                <!-- 3. STRATEGY ALLOCATION SUMMARY (DEBT PAYOFF & INVESTMENTS) -->
-                <Border Background="{StaticResource SurfaceBackgroundBrush}" 
-                        BorderBrush="{StaticResource BorderColorBrush}" 
-                        BorderThickness="1" CornerRadius="8" Padding="16">
-                    <StackPanel>
-                        <DockPanel Margin="0,0,0,12">
-                            <TextBlock Text="Where Extra Cash Goes" 
-                                       FontSize="14" FontWeight="SemiBold" 
-                                       Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding SnowballOptions.PrimaryTarget, StringFormat='Strategy: {0}'}" 
-                                       FontSize="11" FontWeight="Bold" Foreground="#3B82F6" 
-                                       DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" />
-                        </DockPanel>
+                                                        <Separator Background="{DynamicResource BorderColorBrush}"
+                                                                   Margin="0,8" Opacity="0.5" />
 
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                                                        <!-- 4. Remaining Everyday Budget -->
+                                                        <Grid Margin="0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="Remaining Everyday Budget"
+                                                                           FontWeight="Medium"
+                                                                           Foreground="{StaticResource PrimaryTextBrush}" />
+                                                                <TextBlock
+                                                                    Text="Required balance to satisfy remaining budgeted envelope spending this period"
+                                                                    FontSize="11"
+                                                                    TextWrapping="Wrap"
+                                                                    Foreground="{StaticResource SecondaryTextBrush}" />
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding UnspentStandardEnvelopeRequirements, StringFormat=C}"
+                                                                       FontWeight="Bold"
+                                                                       VerticalAlignment="Center">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <!-- Default Neutral Color -->
+                                                                        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                                                                        <Style.Triggers>
+                                                                            <!-- Warning Trigger: Amber/Orange when an envelope is overspent -->
+                                                                            <DataTrigger Binding="{Binding HasOverspentEnvelopes}" Value="True">
+                                                                                <Setter Property="Foreground" Value="#F59E0B" />
+                                                                            </DataTrigger>
+                                                                            <!-- Critical Trigger: Red if total cash can't cover committed reserves -->
+                                                                            <DataTrigger Binding="{Binding IsTotalCommittedFundsBreached}" Value="True">
+                                                                                <Setter Property="Foreground" Value="#EF4444" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Grid>
 
-                            <!-- Debt Allocation Target -->
-                            <Border Grid.Column="0" Background="White" BorderBrush="#CBD5E1" 
-                                    BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,6,0">
-                                <StackPanel>
-                                    <TextBlock Text="Extra Paid Toward Debt" FontSize="11" FontWeight="SemiBold" 
-                                               Foreground="{StaticResource SecondaryTextBrush}" />
-                                    <TextBlock Text="{Binding RecommendedDebtAllocation, StringFormat=C}" 
-                                               FontSize="18" FontWeight="Bold" Foreground="#0F172A" Margin="0,4,0,0" />
-                                    <TextBlock Text="Put towards debt payoff" FontSize="10" 
-                                               Foreground="{StaticResource SecondaryTextBrush}" Margin="0,2,0,0" />
-                                </StackPanel>
-                            </Border>
+                                                        <Separator Background="{DynamicResource BorderColorBrush}"
+                                                                   Margin="0,8" Opacity="0.5" />
 
-                            <!-- Investment Target -->
-                            <Border Grid.Column="1" Background="White" BorderBrush="#CBD5E1" 
-                                    BorderThickness="1" CornerRadius="6" Padding="10" Margin="6,0,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Extra Sent to Savings/Investing" FontSize="11" FontWeight="SemiBold" 
-                                               Foreground="{StaticResource SecondaryTextBrush}" />
-                                    <TextBlock Text="{Binding RecommendedInvestmentAllocation, StringFormat=C}" 
-                                               FontSize="18" FontWeight="Bold" Foreground="#0F172A" Margin="0,4,0,0" />
-                                    <TextBlock Text="Put towards long-term savings and investments" FontSize="10" 
-                                               Foreground="{StaticResource SecondaryTextBrush}" Margin="0,2,0,0" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </StackPanel>
-                </Border>
+                                                        <!-- Total Required Reserves Summary Row -->
+                                                        <Grid Margin="0,4,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="Total Committed Funds:"
+                                                                           FontWeight="Bold" FontSize="13"
+                                                                           Foreground="{StaticResource PrimaryTextBrush}" />
+                                                                <TextBlock
+                                                                    Text="Total cash reserved for cushions, savings goals, bills, and everyday budget"
+                                                                    FontSize="11"
+                                                                    TextWrapping="Wrap"
+                                                                    Foreground="{StaticResource SecondaryTextBrush}" />
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding TotalRequiredReserves, StringFormat=C}"
+                                                                       FontWeight="Bold" FontSize="13">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <!-- Set Default Foreground here in the style setter, NOT directly on the TextBlock tag -->
+                                                                        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsTotalCommittedFundsBreached}" Value="True">
+                                                                                <Setter Property="Foreground" Value="#EF4444" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                            
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
 
-            </StackPanel>
-        </ScrollViewer>
-    </Setter.Value>
-</Setter>
+                                                <!-- WHERE EXTRA CASH GOES -->
+                                                <Border Background="{StaticResource SurfaceBackgroundBrush}"
+                                                        BorderBrush="{StaticResource BorderColorBrush}"
+                                                        BorderThickness="1" CornerRadius="8" Padding="16">
+                                                    <StackPanel>
+                                                        <DockPanel Margin="0,0,0,12">
+                                                            <TextBlock Text="Where Extra Cash Goes"
+                                                                       FontSize="14" FontWeight="SemiBold"
+                                                                       Foreground="{StaticResource PrimaryTextBrush}"
+                                                                       VerticalAlignment="Center" />
+                                                            <TextBlock Text="{Binding StrategyDisplayName}"
+                                                                       FontSize="11" FontWeight="Bold"
+                                                                       Foreground="#3B82F6"
+                                                                       DockPanel.Dock="Right"
+                                                                       HorizontalAlignment="Right"
+                                                                       VerticalAlignment="Center" />
+                                                        </DockPanel>
+
+                                                        <UniformGrid Columns="3">
+                                                            <!-- 1. Debt Target -->
+                                                            <Border Background="White" BorderBrush="#CBD5E1"
+                                                                    BorderThickness="1" CornerRadius="6" Padding="10"
+                                                                    Margin="0,0,4,0">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="Swept Toward Debt" FontSize="11"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                                                    <TextBlock
+                                                                        Text="{Binding RecommendedDebtAllocation, StringFormat=C}"
+                                                                        FontSize="16" FontWeight="Bold"
+                                                                        Foreground="#0F172A" Margin="0,4,0,0" />
+                                                                    <TextBlock Text="Put towards debt payoff"
+                                                                               FontSize="10"
+                                                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                                                               Margin="0,2,0,0" />
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- 2. Investment Target -->
+                                                            <Border Background="White" BorderBrush="#CBD5E1"
+                                                                    BorderThickness="1" CornerRadius="6" Padding="10"
+                                                                    Margin="2,0,2,0">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="Swept To Investments"
+                                                                               FontSize="11" FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                                                    <TextBlock
+                                                                        Text="{Binding RecommendedInvestmentAllocation, StringFormat=C}"
+                                                                        FontSize="16" FontWeight="Bold"
+                                                                        Foreground="#0F172A" Margin="0,4,0,0" />
+                                                                    <TextBlock Text="Put towards growth accounts"
+                                                                               FontSize="10"
+                                                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                                                               Margin="0,2,0,0" />
+                                                                </StackPanel>
+                                                            </Border>
+
+                                                            <!-- 3. Retained Checking Cushion -->
+                                                            <Border Background="#F8FAFC" BorderBrush="#CBD5E1"
+                                                                    BorderThickness="1" CornerRadius="6" Padding="10"
+                                                                    Margin="4,0,0,0">
+                                                                <StackPanel>
+                                                                    <TextBlock Text="Kept In Checking" FontSize="11"
+                                                                               FontWeight="SemiBold"
+                                                                               Foreground="{StaticResource SecondaryTextBrush}" />
+                                                                    <TextBlock
+                                                                        Text="{Binding RetainedCheckingBuffer, StringFormat=C}"
+                                                                        FontSize="16" FontWeight="Bold"
+                                                                        Foreground="#64748B" Margin="0,4,0,0" />
+                                                                    <TextBlock Text="Play $$, fun funds, be good ..."
+                                                                               FontSize="10"
+                                                                               Foreground="{StaticResource SecondaryTextBrush}"
+                                                                               Margin="0,2,0,0" />
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </UniformGrid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </Setter.Value>
+                                </Setter>
                                 <Style.Triggers>
                                     <!-- Index 1: Ledger View -->
                                     <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="1">
@@ -3103,7 +3241,7 @@
                                                         Value="{Binding SnowballOptions.SurplusSweepPercentage, Converter={StaticResource DoubleToDecimalConverter}, Delay=300}"
                                                         Margin="0,0,0,5" />
                                                 <TextBlock TextWrapping="Wrap"
-                                                           Text="Percentage of extra cash moved toward debt or investments."
+                                                           Text="Percentage of extra cash moved toward debt or investments. The remainder is fun money or future extra cash."
                                                            FontSize="11" Foreground="#64748B" Margin="0,0,0,15" />
 
                                                 <Separator Margin="0,5,0,15" Background="#E2E8F0" />
