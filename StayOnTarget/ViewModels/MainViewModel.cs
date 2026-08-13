@@ -4649,18 +4649,12 @@ public class MainViewModel : ViewModelBase {
     /// </summary>
     public decimal TotalActiveSweepAmount {
         get {
-            if (!SnowballOptions.EnableSnowball || UnallocatedSurplusCash <= 0) return 0m;
+            if (!SnowballOptions.EnableSnowball) return 0m;
 
-            return SnowballOptions.SurplusMethod switch {
-                SnowballStrategyOptions.SurplusCalculationMethod.FixedMonthlyAmount => 
-                    Math.Min(UnallocatedSurplusCash, SnowballOptions.FixedMonthlySurplusAmount),
-
-                SnowballStrategyOptions.SurplusCalculationMethod.Hybrid => 
-                    Math.Min(UnallocatedSurplusCash * (decimal)SnowballOptions.SurplusSweepPercentage, 
-                        SnowballOptions.FixedMonthlySurplusAmount),
-
-                _ => UnallocatedSurplusCash * (decimal)SnowballOptions.SurplusSweepPercentage
-            };
+            // Sum all sweep events occurring IN THIS PERIOD
+            return CurrentPeriodSnowballProjections
+                .Where(p => (p.IsSweep || p.IsSynthetic) && p.Amount > 0)
+                .Sum(p => p.Amount);
         }
     }
     
@@ -4674,15 +4668,14 @@ public class MainViewModel : ViewModelBase {
     /// </summary>
     public decimal RecommendedDebtAllocation {
         get {
-            if (!SnowballOptions.EnableSnowball || SnowballOptions.PrimaryTarget == SurplusAllocationTarget.InvestSurplus) 
-                return 0m;
+            if (!SnowballOptions.EnableSnowball) return 0m;
 
-            var totalDebt = Accounts
-                .Where(a => a.IsLiability && a.Balance < 0)
-                .Sum(a => Math.Abs(a.Balance));
-
-            // Waterfall Step 1: Debt takes up to its total balance from the active sweep
-            return Math.Min(TotalActiveSweepAmount, totalDebt);
+            // Sum only debt-directed sweeps/synthetics in this period
+            // (Or filter by destination account type / IsLiability)
+            return CurrentPeriodSnowballProjections
+                .Where(p => (p.IsSweep || p.IsSynthetic) && p.Amount > 0 && p.ToAccountId.HasValue)
+                .Where(p => Accounts.Any(a => a.Id == p.ToAccountId && a.IsLiability))
+                .Sum(p => p.Amount);
         }
     }
 
@@ -4691,15 +4684,13 @@ public class MainViewModel : ViewModelBase {
     /// </summary>
     public decimal RecommendedInvestmentAllocation {
         get {
-            if (!SnowballOptions.EnableSnowball || SnowballOptions.PrimaryTarget == SurplusAllocationTarget.PayDownDebt) 
-                return 0m;
+            if (!SnowballOptions.EnableSnowball) return 0m;
 
-            if (SnowballOptions.PrimaryTarget == SurplusAllocationTarget.InvestSurplus) {
-                return TotalActiveSweepAmount;
-            }
-
-            // Waterfall Step 2: Investments only receive what overflows past debt payoff
-            return Math.Max(0m, TotalActiveSweepAmount - RecommendedDebtAllocation);
+            // Sum investment-directed sweeps in this period
+            return CurrentPeriodSnowballProjections
+                .Where(p => (p.IsSweep || p.IsSynthetic) && p.Amount > 0 && p.ToAccountId.HasValue)
+                .Where(p => Accounts.Any(a => a.Id == p.ToAccountId && !a.IsLiability))
+                .Sum(p => p.Amount);
         }
     }
 
@@ -4910,6 +4901,21 @@ public class MainViewModel : ViewModelBase {
                     ? StrategyTaskType.Investment 
                     : StrategyTaskType.DebtPayoff
             });
+        }
+    }
+    
+    // Helper to grab all projection items falling within the current active period
+    private IEnumerable<ProjectionItem> CurrentPeriodSnowballProjections {
+        get {
+            if (SnowballProjections == null || !SnowballProjections.Any()) 
+                return Enumerable.Empty<ProjectionItem>();
+
+            DateTime periodStart = CurrentPeriodDate;
+            DateTime periodEnd = GetNextPeriodDate(periodStart);
+
+            return SnowballProjections.Where(p => 
+                p.TransactionDate >= periodStart && 
+                p.TransactionDate < periodEnd);
         }
     }
 
