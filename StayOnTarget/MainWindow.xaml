@@ -639,15 +639,22 @@
                                                                 <TextBlock.Style>
                                                                     <Style TargetType="TextBlock">
                                                                         <!-- Default Neutral Color -->
-                                                                        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                                                                        <Setter Property="Foreground"
+                                                                                Value="{StaticResource PrimaryTextBrush}" />
                                                                         <Style.Triggers>
                                                                             <!-- Warning Trigger: Amber/Orange when an envelope is overspent -->
-                                                                            <DataTrigger Binding="{Binding HasOverspentEnvelopes}" Value="True">
-                                                                                <Setter Property="Foreground" Value="#F59E0B" />
+                                                                            <DataTrigger
+                                                                                Binding="{Binding HasOverspentEnvelopes}"
+                                                                                Value="True">
+                                                                                <Setter Property="Foreground"
+                                                                                    Value="#F59E0B" />
                                                                             </DataTrigger>
                                                                             <!-- Critical Trigger: Red if total cash can't cover committed reserves -->
-                                                                            <DataTrigger Binding="{Binding IsTotalCommittedFundsBreached}" Value="True">
-                                                                                <Setter Property="Foreground" Value="#EF4444" />
+                                                                            <DataTrigger
+                                                                                Binding="{Binding IsTotalCommittedFundsBreached}"
+                                                                                Value="True">
+                                                                                <Setter Property="Foreground"
+                                                                                    Value="#EF4444" />
                                                                             </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
@@ -680,16 +687,20 @@
                                                                 <TextBlock.Style>
                                                                     <Style TargetType="TextBlock">
                                                                         <!-- Set Default Foreground here in the style setter, NOT directly on the TextBlock tag -->
-                                                                        <Setter Property="Foreground" Value="{StaticResource PrimaryTextBrush}" />
+                                                                        <Setter Property="Foreground"
+                                                                                Value="{StaticResource PrimaryTextBrush}" />
                                                                         <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsTotalCommittedFundsBreached}" Value="True">
-                                                                                <Setter Property="Foreground" Value="#EF4444" />
+                                                                            <DataTrigger
+                                                                                Binding="{Binding IsTotalCommittedFundsBreached}"
+                                                                                Value="True">
+                                                                                <Setter Property="Foreground"
+                                                                                    Value="#EF4444" />
                                                                             </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
                                                                 </TextBlock.Style>
                                                             </TextBlock>
-                                                            
+
                                                         </Grid>
                                                     </StackPanel>
                                                 </Border>
@@ -756,14 +767,14 @@
                                                                     BorderThickness="1" CornerRadius="6" Padding="10"
                                                                     Margin="4,0,0,0">
                                                                 <StackPanel>
-                                                                    <TextBlock Text="Kept In Checking" FontSize="11"
+                                                                    <TextBlock Text="Free Cash" FontSize="11"
                                                                                FontWeight="SemiBold"
                                                                                Foreground="{StaticResource SecondaryTextBrush}" />
                                                                     <TextBlock
                                                                         Text="{Binding RetainedCheckingBuffer, StringFormat=C}"
                                                                         FontSize="16" FontWeight="Bold"
                                                                         Foreground="#64748B" Margin="0,4,0,0" />
-                                                                    <TextBlock Text="Play $$, fun funds, be good ..."
+                                                                    <TextBlock Text="Play $$, fun funds, be good"
                                                                                FontSize="10"
                                                                                Foreground="{StaticResource SecondaryTextBrush}"
                                                                                Margin="0,2,0,0" />
@@ -2633,80 +2644,150 @@
                         </ContentControl.Style>
                     </ContentControl>
 
-                    <!-- Bill Warning Widget -->
-                    <Border Grid.Row="1" Background="{DynamicResource SurfaceBackgroundBrush}"
-                            BorderBrush="{StaticResource BorderColorBrush}" BorderThickness="1" CornerRadius="8"
-                            Margin="0,10,0,0" Padding="12"
+                    <!-- Flexible Alerts & Action Tasks Panel -->
+                    <Border Grid.Row="1"
+                            Background="{DynamicResource SurfaceBackgroundBrush}"
+                            BorderBrush="{StaticResource BorderColorBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Margin="10,10,10,10"
+                            Padding="12"
+                            VerticalAlignment="Bottom"
                             Visibility="{Binding ShowWarningWidget, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
-                            <TextBlock Text="Bill Alerts" FontWeight="SemiBold" FontSize="14"
-                                       Foreground="{StaticResource PrimaryTextBrush}" Margin="0,0,0,10" />
-                            <UniformGrid Columns="2" Margin="0,0,0,12">
+
+                            <!-- HEADER & COUNTERS -->
+                            <TextBlock Text="Alerts &amp; Action Items"
+                                       FontWeight="SemiBold"
+                                       FontSize="14"
+                                       Foreground="{StaticResource PrimaryTextBrush}"
+                                       Margin="0,0,0,10" />
+
+                            <UniformGrid Columns="2" Margin="0,0,0,10">
+                                <!-- Past Due -->
                                 <StackPanel Orientation="Horizontal" Margin="0,0,8,0">
-                                    <Viewbox Width="20" Height="20" Margin="0,0,8,0">
+                                    <Viewbox Width="18" Height="18" Margin="0,0,8,0">
                                         <Path Data="M3 2v18h2V12h11l1-2-1-2H5V2H3zm4 4h7.5l.5 1-.5 1H7V6z"
                                               Fill="#EF4444" />
                                     </Viewbox>
                                     <StackPanel>
                                         <TextBlock Text="Past Due" FontSize="11"
                                                    Foreground="{StaticResource SecondaryTextBrush}" FontWeight="Medium" />
-                                        <TextBlock Text="{Binding PastDueCount}" FontSize="18" FontWeight="Bold"
+                                        <TextBlock Text="{Binding PastDueCount}" FontSize="16" FontWeight="Bold"
                                                    Foreground="{StaticResource PrimaryTextBrush}" />
                                     </StackPanel>
                                 </StackPanel>
+
+                                <!-- Upcoming -->
                                 <StackPanel Orientation="Horizontal">
-                                    <Viewbox Width="20" Height="20" Margin="0,0,8,0">
+                                    <Viewbox Width="18" Height="18" Margin="0,0,8,0">
                                         <Path Data="M3 2v18h2V12h11l1-2-1-2H5V2H3zm4 4h7.5l.5 1-.5 1H7V6z"
                                               Fill="#EAB308" />
                                     </Viewbox>
                                     <StackPanel>
                                         <TextBlock Text="Upcoming" FontSize="11"
                                                    Foreground="{StaticResource SecondaryTextBrush}" FontWeight="Medium" />
-                                        <TextBlock Text="{Binding UpcomingCount}" FontSize="18" FontWeight="Bold"
+                                        <TextBlock Text="{Binding UpcomingCount}" FontSize="16" FontWeight="Bold"
                                                    Foreground="{StaticResource PrimaryTextBrush}" />
                                     </StackPanel>
                                 </StackPanel>
                             </UniformGrid>
-                            <Separator Background="{DynamicResource BorderColorBrush}" Margin="0,0,0,10" Opacity="0.5" />
-                            <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding BudgetBustedBuckets}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="White" BorderBrush="#CBD5E1" BorderThickness="1"
-                                                    CornerRadius="6" Margin="0,0,0,6" Padding="8,6">
-                                                <Border.InputBindings>
-                                                    <MouseBinding MouseAction="LeftDoubleClick"
-                                                                  Command="{Binding DataContext.MapsToBucketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                  CommandParameter="{Binding}" />
-                                                </Border.InputBindings>
-                                                <DockPanel>
-                                                    <TextBlock
-                                                        Text="{Binding TransactionAmount, Converter={StaticResource AbsoluteValueConverter}, StringFormat=C}"
-                                                        DockPanel.Dock="Right" FontWeight="SemiBold" FontSize="11"
-                                                        VerticalAlignment="Center">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="#22C55E" />
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding BudgetExceeded}"
-                                                                            Value="true">
-                                                                        <Setter Property="Foreground" Value="#EF4444" />
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
-                                                    <TextBlock Text="{Binding BucketName}" Foreground="#1E293B"
-                                                               FontWeight="Medium" FontSize="12"
-                                                               TextTrimming="CharacterEllipsis" />
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+
+                            <!-- SECTION 1: BUSTED BUCKETS & OVERSPEND (Collapses if empty) -->
+                            <ItemsControl ItemsSource="{Binding BudgetBustedBuckets}" Margin="0,0,0,4">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="White" BorderBrush="#CBD5E1" BorderThickness="1"
+                                                CornerRadius="6" Margin="0,0,0,6" Padding="8,6">
+                                            <Border.InputBindings>
+                                                <MouseBinding MouseAction="LeftDoubleClick"
+                                                              Command="{Binding DataContext.MapsToBucketCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="{Binding}" />
+                                            </Border.InputBindings>
+                                            <DockPanel>
+                                                <TextBlock
+                                                    Text="{Binding TransactionAmount, Converter={StaticResource AbsoluteValueConverter}, StringFormat=C}"
+                                                    DockPanel.Dock="Right" FontWeight="SemiBold" FontSize="11"
+                                                    VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="#22C55E" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding BudgetExceeded}"
+                                                                             Value="true">
+                                                                    <Setter Property="Foreground" Value="#EF4444" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding BucketName}" Foreground="#1E293B"
+                                                           FontWeight="Medium" FontSize="12"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- SECTION 2: UPCOMING 30-DAY STRATEGY SWEEPS & SNOWBALL TASKS -->
+                            <Border
+                                Visibility="{Binding UpcomingStrategyTasks.Count, Converter={StaticResource IntToVisibilityConverter}}"
+                                Margin="0,4,0,0">
+                                <StackPanel>
+                                    <Separator Background="{DynamicResource BorderColorBrush}" Margin="0,4,0,8"
+                                               Opacity="0.5" />
+
+                                    <DockPanel Margin="0,0,0,6">
+                                        <TextBlock Text="30-Day Snowball Tasks"
+                                                   FontSize="11" FontWeight="Bold"
+                                                   Foreground="#0284C7" VerticalAlignment="Center" />
+                                        <TextBlock Text="Next 31 Days"
+                                                   FontSize="10" Foreground="{StaticResource SecondaryTextBrush}"
+                                                   DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center" />
+                                    </DockPanel>
+
+                                    <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding UpcomingStrategyTasks}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#F0F9FF" BorderBrush="#BAE6FD"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6" Margin="0,0,0,6" Padding="8,6">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <StackPanel Grid.Column="0">
+                                                                <TextBlock Text="{Binding Title}"
+                                                                           FontWeight="SemiBold" FontSize="11"
+                                                                           Foreground="#0369A1"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock
+                                                                    Text="{Binding DueDate, StringFormat='Target: {0:MM/dd/yyyy}'}"
+                                                                    FontSize="10" Foreground="#64748B" />
+                                                            </StackPanel>
+
+                                                            <TextBlock Grid.Column="1"
+                                                                       Text="{Binding Amount, StringFormat=C}"
+                                                                       FontWeight="Bold" FontSize="11"
+                                                                       Foreground="#0284C7"
+                                                                       VerticalAlignment="Center" Margin="6,0,0,0" />
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </Border>
+
                         </StackPanel>
                     </Border>
+                    
                 </Grid>
             </Grid>
 

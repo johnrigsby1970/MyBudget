@@ -3224,7 +3224,8 @@ public class MainViewModel : ViewModelBase {
             OnPropertyChanged(nameof(HasOverspentEnvelopes));
             OnPropertyChanged(nameof(IsUnpaidBillsAlert));
             OnPropertyChanged(nameof(IsTotalCommittedFundsBreached));
-            
+
+            RefreshUpcomingStrategyTasks();
             if (negativeAccounts.Any()) {
                 string message =
                     $"Warning: The following accounts breach their balance floor in the projection: {string.Join(", ", negativeAccounts)}";
@@ -4879,6 +4880,41 @@ public class MainViewModel : ViewModelBase {
 
     #endregion
 
+    #region Action Items & Tasks
+
+    public ObservableCollection<DashboardTaskViewModel> UpcomingStrategyTasks { get; } = new();
+
+    public void RefreshUpcomingStrategyTasks()
+    {
+        UpcomingStrategyTasks.Clear();
+
+        var cutoffDate = DateTime.Today.AddDays(31);
+        
+        // 1. Pull upcoming sweep recommendations from projections (next 30 days)
+        var projectionItems = SnowballOptions.EnableSnowball ? SnowballProjections : Projections;
+        var upcomingSweeps =  projectionItems
+            .Where(p => p.TransactionDate >= DateTime.Today && 
+                        p.TransactionDate <= cutoffDate && 
+                        (p.IsSweep || p.IsSynthetic) && 
+                        p.Amount > 0)
+            .ToList();
+
+        foreach (var sweep in upcomingSweeps)
+        {
+            UpcomingStrategyTasks.Add(new DashboardTaskViewModel
+            {
+                Title = sweep.Description, // e.g., "Snowball: Bank of America" or "Invest: Self Directed Brokerage"
+                Amount = sweep.Amount,
+                DueDate = sweep.TransactionDate,
+                TaskType = sweep.Description.Contains("Invest", StringComparison.OrdinalIgnoreCase) 
+                    ? StrategyTaskType.Investment 
+                    : StrategyTaskType.DebtPayoff
+            });
+        }
+    }
+
+    #endregion
+    
     public static void SetTheme(bool isDark) {
         var newThemeUri = new Uri(
             isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml",

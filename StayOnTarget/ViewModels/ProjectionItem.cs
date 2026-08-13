@@ -1,5 +1,4 @@
-﻿using StayOnTarget.Models;
-using StayOnTarget.Services.Projections;
+﻿using StayOnTarget.Services.Projections;
 
 namespace StayOnTarget.ViewModels;
 
@@ -25,16 +24,48 @@ public class ProjectionItem : ViewModelBase
 
     public DateTime TransactionDate { get => _transactionDate; set => SetProperty(ref _transactionDate, value); }
     public string Description { get => _description; set => SetProperty(ref _description, value); }
-    public int? PaycheckId { get => _paycheckId; set => SetProperty(ref _paycheckId, value); }
+    
+    public int? PaycheckId 
+    { 
+        get => _paycheckId; 
+        set 
+        {
+            if (SetProperty(ref _paycheckId, value))
+            {
+                OnPropertyChanged(nameof(NeedsAttention));
+            }
+        } 
+    }
+
     public int? ToAccountId { get => _toAccountId; set => SetProperty(ref _toAccountId, value); }
     public int? FromAccountId { get => _fromAccountId; set => SetProperty(ref _fromAccountId, value); }
     public int? BillId { get => _billId; set => SetProperty(ref _billId, value); }
-    public int? BucketId { get => _bucketId; set => SetProperty(ref _bucketId, value); }
+
+    public int? BucketId 
+    {
+        get => _bucketId; 
+        set
+        {
+            if (SetProperty(ref _bucketId, value))
+            {
+                OnPropertyChanged(nameof(CanFundDrawdown));
+            }
+        }
+    }
+
     public int? SubCategoryId { get => _subCategoryId; set => SetProperty(ref _subCategoryId, value); }
-    public bool InOrOutOfMoneyAccount { get; set; }
-    public bool InMoneyAccount { get; set; }
-    public bool OutOfMoneyAccount { get; set; }
-    public bool InternalTransfer { get; set; }
+
+    private bool _inOrOutOfMoneyAccount;
+    public bool InOrOutOfMoneyAccount { get => _inOrOutOfMoneyAccount; set => SetProperty(ref _inOrOutOfMoneyAccount, value); }
+
+    private bool _inMoneyAccount;
+    public bool InMoneyAccount { get => _inMoneyAccount; set => SetProperty(ref _inMoneyAccount, value); }
+
+    private bool _outOfMoneyAccount;
+    public bool OutOfMoneyAccount { get => _outOfMoneyAccount; set => SetProperty(ref _outOfMoneyAccount, value); }
+
+    private bool _internalTransfer;
+    public bool InternalTransfer { get => _internalTransfer; set => SetProperty(ref _internalTransfer, value); }
 
     public decimal SpendableBalance 
     { 
@@ -47,9 +78,9 @@ public class ProjectionItem : ViewModelBase
         get => _isBelowFloor; 
         set 
         {
-            if (SetProperty(ref _isBelowFloor, value) && value)
+            if (SetProperty(ref _isBelowFloor, value))
             {
-                IsWarning = true;
+                IsWarning = value; // Synchronizes warning state cleanly
             }
         } 
     }
@@ -60,7 +91,7 @@ public class ProjectionItem : ViewModelBase
         set => SetProperty(ref _warningMessage, value); 
     }
 
-    public bool NeedsAttention { get => _paycheckId.HasValue; }
+    public bool NeedsAttention => _paycheckId.HasValue;
     
     public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket || Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
     
@@ -69,12 +100,14 @@ public class ProjectionItem : ViewModelBase
     private ProjectionEngine.ProjectionEventType _type;
     public ProjectionEngine.ProjectionEventType Type
     {
-        get { return _type; }
+        get => _type;
         set
         {
-            if (_type != value) {
-                _type = value;
-                OnPropertyChanged("Type");
+            if (SetProperty(ref _type, value))
+            {
+                OnPropertyChanged(nameof(IsSweep));
+                OnPropertyChanged(nameof(IsBucket));
+                OnPropertyChanged(nameof(CanFundDrawdown));
             }
         }
     }
@@ -84,6 +117,7 @@ public class ProjectionItem : ViewModelBase
         get => _amount; 
         set => SetProperty(ref _amount, value);
     }
+
     public decimal Balance { get => _balance; set => SetProperty(ref _balance, value); }
     public bool IsWarning { get => _isWarning; set => SetProperty(ref _isWarning, value); }
     public decimal? PeriodNet { get => _periodNet; set => SetProperty(ref _periodNet, value); }
@@ -104,14 +138,8 @@ public class ProjectionItem : ViewModelBase
     private bool _isReconciled;
     public bool IsReconciled
     {
-        get { return _isReconciled; }
-        set
-        {
-            if (_isReconciled != value) {
-                _isReconciled = value;
-                OnPropertyChanged("IsReconciled");
-            }
-        }
+        get => _isReconciled;
+        set => SetProperty(ref _isReconciled, value);
     }
     
     public bool CanPayIt
@@ -138,8 +166,7 @@ public class ProjectionItem : ViewModelBase
         get
         {
             if (!BucketId.HasValue || BucketId.Value == 0) return false;
-            if (Type != ProjectionEngine.ProjectionEventType.AccumulatingDrawdown) return false;
-            return true;
+            return Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
         }
     }
 }
