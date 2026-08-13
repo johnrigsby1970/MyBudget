@@ -345,8 +345,8 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
                 .ToList();
 
             if (visibleAccounts.Count > 1) {
-                var selectedTotalColor = SKColor.Parse("#10B981");
-
+                SKColor selectedTotalColor = SKColor.Parse("#10B981");
+                var blueGradient = new SKColor[] { selectedTotalColor.WithAlpha(90), selectedTotalColor.WithAlpha(5) };
                 seriesList.Add(new LineSeries<DateTimePoint> {
                     Name = "Selected Total",
                     Values = projections.Select(p => {
@@ -356,7 +356,7 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
                     Stroke = new SolidColorPaint(selectedTotalColor, 3) {
                         PathEffect = new DashEffect(new float[] { 6, 4 })
                     },
-                    Fill = null,
+                    Fill = new LinearGradientPaint(blueGradient, new SKPoint(0.5f, 0), new SKPoint(0.5f, 1)),
                     GeometrySize = 0,
                     LineSmoothness = 0.2
                 });

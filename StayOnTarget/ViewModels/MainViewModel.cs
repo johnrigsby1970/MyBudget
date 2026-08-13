@@ -61,9 +61,9 @@ public class MainViewModel : ViewModelBase {
     private int _selectedProjectionTabIndex;
     private SnowballStrategyOptions _snowballOptions = new();
     private NavigationItemViewModel? _selectedNavigationItem;
-    
+
     #region Properties
-    
+
     public ObservableCollection<NavigationItemViewModel> NavigationItems { get; } = new();
 
     public NavigationItemViewModel? SelectedNavigationItem {
@@ -74,10 +74,10 @@ public class MainViewModel : ViewModelBase {
             }
         }
     }
-    
-    public IEnumerable<TargetFrequencyType> TargetFrequencyTypes => 
+
+    public IEnumerable<TargetFrequencyType> TargetFrequencyTypes =>
         Enum.GetValues(typeof(TargetFrequencyType)).Cast<TargetFrequencyType>();
-    
+
     public IEnumerable<BucketType> BucketTypes => Enum.GetValues(typeof(BucketType)).Cast<BucketType>();
 
     public SnowballStrategyOptions SnowballOptions {
@@ -116,9 +116,9 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    public RangeObservableCollection<BucketPaycheckAllocation> EditableAllocations { get; } 
+    public RangeObservableCollection<BucketPaycheckAllocation> EditableAllocations { get; }
         = new RangeObservableCollection<BucketPaycheckAllocation>();
-    
+
     public RangeObservableCollection<SelectableSubCategory> EditableSubCategories { get; }
         = new RangeObservableCollection<SelectableSubCategory>();
 
@@ -135,17 +135,17 @@ public class MainViewModel : ViewModelBase {
     }
 
     private bool _isDarkMode;
+
     public bool IsDarkMode {
         get => _isDarkMode;
         set => SetProperty(ref _isDarkMode, value);
     }
-    
+
     public static MainViewModel? Instance { get; private set; }
 
     public MainViewModel(
         BudgetService budgetService,
         ReconciliationService reconciliationService) {
-        
         Instance = this;
         _budgetService = budgetService;
         _reconciliationService = reconciliationService;
@@ -257,7 +257,7 @@ public class MainViewModel : ViewModelBase {
         ExportTransactionsCommand = new RelayCommand(ExportTransactions);
 
         InitializeDataCommand = new AsyncRelayCommand(InitializeDataAsync);
-        
+
         InitializeNavigationMenu();
 
         // Initialize commands directly in the constructor
@@ -273,7 +273,7 @@ public class MainViewModel : ViewModelBase {
         IsDarkMode = !IsDarkMode;
         SetTheme(IsDarkMode);
     }
-    
+
     private CancellationTokenSource? _recalculationCts;
 
     // <summary>
@@ -1265,7 +1265,7 @@ public class MainViewModel : ViewModelBase {
     public IRelayCommand ShowAboutCommand { get; }
 
     public IRelayCommand SetThemeCommand { get; }
-    
+
     public IRelayCommand ExitCommand { get; }
 
     public IRelayCommand BackupCommand { get; }
@@ -1573,7 +1573,7 @@ public class MainViewModel : ViewModelBase {
             if (selectedBillId.HasValue) {
                 SelectedBill = Bills.FirstOrDefault(a => a.Id == selectedBillId);
             }
-            
+
             await LoadPeriodDataAsync();
             RequestProjectionRecalculation();
         }
@@ -3132,6 +3132,7 @@ public class MainViewModel : ViewModelBase {
                     if (item.Description.Contains("Necessity")) {
                         var s = "";
                     }
+
                     // Option A: Catch items specifically marked as breaching their floor cushion
                     if (item.IsBelowFloor) {
                         var targetAcc = accounts.FirstOrDefault(a => a.Id == (item.FromAccountId ?? item.ToAccountId));
@@ -3182,6 +3183,25 @@ public class MainViewModel : ViewModelBase {
                 ShowSnowballAnalysis = false;
             }
 
+            //for dashboard
+            OnPropertyChanged(nameof(TotalLiquidCash));
+            OnPropertyChanged(nameof(EnvelopeFloorRequirements));
+            OnPropertyChanged(nameof(AccumulatingDrawdownReserves));
+            OnPropertyChanged(nameof(UpcomingBillsRequirements));
+            OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
+            OnPropertyChanged(nameof(TotalRequiredReserves));
+            OnPropertyChanged(nameof(UnallocatedSurplusCash));
+            OnPropertyChanged(nameof(RecommendedDebtAllocation));
+            OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
+
+            OnPropertyChanged(nameof(LowestProjectedCheckingBalance));
+            OnPropertyChanged(nameof(ReadinessStatus));
+            OnPropertyChanged(nameof(ReadinessStatusTitle));
+            OnPropertyChanged(nameof(ReadinessSuggestionMessage));
+            OnPropertyChanged(nameof(ReadinessStatusHeaderBrush));
+            OnPropertyChanged(nameof(ReadinessStatusBackgroundBrush));
+            OnPropertyChanged(nameof(ReadinessStatusBorderBrush));
+            
             if (negativeAccounts.Any()) {
                 string message =
                     $"Warning: The following accounts breach their balance floor in the projection: {string.Join(", ", negativeAccounts)}";
@@ -3225,7 +3245,7 @@ public class MainViewModel : ViewModelBase {
             Toasts.Add(toast);
         });
     }
-    
+
     public void ShowWarningToast(string message) {
         Application.Current.Dispatcher.Invoke(() => {
             // Avoid duplicate toasts with the same message
@@ -3430,6 +3450,16 @@ public class MainViewModel : ViewModelBase {
                 OnPropertyChanged(nameof(UseAutoSweep));
             }
 
+            //for dashboard
+            OnPropertyChanged(nameof(TotalLiquidCash));
+            OnPropertyChanged(nameof(EnvelopeFloorRequirements));
+            OnPropertyChanged(nameof(AccumulatingDrawdownReserves));
+            OnPropertyChanged(nameof(UpcomingBillsRequirements));
+            OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
+            OnPropertyChanged(nameof(TotalRequiredReserves));
+            OnPropertyChanged(nameof(UnallocatedSurplusCash));
+            OnPropertyChanged(nameof(RecommendedDebtAllocation));
+            OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
             Log.Information("Account data loaded successfully. Accounts: {AccountCount}",
                 Accounts.Count);
         }
@@ -3743,6 +3773,17 @@ public class MainViewModel : ViewModelBase {
             ApplyTransactionAmounts();
             UpdateWarningMetrics();
             UpdateBucketWarningMetrics();
+
+            //for dashboard
+            OnPropertyChanged(nameof(TotalLiquidCash));
+            OnPropertyChanged(nameof(EnvelopeFloorRequirements));
+            OnPropertyChanged(nameof(AccumulatingDrawdownReserves));
+            OnPropertyChanged(nameof(UpcomingBillsRequirements));
+            OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
+            OnPropertyChanged(nameof(TotalRequiredReserves));
+            OnPropertyChanged(nameof(UnallocatedSurplusCash));
+            OnPropertyChanged(nameof(RecommendedDebtAllocation));
+            OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period data.");
@@ -3776,7 +3817,8 @@ public class MainViewModel : ViewModelBase {
             var projectedBillsForPeriod = GetProjectedBillsForPeriod(CurrentPeriodDate);
 
             foreach (var pb in projectedBillsForPeriod) {
-                var periodBill = pBills.FirstOrDefault(existing => existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date);
+                var periodBill = pBills.FirstOrDefault(existing =>
+                    existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date);
                 if (periodBill != null) {
                     UpdatePeriodBillFromClone(pb, periodBill);
                 }
@@ -3910,7 +3952,7 @@ public class MainViewModel : ViewModelBase {
             Log.Error(ex, "Error initializing period.");
         }
     }
-    
+
     private void InitializeNavigationMenu() {
         NavigationItems.Clear();
 
@@ -4526,17 +4568,189 @@ public class MainViewModel : ViewModelBase {
     }
 
     #endregion
-    
-        
-    public static void SetTheme(bool isDark)
-    {
+
+    #region Dashboard Cash Availability Properties
+
+    public decimal TotalLiquidCash => Accounts
+        .Where(a => !a.IsArchived && a.IncludeInTotal &&
+                    (a.Type == AccountType.Checking || a.Type == AccountType.Savings))
+        .Sum(a => a.Balance);
+
+    public decimal EnvelopeFloorRequirements => Buckets
+        .Where(b => !b.IsArchived && b.Type == BucketType.UpfrontFloor)
+        .Sum(b => b.TargetBalance);
+
+    public decimal AccumulatingDrawdownReserves => Buckets
+        .Where(b => !b.IsArchived && b.Type == BucketType.AccumulatingDrawdown)
+        .Sum(b => b.CurrentBalance);
+
+    //The remaining amount of unpaid bills.
+    public decimal UpcomingBillsRequirements => CurrentPeriodBills
+        .Where(pb => !pb.HasActualAmount && pb.ActualAmount > 0)
+        .Sum(pb => pb.ActualAmount);
+
+    public decimal UnspentStandardEnvelopeRequirements => CurrentPeriodBuckets
+        .Where(pb => pb.BucketType == BucketType.Standard && pb.TransactionAmount <= pb.ActualAmount)
+        .Sum(pb => pb.ActualAmount - pb.TransactionAmount);
+
+    public decimal TotalRequiredReserves => EnvelopeFloorRequirements + AccumulatingDrawdownReserves +
+                                            UpcomingBillsRequirements + UnspentStandardEnvelopeRequirements;
+
+    public decimal UnallocatedSurplusCash => Math.Max(0, TotalLiquidCash - TotalRequiredReserves);
+
+    public decimal RecommendedDebtAllocation =>
+        UnallocatedSurplusCash * (decimal)SnowballOptions.SurplusSweepPercentage;
+
+    public decimal RecommendedInvestmentAllocation => UnallocatedSurplusCash - RecommendedDebtAllocation;
+
+    #endregion
+
+    #region Dashboard Cash Readiness & Action Suggestions
+
+    public enum CashHealthStatus {
+        Optimal,
+        TransferRecommended,
+        GlobalDeficit
+    }
+
+    /// <summary>
+    /// Finds the minimum projected balance across all Checking accounts between now and the next deposit.
+    /// </summary>
+    public decimal LowestProjectedCheckingBalance {
+        get {
+            if (Projections == null || !Projections.Any())
+                return TotalLiquidCash;
+
+            // Find primary checking account names
+            var checkingAccountNames = Accounts
+                .Where(a => !a.IsArchived && a.Type == AccountType.Checking)
+                .Select(a => a.Name)
+                .ToList();
+
+            if (!checkingAccountNames.Any()) return 0;
+
+            // Evaluate projected balances up to the next incoming paycheck
+            var nextPaycheckItem =
+                Projections.FirstOrDefault(p => p.Type == ProjectionEngine.ProjectionEventType.Paycheck);
+            DateTime horizonDate = nextPaycheckItem?.TransactionDate ?? DateTime.Today.AddDays(14);
+
+            var relevantProjections = Projections
+                .Where(p => p.TransactionDate >= DateTime.Today && p.TransactionDate <= horizonDate)
+                .ToList();
+
+            if (!relevantProjections.Any()) return TotalLiquidCash;
+
+            decimal minBalance = decimal.MaxValue;
+            foreach (var proj in relevantProjections) {
+                foreach (var accName in checkingAccountNames) {
+                    if (proj.AccountBalances.TryGetValue(accName, out decimal bal)) {
+                        if (bal < minBalance) minBalance = bal;
+                    }
+                }
+            }
+
+            return minBalance == decimal.MaxValue ? 0 : minBalance;
+        }
+    }
+
+    /// <summary>
+    /// Determines current health state based on reserve math and checking account low-water marks.
+    /// </summary>
+    public CashHealthStatus ReadinessStatus {
+        get {
+            if (UnallocatedSurplusCash < 0 || TotalLiquidCash < TotalRequiredReserves) {
+                return CashHealthStatus.GlobalDeficit;
+            }
+
+            if (LowestProjectedCheckingBalance < 0) {
+                return CashHealthStatus.TransferRecommended;
+            }
+
+            return CashHealthStatus.Optimal;
+        }
+    }
+
+    public string ReadinessStatusTitle => ReadinessStatus switch {
+        CashHealthStatus.Optimal => "Fully Funded & Ready",
+        CashHealthStatus.TransferRecommended => "Action Recommended: Account Rebalance Needed",
+        CashHealthStatus.GlobalDeficit => "Warning: Reserve Shortfall Detected",
+        _ => "Cash Status"
+    };
+
+    public string ReadinessStatusIcon => ReadinessStatus switch {
+        CashHealthStatus.Optimal => "CheckCircle",
+        CashHealthStatus.TransferRecommended => "AlertCircle",
+        CashHealthStatus.GlobalDeficit => "AlertOctagon",
+        _ => "Information"
+    };
+
+    public string ReadinessStatusHeaderBrush => ReadinessStatus switch {
+        CashHealthStatus.Optimal => "#22C55E", // Green
+        CashHealthStatus.TransferRecommended => "#EAB308", // Yellow / Amber
+        CashHealthStatus.GlobalDeficit => "#EF4444", // Red
+        _ => "#3B82F6"
+    };
+
+    public string ReadinessStatusBackgroundBrush => ReadinessStatus switch {
+        CashHealthStatus.Optimal => "#F0FDF4",
+        CashHealthStatus.TransferRecommended => "#FEFCE8",
+        CashHealthStatus.GlobalDeficit => "#FEF2F2",
+        _ => "#F8FAFC"
+    };
+
+    public string ReadinessStatusBorderBrush => ReadinessStatus switch {
+        CashHealthStatus.Optimal => "#BBF7D0",
+        CashHealthStatus.TransferRecommended => "#FEF08A",
+        CashHealthStatus.GlobalDeficit => "#FECACA",
+        _ => "#E2E8F0"
+    };
+
+    /// <summary>
+    /// Generates clear human-readable suggestions on what action to take next.
+    /// </summary>
+    public string ReadinessSuggestionMessage {
+        get {
+            if (ReadinessStatus == CashHealthStatus.GlobalDeficit) {
+                decimal deficit = Math.Abs(TotalLiquidCash - TotalRequiredReserves);
+                return
+                    $"Your total liquid cash is short by {deficit:C2} to satisfy all safety floors, accumulating drawdowns, and upcoming period expenses. Consider pausing surplus investments or debt sweeps.";
+            }
+
+            if (ReadinessStatus == CashHealthStatus.TransferRecommended) {
+                decimal transferNeeded = Math.Abs(LowestProjectedCheckingBalance);
+                // Check if savings balance is available
+                var savingsBalance = Accounts
+                    .Where(a => !a.IsArchived && a.Type == AccountType.Savings)
+                    .Sum(a => a.Balance);
+
+                if (savingsBalance >= transferNeeded) {
+                    return
+                        $"Overall liquid cash is sufficient, but Checking is projected to drop to {LowestProjectedCheckingBalance:C2} prior to your next deposit.\n👉 Suggested Action: Move at least {transferNeeded:C2} from Savings to Primary Checking to prevent potential overdrafts.";
+                }
+
+                return
+                    $"Checking is projected to drop to {LowestProjectedCheckingBalance:C2} before your next paycheck. Transfer funds into Checking to ensure upcoming payments clear safely.";
+            }
+
+            if (UnallocatedSurplusCash > 0) {
+                return
+                    $"All account safety cushions, savings goals, and period budgets are fully covered. You have {UnallocatedSurplusCash:C2} in extra cash available to pay down debt or grow investments.";
+            }
+
+            return "All account requirements and budgets are fully satisfied by current liquid balances.";
+        }
+    }
+
+    #endregion
+
+    public static void SetTheme(bool isDark) {
         var newThemeUri = new Uri(
-            isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml", 
+            isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml",
             UriKind.Relative
         );
 
         var appResources = Application.Current.Resources.MergedDictionaries;
-    
+
         // Clear existing theme dictionary and load the new one
         appResources.Clear();
         appResources.Add(new ResourceDictionary { Source = newThemeUri });
