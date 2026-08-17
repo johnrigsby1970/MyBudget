@@ -42,12 +42,14 @@ public class CreditCardProjectionTests
             }
         };
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 1, 1);
         var endDate = new DateTime(2026, 2, 2); // Should include one statement on Feb 1
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), new(), null, false, false, false
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), allocations, new(), new(), new(), null, false, false, false
         ).ToList();
 
         // Assert
@@ -96,12 +98,14 @@ public class CreditCardProjectionTests
             new Transaction { TransactionDate = new DateTime(2026, 1, 15), Amount = 500m, AccountId = 1, Description = "New Purchase" }
         };
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 1, 1);
         var endDate = new DateTime(2026, 2, 2);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), allocations, new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -149,12 +153,14 @@ public class CreditCardProjectionTests
             new Transaction { Id = 100, TransactionDate = baseDate.AddDays(9), Amount = -500m, ToAccountId = 1, Description = "Partial Payment" }
         };
 
+        var allocations = new List<BucketPaycheckAllocation>();
+        
         var startDate = baseDate;
         var endDate = baseDate.AddMonths(2).AddDays(1);
 
         // Act
         var results = _engine.CalculateProjections(
-            transactions, transactions, transactions, transactions, startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false
+            transactions, transactions, transactions, transactions, startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), allocations, new List<PeriodBill>(), new List<PeriodBucket>(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -207,12 +213,14 @@ public class CreditCardProjectionTests
             }
         };
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 4, 1);
         var endDate = new DateTime(2026, 7, 7); // Covers 4/6, 5/6, 6/6, 7/6
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), new(), null, false, false, false
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), allocations, new(), new(), new(), null, false, false, false
         ).ToList();
 
         // Assert
@@ -270,12 +278,14 @@ public class CreditCardProjectionTests
             }
         };
 
+        var allocations = new List<BucketPaycheckAllocation>();
+        
         var startDate = new DateTime(2026, 4, 1);
         var endDate = new DateTime(2026, 6, 7); // Covers 4/6, 5/6, 6/6
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
+            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), allocations,  new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -341,13 +351,15 @@ public class CreditCardProjectionTests
                 Description = "Manual Interest May 10" 
             }
         };
-
+        
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 4, 1);
         var endDate = new DateTime(2026, 7, 7);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
+            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), allocations, new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -399,12 +411,14 @@ public class CreditCardProjectionTests
         // NO TRANSACTIONS
         var transactions = new List<Transaction>();
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 4, 4);
         var endDate = new DateTime(2027, 4, 2);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
+            new(), new(), new(), new(), startDate, endDate, accounts, new(), new(), new(), allocations, new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert
@@ -459,12 +473,14 @@ public class CreditCardProjectionTests
             }
         };
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 4, 4);
         var endDate = new DateTime(2027, 4, 2);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), new(), new(), transactions, null, false, false, false
+            new(), new(), new(), transactions, startDate, endDate, accounts, new(), new(), new(), allocations,  new(), new(), transactions, null, false, false, false
         ).ToList();
 
         // Assert

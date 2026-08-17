@@ -27,6 +27,9 @@ public class SnowballStrategyTests
         };
 
         var allTransactions = new List<Transaction>();
+        
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 8, 1);
         var endDate = new DateTime(2026, 8, 20);
 
@@ -34,12 +37,12 @@ public class SnowballStrategyTests
         // Run with Snowball disabled
         var optionsDisabled = new SnowballStrategyOptions { EnableSnowball = false };
         var resultsDisabled = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), new(), new(), allTransactions, null, false, false, true, optionsDisabled
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true, optionsDisabled
         ).ToList();
 
         // Run with default auto-sweep only (null options)
         var resultsDefault = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), new(), new(), allTransactions, null, false, false, true, null
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true, null
         ).ToList();
 
         // Assert
@@ -75,12 +78,14 @@ public class SnowballStrategyTests
             CheckingSafetyThresholdPct = 0m
         };
 
+        var allocations = new List<BucketPaycheckAllocation>();
+        
         var startDate = new DateTime(2026, 8, 1);
         var endDate = new DateTime(2026, 8, 20);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), new(), new(), new(), null, false, false, true, options, startDate
+            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), allocations,  new(), new(), new(), null, false, false, true, options, startDate
         ).ToList();
 
         // Assert
@@ -142,12 +147,14 @@ public class SnowballStrategyTests
             CheckingSafetyThresholdPct = 0m
         };
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 8, 1);
         var endDate = new DateTime(2026, 8, 20);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), new(), new(), new(), null, false, false, true, options, startDate
+            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), allocations,  new(), new(), new(), null, false, false, true, options, startDate
         ).ToList();
 
         // Assert
@@ -185,13 +192,15 @@ public class SnowballStrategyTests
             SurplusSweepPercentage = 1.0m,
             CheckingSafetyThresholdPct = 0.333333m // 1500 * 0.3333 = 500. Available surplus = 1000.
         };
+        
+        var allocations = new List<BucketPaycheckAllocation>(); 
 
         var startDate = new DateTime(2026, 8, 1);
         var endDate = new DateTime(2026, 8, 31);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), new(), new(), new(), null, false, false, true, options, startDate
+            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), allocations,  new(), new(), new(), null, false, false, true, options, startDate
         ).ToList();
 
         // Assert
@@ -247,12 +256,14 @@ public class SnowballStrategyTests
             CheckingSafetyThresholdPct = 0m
         };
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 8, 1);
         var endDate = new DateTime(2026, 8, 31);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), new(), new(), new(), null, false, false, true, options, startDate
+            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), allocations,  new(), new(), new(), null, false, false, true, options, startDate
         ).ToList();
 
         // Assert
@@ -294,12 +305,14 @@ public class SnowballStrategyTests
             CheckingSafetyThresholdPct = 0.25m // Keep 25% in checking
         };
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 12, 1);
         var endDate = new DateTime(2027, 2, 15);
 
         // Act
         var results = _engine.CalculateProjections(
-            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), new(), new(), new(), null, false, false, true, options, startDate
+            new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), new(), null, false, false, true, options, startDate
         ).ToList();
 
         // Assert

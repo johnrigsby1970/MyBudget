@@ -1,5 +1,8 @@
-﻿using Windows.Security.Credentials;
+﻿using System.Windows;
+using System.Windows.Media;
+using Windows.Security.Credentials;
 using Windows.Security.Credentials.UI;
+using SkiaSharp;
 using StayOnTarget.Helpers;
 
 namespace StayOnTarget;
@@ -18,7 +21,21 @@ public static class HelperMethods {
         //
         // vault.Add(credential);
     }
+    
+    public static SKColor GetSkColorFromBrush(string resourceKey, double opacity = 0.35)
+    {
+        if (Application.Current?.TryFindResource(resourceKey) is SolidColorBrush brush)
+        {
+            var c = brush.Color;
+            // Combine brush color's native alpha with your desired opacity modifier
+            byte alpha = (byte)(c.A * opacity); 
+            return new SKColor(c.R, c.G, c.B, alpha);
+        }
 
+        // Default fallback (e.g., DarkRed with 35% opacity)
+        return new SKColor(139, 0, 0, (byte)(255 * opacity));
+    }
+    
     public static async Task<bool> IsWindowsHelloFullySetup() {
         try {
             // 1. Hardware check: Does the machine physically support biometric or PIN auth?

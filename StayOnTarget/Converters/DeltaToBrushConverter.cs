@@ -2,14 +2,15 @@
 using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
+using StayOnTarget.Themes;
 
 namespace StayOnTarget.Converters;
 
 public class DeltaToBrushConverter : IValueConverter
 {
-    public Brush PositiveBrush { get; set; } = (Brush)new BrushConverter().ConvertFrom("#2E7D32")!;
-    public Brush NegativeBrush { get; set; } = (Brush)new BrushConverter().ConvertFrom("#C62828")!;
-    public Brush NeutralBrush { get; set; } = Brushes.Transparent; // Will be handled by style or binding if neutral
+    public Brush PositiveBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.PositiveBrush) as SolidColorBrush ?? Brushes.Green;
+    public Brush NegativeBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.NegativeBrush) as SolidColorBrush ?? Brushes.Red;
+    public Brush NeutralBrush { get; set; } = System.Windows.Application.Current.TryFindResource(ThemeKeys.SecondaryTextBrush) as SolidColorBrush ?? Brushes.Gray;
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
@@ -34,7 +35,7 @@ public class DeltaToBrushConverter : IValueConverter
             if (l < 0) return NegativeBrush;
         }
 
-        return Binding.DoNothing;
+        return NeutralBrush;
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

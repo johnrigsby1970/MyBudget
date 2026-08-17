@@ -98,6 +98,7 @@ Planning for mandatory bills first keeps your target on track and stress-free." 
 
                                         <Label Grid.Column="0" Grid.Row="2"  Grid.ColumnSpan="2" Content="Frequency:" />
                                         <ComboBox Grid.Column="0" Grid.Row="3"  Grid.ColumnSpan="2"
+                                                  Style="{StaticResource StyledEnumComboBox}"
                                                   ItemsSource="{Binding BillFrequencies}"
                                                   SelectedItem="{Binding EditingBill.Frequency}" Margin="5" />
                                         

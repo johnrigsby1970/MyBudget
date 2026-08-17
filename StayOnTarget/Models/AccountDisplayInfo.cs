@@ -1,6 +1,10 @@
 ﻿namespace StayOnTarget.Models;
 
-public enum BalanceImpact { Muted, Increased, Decreased }
+public enum BalanceImpact {
+    Muted, 
+    Increased, 
+    Decreased
+}
 
 public class AccountDisplayInfo
 {

@@ -38,6 +38,8 @@ namespace StayOnTarget.Tests
             {
                 new Transaction { Id = 1, AccountId = 1, Amount = -100, TransactionDate = new DateTime(2026, 2, 1), Description = "Gas" }
             };
+            
+            var allocations = new List<BucketPaycheckAllocation>(); 
 
             var startDate = new DateTime(2026, 1, 1);
             var endDate = new DateTime(2026, 3, 1);
@@ -48,7 +50,7 @@ namespace StayOnTarget.Tests
                 new List<Transaction>(),
                 new List<Transaction>(),
                 transactions,
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), 
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), allocations,new List<PeriodBill>(), new List<PeriodBucket>(), 
                 transactions, 
                 reconciliations,  false, false, false).ToList();
 
@@ -98,6 +100,8 @@ namespace StayOnTarget.Tests
                 new AccountReconciliation { AccountId = 1, ReconciledAsOfDate = new DateTime(2026, 1, 15), ReconciledBalance = -500 }
             };
 
+            var allocations = new List<BucketPaycheckAllocation>(); 
+            
             var startDate = new DateTime(2026, 1, 20); // START AFTER RECONCILIATION
             var endDate = new DateTime(2026, 3, 1);
 
@@ -107,7 +111,7 @@ namespace StayOnTarget.Tests
                 new List<Transaction>(),
                 new List<Transaction>(),
                 new List<Transaction>(),
-                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), 
+                startDate, endDate, accounts, new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), allocations, new List<PeriodBill>(), new List<PeriodBucket>(), 
                 new List<Transaction>(), 
                 reconciliations,  false, false, false).ToList();
 

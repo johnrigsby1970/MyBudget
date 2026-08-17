@@ -1,4 +1,5 @@
-﻿using StayOnTarget.Models;
+﻿using System.ComponentModel.DataAnnotations;
+using StayOnTarget.Models;
 using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Services.Projections;
@@ -45,7 +46,8 @@ public class ProjectionEngine : IProjectionEngine {
         Sweep,
         Final,
         Snowball,
-        Roth,
+        Roth,    
+        [Display(Name = "Accumulating Drawdown")]
         AccumulatingDrawdown
     }
 

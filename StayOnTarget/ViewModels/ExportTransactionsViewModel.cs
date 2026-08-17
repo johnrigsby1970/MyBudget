@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.Input;
@@ -332,8 +333,11 @@ public class SelectableAccount : ViewModelBase
 
 public enum DateFilterOption
 {
+    [Display(Name = "All Dates")]
     AllDates,
-    YearToDate,
+    [Display(Name = "Year To Date")]
+    YearToDate, 
+    [Display(Name = "Current Month")]
     CurrentMonth,
     Custom
 }

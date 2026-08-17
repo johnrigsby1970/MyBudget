@@ -104,7 +104,7 @@ public partial class App : Application {
                         
                         
                         // Verify the password from vault works
-                        var dbContext = new DatabaseContext(dbPath, password);
+                        var dbContext = new DatabaseContext(dbPath, passwordWindow.Password);
                         using (var connection = dbContext.GetConnection()) {
                             connection.Open();
                         }
@@ -114,7 +114,8 @@ public partial class App : Application {
                     
                         dbContext.InitializeDatabase();
                         
-                        var budgetService = new BudgetService(dbPath, passwordWindow.Password);
+                        var budgetService = new BudgetService(dbContext, passwordWindow.Password);
+                        //var budgetService = new BudgetService(dbPath, passwordWindow.Password);
                         //var budgetService = new BudgetService(dbPath, passwordWindow.Password);
                         LaunchMainWindow(budgetService);
                     }

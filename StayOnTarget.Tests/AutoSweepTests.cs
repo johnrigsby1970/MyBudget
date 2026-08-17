@@ -39,12 +39,14 @@ public class AutoSweepTests
         };
         allTransactions.AddRange(transactions);
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 8, 1);
         var endDate = new DateTime(2026, 8, 20);
 
         // Act
         var results = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), new(), new(), allTransactions, null, false, false, true
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true
         ).ToList();
 
         // Assert
@@ -85,12 +87,14 @@ public class AutoSweepTests
         };
         allTransactions.AddRange(transactions);
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 8, 1);
         var endDate = new DateTime(2026, 9, 1);
 
         // Act
         var results = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), new(), new(), allTransactions, null, false, false, true
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true
         ).ToList();
 
         // Assert
@@ -128,12 +132,14 @@ public class AutoSweepTests
         // Spending on July 5
         allTransactions.Add(new Transaction { TransactionDate = new DateTime(2026, 7, 5), Amount = -1000m, AccountId = 2, Description = "Past Spending" });
 
+        var allocations = new List<BucketPaycheckAllocation>(); 
+        
         var startDate = new DateTime(2026, 7, 1);
         var endDate = new DateTime(2026, 8, 15);
 
         // Act
         var results = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), new(), new(), allTransactions, null, false, false, true, null, today
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true, null, today
         ).ToList();
 
         // Assert

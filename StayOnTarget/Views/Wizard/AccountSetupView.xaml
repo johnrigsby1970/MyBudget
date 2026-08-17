@@ -178,6 +178,7 @@ Be sure to mark your main checking account as your Primary payment account so au
                     
                     <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" Text="Account Type" Margin="0,15,0,5"/>
                     <ComboBox Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" 
+                              Style="{StaticResource StyledEnumComboBox}"
                               ItemsSource="{Binding AccountTypes}" 
                               SelectedItem="{Binding EditingAccount.Type, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
                     

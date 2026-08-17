@@ -1,4 +1,5 @@
-﻿using StayOnTarget.Models;
+﻿using StayOnTarget.Extensions;
+using StayOnTarget.Models;
 using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Services.Projections;
@@ -128,12 +129,7 @@ public static class SnowballStrategyProcessor
         // -------------------------------------------------------------
         if (sweepPool > 0.01m && options.PrimaryTarget is SurplusAllocationTarget.InvestSurplus or SurplusAllocationTarget.Hybrid)
         {
-            var investmentAccounts = accounts.Where(a => a.Type is AccountType.Brokerage 
-                                                        or AccountType.Retirement401k 
-                                                        or AccountType.Roth401k
-                                                        or AccountType.Investment 
-                                                        or AccountType.IRA 
-                                                        or AccountType.RothIRA)
+            var investmentAccounts = accounts.Where(a => a.Type.IsGrowthOrInvestmentAccount())
                                              .Where(a => !options.ExcludedAccountIds.Contains(a.Id))
                                              .ToList();
 

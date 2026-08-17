@@ -7,7 +7,10 @@ using StayOnTarget.Models;
 using StayOnTarget.ViewModels;
 using StayOnTarget.Converters;
 using System.Windows.Shapes;
+using LiveChartsCore.SkiaSharpView.Painting;
 using Serilog;
+using SkiaSharp;
+using StayOnTarget.Themes;
 
 namespace StayOnTarget;
 
@@ -66,6 +69,38 @@ public partial class MainWindow : Window {
             _ => 3
         }).ThenBy(a => a.Name);
 
+        // 1. Fetch the WPF brush directly from resources
+        var positiveBrush = System.Windows.Application.Current?.TryFindResource(ThemeKeys.PositiveBrush) as SolidColorBrush;
+        Color positiveColor = positiveBrush?.Color ?? Colors.Green;
+
+        // 2. Create native WPF LinearGradientBrush
+        var positiveGradient = new LinearGradientBrush
+        {
+            StartPoint = new Point(0.5, 0),
+            EndPoint = new Point(0.5, 1),
+            GradientStops = new GradientStopCollection
+            {
+                new GradientStop(Color.FromArgb((byte)(255 * 0.35), positiveColor.R, positiveColor.G, positiveColor.B), 1.0),
+                new GradientStop(Color.FromArgb((byte)(255 * 0.35), positiveColor.R, positiveColor.G, positiveColor.B), 1.0)
+            }
+        };
+                        
+        // 1. Fetch the WPF brush directly from resources
+        var negativeBrush = System.Windows.Application.Current?.TryFindResource(ThemeKeys.NegativeBrush) as SolidColorBrush;
+        Color negativeColor = negativeBrush?.Color ?? Colors.DarkRed;
+
+        // 2. Create native WPF LinearGradientBrush
+        var negativewpfGradient = new LinearGradientBrush
+        {
+            StartPoint = new Point(0.5, 0),
+            EndPoint = new Point(0.5, 1),
+            GradientStops = new GradientStopCollection
+            {
+                new GradientStop(Color.FromArgb((byte)(255 * 0.35), negativeColor.R, negativeColor.G, negativeColor.B), 1.0),
+                new GradientStop(Color.FromArgb((byte)(255 * 0.35), negativeColor.R, negativeColor.G, negativeColor.B), 1.0)
+            }
+        };
+        
         foreach (var account in sortedAccounts) {
             var accountName = account.Name;
             var accountId = account.Id;
@@ -106,7 +141,7 @@ public partial class MainWindow : Window {
                         {
                             Width = 8,
                             Height = 8,
-                            Fill = new SolidColorBrush(Colors.Green) { Opacity = 0.35 }, // Kept at your preferred 35%
+                            Fill = positiveGradient, // Kept at your preferred 35%
                             RenderTransform = new System.Windows.Media.RotateTransform(45),
                             RenderTransformOrigin = new Point(0.5, 0.5),
                             // Left margin set to 4, top/right/bottom set to 0
@@ -114,14 +149,13 @@ public partial class MainWindow : Window {
                         };
                         return diamond;
                     }
-                    if (item.FromAccountId == accountId)
-                    {
+                    if (item.FromAccountId == accountId) {
                         // OUTFLOW: Standard Square
                         var square = new Rectangle
                         {
                             Width = 8,
                             Height = 8,
-                            Fill = new SolidColorBrush(Colors.DarkRed) { Opacity = 0.35 }, // Kept at your preferred 35%
+                            Fill = negativewpfGradient, // Kept at your preferred 35%
                             // Matching left margin of 4
                             Margin = new Thickness(4, 0, 0, 0) 
                         };

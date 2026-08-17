@@ -1,9 +1,20 @@
 ﻿<Application x:Class="StayOnTarget.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:StayOnTarget">
+             xmlns:local="clr-namespace:StayOnTarget"
+             xmlns:converters="clr-namespace:StayOnTarget.Converters"
+             xmlns:controls="clr-namespace:StayOnTarget.Controls"
+             xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework">
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- MahApps.Metro resource dictionaries. Make sure that all file names are Case Sensitive! -->
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
+                <ResourceDictionary Source="Themes/LightTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
+
             <Style TargetType="{x:Type DataGrid}">
                 <Setter Property="FontWeight" Value="Normal" />
                 <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource GridLineBrush}" />
@@ -130,7 +141,8 @@
                                     <ContentPresenter x:Name="ContentSite"
                                                       ContentSource="Header"
                                                       VerticalAlignment="Center"
-                                                      HorizontalAlignment="Center" />
+                                                      HorizontalAlignment="Center"
+                                                      TextElement.Foreground="{DynamicResource SecondaryTextBrush}"/>
                                 </Border>
                                 <Border x:Name="Underline" Height="2" VerticalAlignment="Bottom"
                                         Background="Transparent" />
@@ -150,7 +162,6 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-
 
             <!-- Base Button Style (Handles Padding, Template, Triggers) -->
             <Style x:Key="BaseButtonStyle" TargetType="{x:Type Button}">
@@ -400,19 +411,226 @@
                 </Setter>
             </Style>
 
-            <Style TargetType="{x:Type Label}">
+            <Style x:Key="StyledLabel" TargetType="{x:Type Label}">
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
-            <Style TargetType="{x:Type TextBlock}">
+
+            <Style x:Key="StyledTextBlock" TargetType="{x:Type TextBlock}">
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             </Style>
+            <Style x:Key="StyledSecondaryTextBlock" TargetType="{x:Type TextBlock}">
+                <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+            </Style>
 
-            <ResourceDictionary.MergedDictionaries>
-                <!-- MahApps.Metro resource dictionaries. Make sure that all file names are Case Sensitive! -->
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
-                <ResourceDictionary Source="Themes/LightTheme.xaml" />
-            </ResourceDictionary.MergedDictionaries>
+            <!-- IMPLICIT TEXTBOX STYLE (Fixes NumericTextBox & standard TextBoxes) -->
+            <Style TargetType="{x:Type TextBox}">
+                <Setter Property="Background" Value="{DynamicResource SurfaceBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="6,4" />
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type TextBox}">
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4"
+                                    SnapsToDevicePixels="True">
+                                <ScrollViewer x:Name="PART_ContentHost"
+                                              Focusable="False"
+                                              HorizontalScrollBarVisibility="Hidden"
+                                              VerticalScrollBarVisibility="Hidden"
+                                              Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="BorderBrush"
+                                            Value="{DynamicResource PrimaryAccentBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                    <Setter TargetName="border" Property="BorderBrush" Value="#3B82F6" />
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.55" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Explicit style for NumericTextBox subclass -->
+            <Style TargetType="{x:Type controls:NumericTextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+                <Setter Property="TextAlignment" Value="Right" />
+            </Style>
+
+            <!-- 1. IMPLICIT COMBOBOXITEM STYLE -->
+            <Style TargetType="{x:Type ComboBoxItem}">
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                <Setter Property="Background" Value="{DynamicResource SurfaceBackgroundBrush}" />
+                <Setter Property="Padding" Value="8,6" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                            <Border x:Name="Bd"
+                                    Background="{TemplateBinding Background}"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource SidebarHoverBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="Bd" Property="Background"
+                                            Value="{DynamicResource SidebarSelectedBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 2. BASE COMBOBOX STYLE WITH EXPLICIT TEMPLATE -->
+            <!-- IMPLICIT COMBOBOX STYLE (Supports both standard and editable IsEditable="True") -->
+            <Style TargetType="{x:Type ComboBox}">
+                <Setter Property="Background" Value="{DynamicResource SurfaceBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Padding" Value="8,4" />
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ComboBox}">
+                            <Grid x:Name="MainGrid" SnapsToDevicePixels="True">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="30" />
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Toggle Button / Background Container -->
+                                <ToggleButton x:Name="ToggleButton"
+                                              Grid.ColumnSpan="2"
+                                              Focusable="False"
+                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                              ClickMode="Press">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                            <Border x:Name="templateRoot"
+                                                    Background="{DynamicResource SurfaceBackgroundBrush}"
+                                                    BorderBrush="{DynamicResource BorderColorBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="4">
+                                                <Border x:Name="splitBorder"
+                                                        Width="30"
+                                                        HorizontalAlignment="Right"
+                                                        BorderThickness="0"
+                                                        Background="Transparent">
+                                                    <!-- Arrow Icon -->
+                                                    <Path x:Name="arrow"
+                                                          HorizontalAlignment="Center"
+                                                          VerticalAlignment="Center"
+                                                          Data="F1 M 0,0 L 4,4 L 8,0 Z"
+                                                          Fill="{DynamicResource PrimaryTextBrush}" />
+                                                </Border>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="templateRoot" Property="Background"
+                                                            Value="{DynamicResource SidebarHoverBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+
+                                <!-- Non-Editable View: Displays Selected Item -->
+                                <ContentPresenter x:Name="contentTemplate"
+                                                  Grid.Column="0"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  IsHitTestVisible="False"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" />
+
+                                <!-- Editable View: WPF expects PART_EditableTextBox for typing -->
+                                <TextBox x:Name="PART_EditableTextBox"
+                                         Grid.Column="0"
+                                         Margin="0"
+                                         Padding="{TemplateBinding Padding}"
+                                         HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                         VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                         Background="Transparent"
+                                         Foreground="{DynamicResource PrimaryTextBrush}"
+                                         BorderThickness="0"
+                                         MinHeight="0"
+                                         Height="Auto"
+                                         Focusable="True"
+                                         Visibility="Collapsed" />
+
+                                <!-- Popup Dropdown List -->
+                                <Popup x:Name="PART_Popup"
+                                       AllowsTransparency="True"
+                                       Grid.ColumnSpan="2"
+                                       IsOpen="{TemplateBinding IsDropDownOpen}"
+                                       Margin="1"
+                                       PopupAnimation="Slide"
+                                       Placement="Bottom">
+                                    <Border x:Name="dropDownBorder"
+                                            MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                            MinWidth="{Binding ActualWidth, ElementName=MainGrid}"
+                                            Background="{DynamicResource SurfaceBackgroundBrush}"
+                                            BorderBrush="{DynamicResource BorderColorBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Margin="0,2,0,0">
+                                        <ScrollViewer x:Name="DropDownScrollViewer">
+                                            <ItemsPresenter x:Name="ItemsPresenter"
+                                                            KeyboardNavigation.DirectionalNavigation="Contained" />
+                                        </ScrollViewer>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <!-- Switch between ContentPresenter and TextBox when IsEditable="True" -->
+                                <Trigger Property="IsEditable" Value="True">
+                                    <Setter TargetName="contentTemplate" Property="Visibility" Value="Collapsed" />
+                                    <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            
+            <!-- 3. ENUM COMBOBOX STYLE -->
+            <Style x:Key="StyledEnumComboBox" TargetType="{x:Type ComboBox}"
+                   BasedOn="{StaticResource {x:Type ComboBox}}">
+                <Setter Property="ItemTemplate">
+                    <Setter.Value>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Converter={StaticResource EnumToDisplayNameConverter}}"
+                                       Foreground="{DynamicResource PrimaryTextBrush}"
+                                       VerticalAlignment="Center" />
+                        </DataTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+            
         </ResourceDictionary>
     </Application.Resources>
 </Application>

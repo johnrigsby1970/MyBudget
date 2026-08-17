@@ -1,10 +1,32 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System.ComponentModel.DataAnnotations;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace StayOnTarget.Models;
 
-public enum SurplusAllocationTarget { PayDownDebt, InvestSurplus, Hybrid }
-public enum SnowballSortStrategy { LowestBalanceFirst, HighestInterestFirst }
-public enum InvestmentStrategy { MaximizeYield, MinimizeLoss, PrioritizeRothLimits }
+public enum SurplusAllocationTarget {
+    [Display(Name = "Pay Down Debt")]
+    PayDownDebt, 
+    [Display(Name = "Invest Surplus")]
+    InvestSurplus, 
+    [Display(Name = "Hybrid (Waterfall)")]
+    Hybrid
+}
+
+public enum SnowballSortStrategy {
+    [Display(Name = "Lowest Balance First")]
+    LowestBalanceFirst, 
+    [Display(Name = "Highest Interest First")]
+    HighestInterestFirst
+}
+
+public enum InvestmentStrategy {
+    [Display(Name = "Maximize Yield")]
+    MaximizeYield, 
+    [Display(Name = "Minimize Loss")]
+    MinimizeLoss, 
+    [Display(Name = "Prioritize Roth Limits")]
+    PrioritizeRothLimits
+}
 
 public class SnowballStrategyOptions : ObservableObject
 {
@@ -74,8 +96,14 @@ public class SnowballStrategyOptions : ObservableObject
         get => _excludedAccountIds;
         set => SetProperty(ref _excludedAccountIds, value);
     }
-    
-    public enum SurplusCalculationMethod { PercentageOfChecking, FixedMonthlyAmount, Hybrid }
+
+    public enum SurplusCalculationMethod {
+        [Display(Name = "Percentage Of Checking")]
+        PercentageOfChecking, 
+        [Display(Name = "Fixed Monthly Amount")]
+        FixedMonthlyAmount, 
+        Hybrid
+    }
 
     private SurplusCalculationMethod _surplusMethod = SurplusCalculationMethod.PercentageOfChecking;
     public SurplusCalculationMethod SurplusMethod

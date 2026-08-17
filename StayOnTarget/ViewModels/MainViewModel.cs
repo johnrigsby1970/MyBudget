@@ -5,12 +5,15 @@ using StayOnTarget.Services.Projections;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Media;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
 using StayOnTarget.Helpers;
+using StayOnTarget.Themes;
 using StayOnTarget.Views;
 
 namespace StayOnTarget.ViewModels;
@@ -64,6 +67,18 @@ public class MainViewModel : ViewModelBase {
 
     #region Properties
 
+    private bool _isFlyoutOpen;
+    public bool IsFlyoutOpen
+    {
+        get => _isFlyoutOpen;
+        set => SetProperty(ref _isFlyoutOpen, value);
+    }
+    
+    private void ToggleFlyout()
+    {
+        IsFlyoutOpen = !IsFlyoutOpen;
+    }
+    
     public ObservableCollection<NavigationItemViewModel> NavigationItems { get; } = new();
 
     public NavigationItemViewModel? SelectedNavigationItem {
@@ -151,6 +166,8 @@ public class MainViewModel : ViewModelBase {
         _reconciliationService = reconciliationService;
         _projectionEngine = new ProjectionEngine();
 
+        ToggleFlyoutCommand = new RelayCommand(ToggleFlyout);
+        
         // InitializeDataAsync handles loading from budgetService and attaching the listener.
         ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => CanEditAccount);
         ReconcileAccountCommand =
@@ -267,6 +284,7 @@ public class MainViewModel : ViewModelBase {
 
         _filteredBillsView = CollectionViewSource.GetDefaultView(BillsWithNone);
         _filteredBillsView.Filter = FilterBillItem;
+        IsFlyoutOpen = true;
     }
 
     public void ToggleTheme() {
@@ -337,9 +355,9 @@ public class MainViewModel : ViewModelBase {
             await LoadSnowballOptionsAsync();
 
             await LoadDataAsync();
-            
+
             await Task.Yield();
-            
+
             // Ensure excludable account checkboxes sync with loaded SnowballOptions.ExcludedAccountIds
             RefreshExcludableAccounts();
 
@@ -662,12 +680,14 @@ public class MainViewModel : ViewModelBase {
 
     private void UpdateWarningMetrics() {
         var today = DateTime.Today;
-        var upcomingLimit = today.AddDays(2);
+        var upcomingLimit = today.AddDays(7);
 
-        var pastDue = CurrentPeriodBills.Where(pb => !pb.HasActualAmount && pb.DueDate < today && pb.ActualAmount != 0)
+        var pastDue = CurrentPeriodBills.Where(pb =>
+                !pb.HasActualAmount && pb.DueDate < today && pb.ActualAmount != 0 && pb.TransactionAmount == 0)
             .ToList();
         var upcoming = CurrentPeriodBills.Where(pb =>
-            !pb.HasActualAmount && pb.DueDate >= today && pb.DueDate <= upcomingLimit && pb.ActualAmount != 0).ToList();
+            !pb.HasActualAmount && pb.DueDate >= today && pb.DueDate <= upcomingLimit && pb.ActualAmount != 0 &&
+            pb.TransactionAmount == 0).ToList();
 
         PastDueCount = pastDue.Count;
         UpcomingCount = upcoming.Count;
@@ -683,7 +703,7 @@ public class MainViewModel : ViewModelBase {
         OnPropertyChanged(nameof(ShowWarningWidget));
     }
 
-    public bool ShowWarningWidget => PastDueCount > 0 || UpcomingCount > 0;
+    public bool ShowWarningWidget => PastDueCount > 0 || UpcomingCount > 0 || UpcomingStrategyTasks.Count > 0;
 
     #region Warning Envelope
 
@@ -1192,6 +1212,7 @@ public class MainViewModel : ViewModelBase {
 
     #region Commands
 
+    public IRelayCommand ToggleFlyoutCommand { get; }
     public IRelayCommand AddBillCommand { get; }
 
     public IRelayCommand EditBillCommand { get; }
@@ -1363,6 +1384,7 @@ public class MainViewModel : ViewModelBase {
         if (acc != null) {
             acc.IsExcludedInSnowball = SnowballOptions.ExcludedAccountIds.Contains(accountId);
         }
+
         //ToggleAccountExclusion mutates an internal collection/HashSet (SnowballOptions.ExcludedAccountIds)
         //on the existing object instance. Because the object reference itself hasn't changed,
         //OnPropertyChanged(nameof(SnowballOptions)) does not trigger the setter logic, nor does
@@ -1370,7 +1392,7 @@ public class MainViewModel : ViewModelBase {
         //and the database never saves the new JSON string
         // FIX: Explicitly invoke the PropertyChanged handler to persist to DB & trigger recalculation
         OnSnowballOptionsPropertyChanged(
-            SnowballOptions, 
+            SnowballOptions,
             new PropertyChangedEventArgs(nameof(SnowballStrategyOptions.ExcludedAccountIds))
         );
     }
@@ -3043,90 +3065,96 @@ public class MainViewModel : ViewModelBase {
     }
 
     private async Task CalculateProjectionsAsync(CancellationToken cancellationToken = default) {
-        try {
-            IsProjecting = true;
-            IsSnowballProjecting = true;
-            SnowballAnalysisText = "Analyzing strategy...";
+    try {
+        IsProjecting = true;
+        // Only show snowball projection loading indicator if snowballing is enabled
+        IsSnowballProjecting = SnowballOptions?.EnableSnowball == true;
+        SnowballAnalysisText = "Analyzing strategy...";
 
-            // 1. CAPTURE ALL VIEWMODEL SNAPSHOTS ON UI THREAD FIRST
-            var showReconciled = true;
-            var currentPeriodDate = CurrentPeriodDate;
-            var projectionStartDate = ProjectionStartDate;
-            var projectionEndDate = ProjectionEndDate;
-            var useAutoSweep = UseAutoSweep;
-            var allocation = EditableAllocations;
+        // 1. CAPTURE ALL VIEWMODEL SNAPSHOTS ON UI THREAD FIRST
+        var showReconciled = true;
+        var currentPeriodDate = CurrentPeriodDate;
+        var projectionStartDate = ProjectionStartDate;
+        var projectionEndDate = ProjectionEndDate;
+        var useAutoSweep = UseAutoSweep;
+        var allocation = EditableAllocations;
 
-            // Snapshot options reference on UI thread
-            var snowballOptions = SnowballOptions;
+        // Snapshot options reference on UI thread
+        var snowballOptions = SnowballOptions;
+        bool isSnowballEnabled = snowballOptions?.EnableSnowball == true;
 
-            // 2. BACKGROUND WORK
-            var (resultList, snowballList, negativeAccounts) = await Task.Run(async () => {
-                cancellationToken.ThrowIfCancellationRequested();
+        // 2. BACKGROUND WORK
+        var (resultList, snowballList, negativeAccounts) = await Task.Run(async () => {
+            cancellationToken.ThrowIfCancellationRequested();
 
-                var paychecks = await _budgetService.GetAllPaychecksAsync();
-                var bills = await _budgetService.GetAllBillsAsync();
-                var buckets = await _budgetService.GetAllBucketsAsync();
-                var periodBills = await _budgetService.GetAllPeriodBillsAsync();
-                var periodBuckets = await _budgetService.GetAllPeriodBucketsAsync();
+            var paychecks = await _budgetService.GetAllPaychecksAsync();
+            var bills = await _budgetService.GetAllBillsAsync();
+            var buckets = await _budgetService.GetAllBucketsAsync();
+            var periodBills = await _budgetService.GetAllPeriodBillsAsync();
+            var periodBuckets = await _budgetService.GetAllPeriodBucketsAsync();
 
-                cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-                List<AccountReconciliation>? reconciliations = null;
+            List<AccountReconciliation>? reconciliations = null;
 
-                var start = currentPeriodDate == DateTime.MinValue ? DateTime.Today : currentPeriodDate;
-                if (projectionStartDate.HasValue) start = projectionStartDate.Value;
+            var start = currentPeriodDate == DateTime.MinValue ? DateTime.Today : currentPeriodDate;
+            if (projectionStartDate.HasValue) start = projectionStartDate.Value;
 
-                var accounts = (await _budgetService.GetAllAccountsAsOfAsync(start.AddDays(-1), true)).ToList();
-                var end = projectionEndDate;
-                if (end < start) end = start.AddYears(1);
+            var accounts = (await _budgetService.GetAllAccountsAsOfAsync(start.AddDays(-1), true)).ToList();
+            var end = projectionEndDate;
+            if (end < start) end = start.AddYears(1);
 
-                var rawPaycheckTransactions = await _budgetService.GetAllPaycheckTransactionsAsync();
-                var rawBillTransactions = await _budgetService.GetBillTransactionsAsync();
-                var rawBucketTransactions = await _budgetService.GetBucketTransactionsAsync();
-                var transactions =
-                    (await _budgetService.GetAllTransactionsAsync(start.AddDays(-90), end.AddDays(365))).ToList();
+            var rawPaycheckTransactions = await _budgetService.GetAllPaycheckTransactionsAsync();
+            var rawBillTransactions = await _budgetService.GetBillTransactionsAsync();
+            var rawBucketTransactions = await _budgetService.GetBucketTransactionsAsync();
+            var transactions =
+                (await _budgetService.GetAllTransactionsAsync(start.AddDays(-90), end.AddDays(365))).ToList();
 
-                cancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
-                // CLONE/COPY TRANSACTIONS BEFORE MUTATING TO PREVENT SHARED STATE DATA RACES
-                var paycheckTransactions = rawPaycheckTransactions
-                    .Select(x => new Transaction {
-                        Id = x.Id,
-                        PaycheckId = x.PaycheckId,
-                        PaycheckOccurrenceDate = x.PaycheckOccurrenceDate,
-                        TransactionDate = (x.PaycheckOccurrenceDate != null &&
-                                           x.TransactionDate != x.PaycheckOccurrenceDate)
-                            ? x.PaycheckOccurrenceDate.Value
-                            : x.TransactionDate,
-                        Amount = x.Amount,
-                        AccountId = x.AccountId
-                    }).ToList();
-
-                var allTransactions = transactions.Select(x => {
-                    var copy = x.CloneReflection();
-
-                    if (copy.PaycheckId != null && copy.PaycheckOccurrenceDate != null &&
-                        copy.TransactionDate != copy.PaycheckOccurrenceDate) {
-                        copy.TransactionDate = copy.PaycheckOccurrenceDate.Value;
-                    }
-
-                    return copy;
+            // CLONE/COPY TRANSACTIONS BEFORE MUTATING TO PREVENT SHARED STATE DATA RACES
+            var paycheckTransactions = rawPaycheckTransactions
+                .Select(x => new Transaction {
+                    Id = x.Id,
+                    PaycheckId = x.PaycheckId,
+                    PaycheckOccurrenceDate = x.PaycheckOccurrenceDate,
+                    TransactionDate = (x.PaycheckOccurrenceDate != null &&
+                                       x.TransactionDate != x.PaycheckOccurrenceDate)
+                        ? x.PaycheckOccurrenceDate.Value
+                        : x.TransactionDate,
+                    Amount = x.Amount,
+                    AccountId = x.AccountId
                 }).ToList();
 
-                // Run Projection Engine (Standard)
-                var results = _projectionEngine.CalculateProjections(
-                    paycheckTransactions,
-                    rawBillTransactions.ToList(),
-                    rawBucketTransactions.ToList(),
-                    allTransactions,
-                    start, end, accounts, paychecks.ToList(), bills.ToList(), buckets.ToList(),
-                    allocation.ToList(),
-                    periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
-                    showReconciled, true, useAutoSweep, null);
+            var allTransactions = transactions.Select(x => {
+                var copy = x.CloneReflection();
 
-                cancellationToken.ThrowIfCancellationRequested();
+                if (copy.PaycheckId != null && copy.PaycheckOccurrenceDate != null &&
+                    copy.TransactionDate != copy.PaycheckOccurrenceDate) {
+                    copy.TransactionDate = copy.PaycheckOccurrenceDate.Value;
+                }
 
-                // Run Projection Engine (Snowball)
+                return copy;
+            }).ToList();
+
+            // Run Projection Engine (Standard)
+            var results = _projectionEngine.CalculateProjections(
+                paycheckTransactions,
+                rawBillTransactions.ToList(),
+                rawBucketTransactions.ToList(),
+                allTransactions,
+                start, end, accounts, paychecks.ToList(), bills.ToList(), buckets.ToList(),
+                allocation.ToList(),
+                periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
+                showReconciled, true, useAutoSweep, null);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var list = results.ToList();
+            List<ProjectionItem> snowballList;
+
+            // CONDITIONAL EXECUTION: Only run Snowball engine if enabled
+            if (isSnowballEnabled) {
                 var snowballResults = _projectionEngine.CalculateProjections(
                     paycheckTransactions,
                     rawBillTransactions.ToList(),
@@ -3137,116 +3165,100 @@ public class MainViewModel : ViewModelBase {
                     periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
                     showReconciled, true, useAutoSweep, snowballOptions);
 
-                var list = results.ToList();
-                var snowballList = snowballResults.ToList();
+                snowballList = snowballResults.ToList();
+            }
+            else {
+                snowballList = new List<ProjectionItem>();
+            }
 
-                // Check for negative checking/savings accounts or floor cushion breaches
-                var breachedAccounts = new HashSet<string>();
-                foreach (var item in list) {
-                    if (item.Description.Contains("Necessity")) {
-                        var s = "";
-                    }
-
-                    // Option A: Catch items specifically marked as breaching their floor cushion
-                    if (item.IsBelowFloor) {
-                        var targetAcc = accounts.FirstOrDefault(a => a.Id == (item.FromAccountId ?? item.ToAccountId));
-                        if (targetAcc != null) {
-                            breachedAccounts.Add(targetAcc.Name);
-                        }
-                    }
-
-                    // Option B: Fallback check against raw balances or spendable balance per checking/savings account
-                    foreach (var acc in accounts) {
-                        if (acc.Type is not (AccountType.Checking or AccountType.Savings)) continue;
-
-                        // If checking/savings actual balance goes negative or item flags floor breach
-                        if (item.AccountBalances.TryGetValue(acc.Name, out decimal balance) && balance < 0) {
-                            breachedAccounts.Add(acc.Name);
-                        }
+            // Check for negative checking/savings accounts or floor cushion breaches
+            var breachedAccounts = new HashSet<string>();
+            foreach (var item in list) {
+                if (item.IsBelowFloor) {
+                    var targetAcc = accounts.FirstOrDefault(a => a.Id == (item.FromAccountId ?? item.ToAccountId));
+                    if (targetAcc != null) {
+                        breachedAccounts.Add(targetAcc.Name);
                     }
                 }
 
-                return (list, snowballList, breachedAccounts);
-            }, cancellationToken);
+                foreach (var acc in accounts) {
+                    if (acc.Type is not (AccountType.Checking or AccountType.Savings)) continue;
 
-            // 3. CHECK IF CANCELED BEFORE MUTATING UI STATE
-            if (cancellationToken.IsCancellationRequested) return;
-
-            // Apply results to UI collections safely
-
-            var temp = new List<ProjectionItem>(resultList.Count);
-            foreach (var b in resultList) {
-                temp.Add(b);
+                    if (item.AccountBalances.TryGetValue(acc.Name, out decimal balance) && balance < 0) {
+                        breachedAccounts.Add(acc.Name);
+                    }
+                }
             }
 
-            Projections.Clear();
-            Projections.AddRange(temp);
+            return (list, snowballList, breachedAccounts);
+        }, cancellationToken);
 
-            var tempSnowball = new List<ProjectionItem>(snowballList.Count);
-            foreach (var b in snowballList) {
-                tempSnowball.Add(b);
-            }
+        // 3. CHECK IF CANCELED BEFORE MUTATING UI STATE
+        if (cancellationToken.IsCancellationRequested) return;
 
-            SnowballProjections.Clear();
-            SnowballProjections.AddRange(tempSnowball);
+        // Apply standard results to UI collections safely
+        Projections.Clear();
+        Projections.AddRange(resultList);
 
-            if (snowballOptions?.EnableSnowball == true) {
-                UpdateSnowballAnalysis(resultList, snowballList);
-            }
-            else {
-                ShowSnowballAnalysis = false;
-            }
-
-            //for dashboard
-            OnPropertyChanged(nameof(TotalLiquidCash));
-            OnPropertyChanged(nameof(EnvelopeFloorRequirements));
-            OnPropertyChanged(nameof(AccumulatingDrawdownReserves));
-            OnPropertyChanged(nameof(UpcomingBillsRequirements));
-            OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
-            OnPropertyChanged(nameof(TotalRequiredReserves));
-            OnPropertyChanged(nameof(UnallocatedSurplusCash));
-            OnPropertyChanged(nameof(AvailableSurplusPool));
-            OnPropertyChanged(nameof(TotalActiveSweepAmount));
-            OnPropertyChanged(nameof(RetainedCheckingBuffer));
-            OnPropertyChanged(nameof(RecommendedDebtAllocation));
-            OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
-
-            OnPropertyChanged(nameof(LowestProjectedCheckingBalance));
-            OnPropertyChanged(nameof(ReadinessStatus));
-            OnPropertyChanged(nameof(ReadinessStatusTitle));
-            OnPropertyChanged(nameof(ReadinessSuggestionMessage));
-            OnPropertyChanged(nameof(ReadinessStatusHeaderBrush));
-            OnPropertyChanged(nameof(ReadinessStatusBackgroundBrush));
-            OnPropertyChanged(nameof(ReadinessStatusBorderBrush));
-            OnPropertyChanged(nameof(StrategyDisplayName));
-            
-            OnPropertyChanged(nameof(IsMinimumBalanceCushionBreached));
-            OnPropertyChanged(nameof(HasOverspentEnvelopes));
-            OnPropertyChanged(nameof(IsUnpaidBillsAlert));
-            OnPropertyChanged(nameof(IsTotalCommittedFundsBreached));
-
-            RefreshUpcomingStrategyTasks();
-            if (negativeAccounts.Any()) {
-                string message =
-                    $"Warning: The following accounts breach their balance floor in the projection: {string.Join(", ", negativeAccounts)}";
-                ShowWarningToast(message);
-            }
+        // Apply or clear Snowball results
+        SnowballProjections.Clear();
+        if (isSnowballEnabled) {
+            SnowballProjections.AddRange(snowballList);
+            UpdateSnowballAnalysis(resultList, snowballList);
         }
-        catch (OperationCanceledException) {
-            // Suppress expected cancellation when user cancels/edits
+        else {
+            ShowSnowballAnalysis = false;
         }
-        catch (Exception ex) {
-            Log.Error(ex, "Error calculating projections.");
-            ShowWarningToast("Failed to calculate projections. Check logs.");
-        }
-        finally {
-            // Only turn off visual indicator if this run wasn't canceled mid-flight
-            if (!cancellationToken.IsCancellationRequested) {
-                IsProjecting = false;
-                IsSnowballProjecting = false;
-            }
+
+        // Dashboard property change notifications
+        OnPropertyChanged(nameof(TotalLiquidCash));
+        OnPropertyChanged(nameof(EnvelopeFloorRequirements));
+        OnPropertyChanged(nameof(AccumulatingDrawdownReserves));
+        OnPropertyChanged(nameof(UpcomingBillsRequirements));
+        OnPropertyChanged(nameof(UnspentStandardEnvelopeRequirements));
+        OnPropertyChanged(nameof(TotalRequiredReserves));
+        OnPropertyChanged(nameof(UnallocatedSurplusCash));
+        OnPropertyChanged(nameof(AvailableSurplusPool));
+        OnPropertyChanged(nameof(TotalActiveSweepAmount));
+        OnPropertyChanged(nameof(RetainedCheckingBuffer));
+        OnPropertyChanged(nameof(RecommendedDebtAllocation));
+        OnPropertyChanged(nameof(RecommendedInvestmentAllocation));
+
+        OnPropertyChanged(nameof(LowestProjectedCheckingBalance));
+        OnPropertyChanged(nameof(ReadinessStatus));
+        OnPropertyChanged(nameof(ReadinessStatusTitle));
+        OnPropertyChanged(nameof(ReadinessSuggestionMessage));
+        OnPropertyChanged(nameof(ReadinessStatusHeaderBrush));
+        OnPropertyChanged(nameof(ReadinessStatusBackgroundBrush));
+        OnPropertyChanged(nameof(ReadinessStatusBorderBrush));
+        OnPropertyChanged(nameof(StrategyDisplayName));
+
+        OnPropertyChanged(nameof(IsMinimumBalanceCushionBreached));
+        OnPropertyChanged(nameof(HasOverspentEnvelopes));
+        OnPropertyChanged(nameof(IsUnpaidBillsAlert));
+        OnPropertyChanged(nameof(IsTotalCommittedFundsBreached));
+
+        RefreshUpcomingStrategyTasks();
+        if (negativeAccounts.Any()) {
+            string message =
+                $"Warning: The following accounts breach their balance floor in the projection: {string.Join(", ", negativeAccounts)}";
+            ShowWarningToast(message);
         }
     }
+    catch (OperationCanceledException) {
+        // Suppress expected cancellation when user cancels/edits
+    }
+    catch (Exception ex) {
+        Log.Error(ex, "Error calculating projections.");
+        ShowWarningToast("Failed to calculate projections. Check logs.");
+    }
+    finally {
+        if (!cancellationToken.IsCancellationRequested) {
+            IsProjecting = false;
+            IsSnowballProjecting = false;
+        }
+    }
+}
 
     public void ShowToast(string message) {
         Application.Current.Dispatcher.Invoke(() => {
@@ -3446,7 +3458,7 @@ public class MainViewModel : ViewModelBase {
             // Batch update both collections (1 layout pass per collection)
             Accounts.AddRange(accounts);
             VisibleAccounts.AddRange(visibleList);
-            
+
             //To populate accounts available for debt planning exclusion
             RefreshExcludableAccounts();
 
@@ -3837,6 +3849,9 @@ public class MainViewModel : ViewModelBase {
                 pb.TransactionAmount = CurrentPeriodTransactions
                     .Where(t => t.BillId == pb.BillId)
                     .Sum(t => t.Amount);
+                if (pb.TransactionAmount != 0) {
+                    pb.IsPaid = true;
+                }
             }
 
             foreach (var pb in CurrentPeriodBuckets) {
@@ -4657,12 +4672,12 @@ public class MainViewModel : ViewModelBase {
                 .Sum(p => p.Amount);
         }
     }
-    
+
     /// <summary>
     /// Cash that stays in Checking as a floating buffer because the sweep percentage is less than 100%.
     /// </summary>
     public decimal RetainedCheckingBuffer => Math.Max(0m, UnallocatedSurplusCash - TotalActiveSweepAmount);
-    
+
     /// <summary>
     /// Portion of active sweep applied to debt in waterfall order.
     /// </summary>
@@ -4700,15 +4715,17 @@ public class MainViewModel : ViewModelBase {
         SurplusAllocationTarget.Hybrid => "Waterfall (Debt First, Then Invest)",
         _ => "Custom Strategy"
     };
-    
+
     #endregion
 
     #region Dashboard Cash Readiness & Action Suggestions
 
     public enum CashHealthStatus {
         Optimal,
+
+        [Display(Name = "Transfer Recommended")]
         TransferRecommended,
-        GlobalDeficit
+        [Display(Name = "Global Deficit")] GlobalDeficit
     }
 
     /// <summary>
@@ -4782,25 +4799,61 @@ public class MainViewModel : ViewModelBase {
         _ => "Information"
     };
 
-    public string ReadinessStatusHeaderBrush => ReadinessStatus switch {
-        CashHealthStatus.Optimal => "#22C55E", // Green
-        CashHealthStatus.TransferRecommended => "#EAB308", // Yellow / Amber
-        CashHealthStatus.GlobalDeficit => "#EF4444", // Red
-        _ => "#3B82F6"
+    public SolidColorBrush ReadinessStatusHeaderBrush => ReadinessStatus switch {
+        CashHealthStatus.Optimal =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusHeaderOptimalBrush) as
+                SolidColorBrush
+            ?? Brushes.Green,
+
+        CashHealthStatus.TransferRecommended =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusHeaderTransferRecommendedBrush)
+                as SolidColorBrush
+            ?? Brushes.Orange,
+
+        CashHealthStatus.GlobalDeficit =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusHeaderGlobalDeficitBrush) as
+                SolidColorBrush
+            ?? Brushes.Red,
+
+        _ => (SolidColorBrush)(new BrushConverter().ConvertFrom("#3B82F6") ?? Brushes.Blue)
     };
 
-    public string ReadinessStatusBackgroundBrush => ReadinessStatus switch {
-        CashHealthStatus.Optimal => "#F0FDF4",
-        CashHealthStatus.TransferRecommended => "#FEFCE8",
-        CashHealthStatus.GlobalDeficit => "#FEF2F2",
-        _ => "#F8FAFC"
+    public SolidColorBrush ReadinessStatusBackgroundBrush => ReadinessStatus switch {
+        CashHealthStatus.Optimal =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusOptimalBackgroundBrush) as
+                SolidColorBrush
+            ?? Brushes.LightGreen,
+
+        CashHealthStatus.TransferRecommended =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys
+                .ReadinessStatusTransferRecommendedBackgroundBrush) as SolidColorBrush
+            ?? Brushes.LightYellow,
+
+        CashHealthStatus.GlobalDeficit =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusGlobalDeficitBackgroundBrush)
+                as SolidColorBrush
+            ?? Brushes.MistyRose,
+
+        _ => (SolidColorBrush)(new BrushConverter().ConvertFrom("#F8FAFC") ?? Brushes.White)
     };
 
-    public string ReadinessStatusBorderBrush => ReadinessStatus switch {
-        CashHealthStatus.Optimal => "#BBF7D0",
-        CashHealthStatus.TransferRecommended => "#FEF08A",
-        CashHealthStatus.GlobalDeficit => "#FECACA",
-        _ => "#E2E8F0"
+    public SolidColorBrush ReadinessStatusBorderBrush => ReadinessStatus switch {
+        CashHealthStatus.Optimal =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusOptimalBorderBrush) as
+                SolidColorBrush
+            ?? Brushes.Green,
+
+        CashHealthStatus.TransferRecommended =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusTransferRecommendedBorderBrush)
+                as SolidColorBrush
+            ?? Brushes.Orange,
+
+        CashHealthStatus.GlobalDeficit =>
+            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusGlobalDeficitBorderBrush) as
+                SolidColorBrush
+            ?? Brushes.Red,
+
+        _ => (SolidColorBrush)(new BrushConverter().ConvertFrom("#E2E8F0") ?? Brushes.LightGray)
     };
 
     /// <summary>
@@ -4840,7 +4893,7 @@ public class MainViewModel : ViewModelBase {
     }
 
     #endregion
-    
+
     #region Reserve Alert Status Properties
 
     /// <summary>
@@ -4848,7 +4901,7 @@ public class MainViewModel : ViewModelBase {
     /// </summary>
     public bool IsMinimumBalanceCushionBreached {
         get {
-            var checking = Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking && a.IsPrimary) 
+            var checking = Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking && a.IsPrimary)
                            ?? Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking);
             return checking != null && checking.Balance < EnvelopeFloorRequirements;
         }
@@ -4857,7 +4910,8 @@ public class MainViewModel : ViewModelBase {
     /// <summary>
     /// Returns true if any standard envelope in the current period has been overspent.
     /// </summary>
-    public bool HasOverspentEnvelopes => CurrentPeriodBuckets.Any(pb => pb.BucketType == BucketType.Standard && pb.BudgetExceeded);
+    public bool HasOverspentEnvelopes =>
+        CurrentPeriodBuckets.Any(pb => pb.BucketType == BucketType.Standard && pb.BudgetExceeded);
 
     /// <summary>
     /// Returns true if any period bill is past due.
@@ -4875,52 +4929,49 @@ public class MainViewModel : ViewModelBase {
 
     public ObservableCollection<DashboardTaskViewModel> UpcomingStrategyTasks { get; } = new();
 
-    public void RefreshUpcomingStrategyTasks()
-    {
+    public void RefreshUpcomingStrategyTasks() {
         UpcomingStrategyTasks.Clear();
 
         var cutoffDate = DateTime.Today.AddDays(31);
-        
+
         // 1. Pull upcoming sweep recommendations from projections (next 30 days)
         var projectionItems = SnowballOptions.EnableSnowball ? SnowballProjections : Projections;
-        var upcomingSweeps =  projectionItems
-            .Where(p => p.TransactionDate >= DateTime.Today && 
-                        p.TransactionDate <= cutoffDate && 
-                        (p.IsSweep || p.IsSynthetic) && 
+        var upcomingSweeps = projectionItems
+            .Where(p => p.TransactionDate >= DateTime.Today &&
+                        p.TransactionDate <= cutoffDate &&
+                        (p.IsSweep || p.IsSynthetic) &&
                         p.Amount > 0)
             .ToList();
 
-        foreach (var sweep in upcomingSweeps)
-        {
-            UpcomingStrategyTasks.Add(new DashboardTaskViewModel
-            {
+        foreach (var sweep in upcomingSweeps) {
+            UpcomingStrategyTasks.Add(new DashboardTaskViewModel {
                 Title = sweep.Description, // e.g., "Snowball: Bank of America" or "Invest: Self Directed Brokerage"
                 Amount = sweep.Amount,
                 DueDate = sweep.TransactionDate,
-                TaskType = sweep.Description.Contains("Invest", StringComparison.OrdinalIgnoreCase) 
-                    ? StrategyTaskType.Investment 
+                TaskType = sweep.Description.Contains("Invest", StringComparison.OrdinalIgnoreCase)
+                    ? StrategyTaskType.Investment
                     : StrategyTaskType.DebtPayoff
             });
         }
     }
-    
+
     // Helper to grab all projection items falling within the current active period
     private IEnumerable<ProjectionItem> CurrentPeriodSnowballProjections {
         get {
-            if (SnowballProjections == null || !SnowballProjections.Any()) 
+            if (SnowballProjections == null || !SnowballProjections.Any())
                 return Enumerable.Empty<ProjectionItem>();
 
             DateTime periodStart = CurrentPeriodDate;
             DateTime periodEnd = GetNextPeriodDate(periodStart);
 
-            return SnowballProjections.Where(p => 
-                p.TransactionDate >= periodStart && 
+            return SnowballProjections.Where(p =>
+                p.TransactionDate >= periodStart &&
                 p.TransactionDate < periodEnd);
         }
     }
 
     #endregion
-    
+
     public static void SetTheme(bool isDark) {
         var newThemeUri = new Uri(
             isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml",
@@ -4932,5 +4983,13 @@ public class MainViewModel : ViewModelBase {
         // Clear existing theme dictionary and load the new one
         appResources.Clear();
         appResources.Add(new ResourceDictionary { Source = newThemeUri });
+
+        // 2. Refresh active chart controls in visual tree
+        foreach (Window window in Application.Current.Windows) {
+            var charts = StayOnTarget.Helpers.VisualTreeUtils.FindVisualChildren<ProjectionLiveChartControl>(window);
+            foreach (var chart in charts) {
+                chart.RefreshTheme();
+            }
+        }
     }
 }

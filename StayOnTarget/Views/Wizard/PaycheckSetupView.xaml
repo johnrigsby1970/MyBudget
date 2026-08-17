@@ -72,7 +72,9 @@
                                          Margin="0,0,0,10"/>
                 
                 <TextBlock Text="Frequency" Margin="0,0,0,5"/>
-                <ComboBox ItemsSource="{Binding Frequencies}" SelectedItem="{Binding EditingPaycheck.Frequency}" Margin="0,0,0,10"/>
+                <ComboBox 
+                    Style="{StaticResource StyledEnumComboBox}"
+                    ItemsSource="{Binding Frequencies}" SelectedItem="{Binding EditingPaycheck.Frequency}" Margin="0,0,0,10"/>
                 
                 <TextBlock Text="Next Deposit Date" Margin="0,0,0,5"/>
                 <DatePicker SelectedDate="{Binding EditingPaycheck.StartDate}" Margin="0,0,0,10"/>

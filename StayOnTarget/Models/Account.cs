@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using StayOnTarget.Extensions;
 using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Models;
@@ -74,7 +75,7 @@ public class Account : ViewModelBase, INotifyDataErrorInfo
         get => _includeInTotal;
         set => SetProperty(ref _includeInTotal, value);
     }
-
+    
     public AccountType Type
     {
         get => _type;

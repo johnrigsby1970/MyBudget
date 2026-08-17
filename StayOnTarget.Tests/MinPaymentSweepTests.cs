@@ -57,6 +57,8 @@ namespace StayOnTarget.Tests
 
             var accounts = new List<Account> { checking, creditCard };
 
+            var allocations = new List<BucketPaycheckAllocation>(); 
+            
             // Act - useAutoSweep is FALSE
             var results = _engine.CalculateProjections(
                 new List<Transaction>(),
@@ -64,7 +66,7 @@ namespace StayOnTarget.Tests
                 new List<Transaction>(),
                 new List<Transaction>(),
                 startDate, endDate, accounts, 
-                new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), 
+                new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), allocations, new List<PeriodBill>(), new List<PeriodBucket>(), 
                 new List<Transaction>(), 
                 null, false, false, false).ToList();
 
@@ -135,6 +137,8 @@ namespace StayOnTarget.Tests
             // Use allTransactions as the source for CalculateProjections
             var allTransactions = new List<Transaction> { payment };
 
+            var allocations = new List<BucketPaycheckAllocation>(); 
+            
             // Act
             var results = _engine.CalculateProjections(
                 allTransactions,
@@ -142,7 +146,7 @@ namespace StayOnTarget.Tests
                 allTransactions,
                 allTransactions,
                 startDate, endDate, accounts, 
-                new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), new List<PeriodBill>(), new List<PeriodBucket>(), 
+                new List<Paycheck>(), new List<Bill>(), new List<BudgetBucket>(), allocations, new List<PeriodBill>(), new List<PeriodBucket>(), 
                 allTransactions, 
                 null, false, false, false).ToList();
 

@@ -173,6 +173,9 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
         ProjectionFilterSyncManager.OnSyncEnabledChanged += OnGlobalSyncEnabledChanged;
 
         Loaded += (s, e) => {
+            // Ensure axes pull current active theme brushes when loaded/re-loaded into view
+            RefreshTheme();
+            
             OnPropertyChanged(nameof(IsSyncActive));
             if (IsSyncActive) {
                 PullFromGlobalState();
@@ -464,6 +467,35 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
         }
 
         return SKColor.Parse("#64748B");
+    }
+    
+    public void RefreshTheme() {
+        var labelColor = GetLabelColor();
+        var gridColor = GetGridLineColor();
+
+        // 1. Update XAxes Paints
+        if (XAxes != null) {
+            foreach (var axis in XAxes) {
+                axis.LabelsPaint = new SolidColorPaint(labelColor);
+                axis.SeparatorsPaint = new SolidColorPaint(gridColor, 1);
+            }
+        }
+
+        // 2. Update YAxes Paints
+        if (YAxes != null) {
+            foreach (var axis in YAxes) {
+                axis.LabelsPaint = new SolidColorPaint(labelColor);
+                axis.SeparatorsPaint = new SolidColorPaint(gridColor, 1);
+            }
+        }
+
+        // 3. Update Chart Legend Text Paint
+        if (_chart != null) {
+            _chart.LegendTextPaint = new SolidColorPaint(labelColor);
+        }
+
+        // 4. Force LiveCharts to re-evaluate and re-render
+        UpdateChart();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

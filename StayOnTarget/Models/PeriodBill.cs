@@ -51,8 +51,6 @@ public class PeriodBill : ViewModelBase
             {
                 OnPropertyChanged(nameof(HasActualAmount));
                 OnPropertyChanged(nameof(BudgetExceeded));
-                
-                
             }
         }
     }
@@ -66,8 +64,6 @@ public class PeriodBill : ViewModelBase
             {
                 OnPropertyChanged(nameof(HasActualAmount));
                 OnPropertyChanged(nameof(BudgetExceeded));
-                
-                
             }
         }
     }
