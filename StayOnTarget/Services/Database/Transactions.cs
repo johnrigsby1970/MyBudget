@@ -29,6 +29,22 @@ public partial class BudgetService {
 
         return MergeDbRowsToUiTransactions(dbRows);
     }
+    
+    public async Task<IEnumerable<(int billId, decimal amount)>> GetBillsPaidInRange(DateTime periodStart, DateTime periodEnd) {
+        await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
+
+        var dbRows = (await conn.QueryAsync<dynamic>(@"
+            SELECT BillId, Amount
+            FROM Transactions t
+            WHERE Not BillId IS NULL AND NOT AccountId IS NULL AND t.TransactionDate >= @periodStart AND t.TransactionDate <= @periodEnd",
+            new {
+                periodStart = periodStart.ToString("yyyy-MM-dd"),
+                periodEnd = periodEnd.ToString("yyyy-MM-dd")
+            })).ToList();
+
+        return dbRows.Select(x => ((int)x.BillId, (decimal)x.Amount));
+    }
 
     public async Task<IEnumerable<Transaction>> GetAllTransactionsAsync(DateTime? periodStart = null,
         DateTime? periodEnd = null) {

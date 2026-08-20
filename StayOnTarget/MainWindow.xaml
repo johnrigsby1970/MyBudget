@@ -47,7 +47,7 @@
 
         <converters:LessThanConverter x:Key="LessThanConverter" />
         <converters:MultiBooleanToVisibilityConverter x:Key="MultiBooleanToVisibilityConverter" />
-        <converters:MarkBillAsPaidVisibilityConverter x:Key="MarkBillAsPaidVisibilityConverter" />
+        <converters:MarkBillPaidVisibilityConverter x:Key="MarkBillPaidVisibilityConverter" />
         <converters:NullOrZeroToVisibilityConverter x:Key="NullOrZeroToVisibilityConverter" />
         <converters:SetContainsAccountIdConverter x:Key="SetContainsAccountIdConverter" />
         <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
@@ -1227,10 +1227,11 @@
                                                                                                 FontWeight="SemiBold"
                                                                                                 TextTrimming="CharacterEllipsis"
                                                                                                 VerticalAlignment="Center" />
+
                                                                                             <TextBlock
-                                                                                                Style="{DynamicResource    StyledTextBlock}"
+                                                                                                Style="{DynamicResource StyledTextBlock}"
                                                                                                 Grid.Column="1"
-                                                                                                Visibility="{Binding TransactionAmount, Converter={StaticResource MarkBillAsPaidVisibilityConverter}}"
+                                                                                                Visibility="{Binding Converter={StaticResource MarkBillPaidVisibilityConverter}}"
                                                                                                 Margin="6,0,0,0"
                                                                                                 VerticalAlignment="Center">
                                                                                                 <Hyperlink
@@ -4530,8 +4531,7 @@
                                             <Button Command="{Binding ToggleFlyoutCommand}"
                                                     Width="22" Height="42"
                                                     HorizontalAlignment="Left" VerticalAlignment="Center"
-                                                    Margin="-38,0,0,0"
-                                                >
+                                                    Margin="-38,0,0,0">
                                                 <!-- <Path Data="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" -->
                                                 <!--       Fill="{DynamicResource PrimaryTextBrush}" Stretch="Uniform" -->
                                                 <!--       Width="8" /> -->
@@ -4548,7 +4548,8 @@
                                                 </Button.Template>
 
                                                 <Button.Style>
-                                                    <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                    <Style TargetType="Button"
+                                                           BasedOn="{StaticResource SecondaryButtonStyle}">
                                                         <Setter Property="FontFamily" Value="Segoe UI Symbol, Segoe UI" />
                                                         <Setter Property="FontSize" Value="11" />
                                                         <Setter Property="Content" Value="◀" />

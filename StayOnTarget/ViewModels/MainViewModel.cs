@@ -685,6 +685,7 @@ public class MainViewModel : ViewModelBase {
         var pastDue = CurrentPeriodBills.Where(pb =>
                 !pb.HasActualAmount && pb.DueDate < today && pb.ActualAmount != 0 && pb.TransactionAmount == 0)
             .ToList();
+        
         var upcoming = CurrentPeriodBills.Where(pb =>
             !pb.HasActualAmount && pb.DueDate >= today && pb.DueDate <= upcomingLimit && pb.ActualAmount != 0 &&
             pb.TransactionAmount == 0).ToList();
@@ -821,6 +822,8 @@ public class MainViewModel : ViewModelBase {
 
     private async void OnShowByMonthChanged() {
         try {
+            if(IsGatheringData)
+                return;
             await LoadPeriodDataAsync();
         }
         catch (Exception ex) {
@@ -910,19 +913,30 @@ public class MainViewModel : ViewModelBase {
         set {
             if (SetProperty(ref _currentPeriodDate, value)) {
                 OnPropertyChanged(nameof(PeriodDisplay));
-                OnCurrentPeriodDateChanged();
+                //OnCurrentPeriodDateChanged();
+            }
+        }
+    }
+    
+    private DateTime _nextPeriodDate;
+    public DateTime NextPeriodDate {
+        get => _nextPeriodDate;
+        set {
+            if (SetProperty(ref _nextPeriodDate, value)) {
             }
         }
     }
 
-    private async void OnCurrentPeriodDateChanged() {
-        try {
-            await LoadPeriodDataAsync();
-        }
-        catch (Exception ex) {
-            Log.Error(ex, "Failed to load period data for current period {Date}", _currentPeriodDate);
-        }
-    }
+    // private async void OnCurrentPeriodDateChanged() {
+    //     try {
+    //         if(IsGatheringData)
+    //             return;
+    //         await LoadPeriodDataAsync();
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Failed to load period data for current period {Date}", _currentPeriodDate);
+    //     }
+    // }
 
     public Bill? SelectedBill {
         get => _selectedBill;
@@ -1455,79 +1469,79 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private async void PeriodBill_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
-        if (sender is not PeriodBill pb) return;
-        try {
-            if (e.PropertyName == nameof(PeriodBill.TransactionAmount)) {
-                UpdateWarningMetrics();
-                return;
-            }
+    // private async void PeriodBill_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
+    //     if (sender is not PeriodBill pb) return;
+    //     try {
+    //         if (e.PropertyName == nameof(PeriodBill.TransactionAmount)) {
+    //             UpdateWarningMetrics();
+    //             return;
+    //         }
+    //
+    //         if (e.PropertyName == nameof(PeriodBill.HasActualAmount)) {
+    //             UpdateWarningMetrics();
+    //             return;
+    //         }
+    //
+    //         if (e.PropertyName == nameof(PeriodBill.BudgetExceeded)) return;
+    //         await _budgetService.UpsertPeriodBillAsync(pb);
+    //         await LoadPeriodDataAsync();
+    //         await CalculateProjectionsAsync();
+    //
+    //         if (e.PropertyName == nameof(PeriodBill.ActualAmount)) return;
+    //         {
+    //             UpdateWarningMetrics();
+    //         }
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error in PeriodBill_PropertyChanged.");
+    //     }
+    // }
 
-            if (e.PropertyName == nameof(PeriodBill.HasActualAmount)) {
-                UpdateWarningMetrics();
-                return;
-            }
+    // private async void PeriodBucket_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
+    //     if (sender is not PeriodBucket pb) return;
+    //     try {
+    //         if (e.PropertyName == nameof(PeriodBill.TransactionAmount)) {
+    //             UpdateBucketWarningMetrics();
+    //             return;
+    //         }
+    //
+    //         if (e.PropertyName == nameof(PeriodBill.HasActualAmount)) {
+    //             UpdateBucketWarningMetrics();
+    //             return;
+    //         }
+    //
+    //         if (e.PropertyName == nameof(PeriodBucket.BudgetExceeded)) return;
+    //         await _budgetService.UpsertPeriodBucketAsync(pb);
+    //         await LoadPeriodDataAsync();
+    //         await CalculateProjectionsAsync();
+    //
+    //         if (e.PropertyName == nameof(PeriodBill.ActualAmount)) return;
+    //         {
+    //             UpdateBucketWarningMetrics();
+    //         }
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error in PeriodBucket_PropertyChanged.");
+    //     }
+    // }
 
-            if (e.PropertyName == nameof(PeriodBill.BudgetExceeded)) return;
-            await _budgetService.UpsertPeriodBillAsync(pb);
-            await LoadPeriodDataAsync();
-            await CalculateProjectionsAsync();
-
-            if (e.PropertyName == nameof(PeriodBill.ActualAmount)) return;
-            {
-                UpdateWarningMetrics();
-            }
-        }
-        catch (Exception ex) {
-            Log.Error(ex, "Error in PeriodBill_PropertyChanged.");
-        }
-    }
-
-    private async void PeriodBucket_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
-        if (sender is not PeriodBucket pb) return;
-        try {
-            if (e.PropertyName == nameof(PeriodBill.TransactionAmount)) {
-                UpdateBucketWarningMetrics();
-                return;
-            }
-
-            if (e.PropertyName == nameof(PeriodBill.HasActualAmount)) {
-                UpdateBucketWarningMetrics();
-                return;
-            }
-
-            if (e.PropertyName == nameof(PeriodBucket.BudgetExceeded)) return;
-            await _budgetService.UpsertPeriodBucketAsync(pb);
-            await LoadPeriodDataAsync();
-            await CalculateProjectionsAsync();
-
-            if (e.PropertyName == nameof(PeriodBill.ActualAmount)) return;
-            {
-                UpdateBucketWarningMetrics();
-            }
-        }
-        catch (Exception ex) {
-            Log.Error(ex, "Error in PeriodBucket_PropertyChanged.");
-        }
-    }
-
-    private async void Transaction_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
-        if (sender is not Transaction t) return;
-        try {
-            try {
-                await _budgetService.UpsertTransactionAsync(t);
-            }
-            catch (Exception ex) {
-                Log.Error(ex, "Error upserting transaction in PropertyChanged.");
-            }
-
-            await LoadPeriodDataAsync();
-            await CalculateProjectionsAsync();
-        }
-        catch (Exception ex) {
-            Log.Error(ex, "Error in Transaction_PropertyChanged.");
-        }
-    }
+    // private async void Transaction_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) {
+    //     if (sender is not Transaction t) return;
+    //     try {
+    //         try {
+    //             await _budgetService.UpsertTransactionAsync(t);
+    //         }
+    //         catch (Exception ex) {
+    //             Log.Error(ex, "Error upserting transaction in PropertyChanged.");
+    //         }
+    //
+    //         await LoadPeriodDataAsync();
+    //         await CalculateProjectionsAsync();
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error in Transaction_PropertyChanged.");
+    //     }
+    // }
 
     #endregion
 
@@ -3793,6 +3807,7 @@ public class MainViewModel : ViewModelBase {
             var allPaychecks = Paychecks.ToList();
             if (allPaychecks.Count == 0) {
                 CurrentPeriodDate = DateTime.Today;
+                NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
                 return;
             }
 
@@ -3816,7 +3831,7 @@ public class MainViewModel : ViewModelBase {
             await LoadPeriodBillsAsync();
             await LoadPeriodBucketsAsync();
             await LoadPeriodTransactionsAsync();
-            ApplyTransactionAmounts();
+            await ApplyTransactionAmounts();
             UpdateWarningMetrics();
             UpdateBucketWarningMetrics();
 
@@ -3843,17 +3858,36 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private void ApplyTransactionAmounts() {
+    private async Task ApplyTransactionAmounts() {
         try {
-            foreach (var pb in CurrentPeriodBills) {
-                pb.TransactionAmount = CurrentPeriodTransactions
-                    .Where(t => t.BillId == pb.BillId)
-                    .Sum(t => t.Amount);
-                if (pb.TransactionAmount != 0) {
-                    pb.IsPaid = true;
+            if (CurrentPeriodBills.Count != 0) {
+                // var recentPaidBills =
+                //     (await _budgetService.GetBillsPaidInRange(CurrentPeriodDate.AddDays(-4), CurrentPeriodDate))
+                //     .ToList();
+                foreach (var pb in CurrentPeriodBills) {
+                    if (pb.TransactionAmount == 0) {
+                        pb.TransactionAmount = CurrentPeriodTransactions
+                            .Where(t => t.BillId == pb.BillId)
+                            .Sum(t => t.Amount);
+                    }
+
+                    if (pb.TransactionAmount != 0) {
+                        pb.IsPaid = true;
+                    }
+
+                    // if (!pb.IsPaid || pb.TransactionAmount == 0) {
+                    //     //its unlikely a bill paid within a day or two of the target isnt for this period
+                    //     //its a bill so its coming from the fromaccount
+                    //     if (recentPaidBills.Any(p => p.billId == pb.BillId)) {
+                    //         pb.IsPaid = true;
+                    //         pb.TransactionAmount = recentPaidBills.Where(x=>x.billId==pb.BillId).Sum(x=>x.amount);
+                    //     }
+                    // }
                 }
             }
-
+            
+            
+            
             foreach (var pb in CurrentPeriodBuckets) {
                 pb.TransactionAmount = CurrentPeriodTransactions
                     .Where(t => t.BucketId == pb.BucketId)
@@ -3876,21 +3910,23 @@ public class MainViewModel : ViewModelBase {
                 var periodBill = pBills.FirstOrDefault(existing =>
                     existing.BillId == pb.BillId && existing.PeriodDate.Date == pb.PeriodDate.Date);
                 if (periodBill != null) {
-                    UpdatePeriodBillFromClone(pb, periodBill);
+                    pb.IsPaid = periodBill.IsPaid;
+                    pb.TransactionAmount = periodBill.ActualAmount;
+                    //UpdatePeriodBillFromClone(pb, periodBill);
                 }
             }
 
             projectedBillsForPeriod = projectedBillsForPeriod.OrderBy(pb => pb.DueDate).ToList();
 
-            foreach (var item in CurrentPeriodBills) {
-                item.PropertyChanged -= PeriodBill_PropertyChanged;
-            }
+            // foreach (var item in CurrentPeriodBills) {
+            //     item.PropertyChanged -= PeriodBill_PropertyChanged;
+            // }
 
             CurrentPeriodBills.Clear();
 
-            foreach (var b in projectedBillsForPeriod) {
-                b.PropertyChanged += PeriodBill_PropertyChanged;
-            }
+            // foreach (var b in projectedBillsForPeriod) {
+            //     b.PropertyChanged += PeriodBill_PropertyChanged;
+            // }
 
             CurrentPeriodBills.AddRange(projectedBillsForPeriod);
 
@@ -3933,15 +3969,15 @@ public class MainViewModel : ViewModelBase {
                 }
             }
 
-            foreach (var item in CurrentPeriodBuckets) {
-                item.PropertyChanged -= PeriodBucket_PropertyChanged;
-            }
+            // foreach (var item in CurrentPeriodBuckets) {
+            //     item.PropertyChanged -= PeriodBucket_PropertyChanged;
+            // }
 
             CurrentPeriodBuckets.Clear();
 
-            foreach (var b in pBuckets) {
-                b.PropertyChanged += PeriodBucket_PropertyChanged;
-            }
+            // foreach (var b in pBuckets) {
+            //     b.PropertyChanged += PeriodBucket_PropertyChanged;
+            // }
 
             CurrentPeriodBuckets.AddRange(pBuckets);
         }
@@ -3978,8 +4014,8 @@ public class MainViewModel : ViewModelBase {
 
     private async Task LoadPeriodTransactionsAsync() {
         try {
-            var nextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
-            var transactions = (await _budgetService.GetTransactionsAsync(CurrentPeriodDate, nextPeriodDate)).ToList();
+            //var nextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
+            var transactions = (await _budgetService.GetTransactionsAsync(CurrentPeriodDate, NextPeriodDate)).ToList();
             transactions = transactions.OrderBy(pb => pb.TransactionDate).ToList();
 
             var temp = new List<Transaction>(transactions.Count);
@@ -3999,6 +4035,7 @@ public class MainViewModel : ViewModelBase {
         try {
             if (ShowByMonth) {
                 CurrentPeriodDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
                 return;
             }
 
@@ -4056,6 +4093,7 @@ public class MainViewModel : ViewModelBase {
         try {
             if (ShowByMonth) {
                 CurrentPeriodDate = CurrentPeriodDate.AddMonths(direction);
+                NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
                 await LoadPeriodDataAsync();
                 return;
             }
@@ -4095,7 +4133,7 @@ public class MainViewModel : ViewModelBase {
                 if (nextIndex >= 0 && nextIndex < sortedDates.Count)
                     CurrentPeriodDate = sortedDates[nextIndex];
             }
-
+            NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
             await LoadPeriodDataAsync();
         }
         catch (Exception ex) {
@@ -4176,6 +4214,7 @@ public class MainViewModel : ViewModelBase {
             var allPaychecks = Paychecks.ToList();
             if (allPaychecks.Count == 0) {
                 CurrentPeriodDate = DateTime.Today;
+                NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
                 return;
             }
 
@@ -4197,6 +4236,7 @@ public class MainViewModel : ViewModelBase {
             var allPaychecks = Paychecks.ToList();
             if (allPaychecks.Count == 0) {
                 CurrentPeriodDate = DateTime.Today;
+                NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
                 return;
             }
 
@@ -4221,6 +4261,7 @@ public class MainViewModel : ViewModelBase {
             else if (allPaychecks.Any())
                 CurrentPeriodDate = allPaychecks.Min(p => p.StartDate);
 
+            NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
             var currentPeriodPaychecks = new List<Paycheck>();
             foreach (var pay in allPaychecks.Where(p => id == null || p.Id == id)) {
                 var nextPay = pay.StartDate;
