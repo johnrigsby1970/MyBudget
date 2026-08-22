@@ -13,7 +13,7 @@ public static class ProjectionFilterSyncManager {
         }
     }
 
-    public static bool IsTotalBalanceVisible { get; set; } = true;
+    public static bool IsTotalBalanceVisible { get; set; } = false;
     public static Dictionary<string, bool> ToggleStates { get; } = new();
 
     public static event Action? OnFilterStateChanged;

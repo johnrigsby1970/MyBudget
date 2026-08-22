@@ -70,7 +70,7 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
     }
     
     // Group Toggle Properties
-    private bool _isTotalBalanceVisible = true;
+    private bool _isTotalBalanceVisible = false;
 
     public bool IsTotalBalanceVisible {
         get => _isTotalBalanceVisible;
@@ -110,7 +110,7 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
         }
     }
 
-    private bool _isInvestmentsGroupVisible = true;
+    private bool _isInvestmentsGroupVisible = false;
 
     public bool IsInvestmentsGroupVisible {
         get => _isInvestmentsGroupVisible;
@@ -273,10 +273,15 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
     }
 
     private void SyncGroupStates() {
-        _isLiquidGroupVisible = ToggleItems.Where(t => IsLiquidAccount(t.Type)).All(t => t.IsVisible);
-        _isCreditGroupVisible = ToggleItems.Where(t => IsCreditAccount(t.Type)).All(t => t.IsVisible);
-        _isInvestmentsGroupVisible = ToggleItems.Where(t => IsInvestmentAccount(t.Type)).All(t => t.IsVisible);
-
+        var investmentItems = ToggleItems.Where(t => IsInvestmentAccount(t.Type)).ToList();
+        _isInvestmentsGroupVisible = investmentItems.Any() && investmentItems.All(t => t.IsVisible);
+        
+        var liquidItems = ToggleItems.Where(t => IsLiquidAccount(t.Type)).ToList();
+        _isLiquidGroupVisible = liquidItems.Any() && liquidItems.All(t => t.IsVisible);
+        
+        var creditItems = ToggleItems.Where(t => IsCreditAccount(t.Type)).ToList();
+        _isCreditGroupVisible = creditItems.Any() && creditItems.All(t => t.IsVisible);
+        
         OnPropertyChanged(nameof(IsLiquidGroupVisible));
         OnPropertyChanged(nameof(IsCreditGroupVisible));
         OnPropertyChanged(nameof(IsInvestmentsGroupVisible));
@@ -294,11 +299,13 @@ public partial class ProjectionLiveChartControl : UserControl, INotifyPropertyCh
 
         foreach (var acc in accounts) {
             if (!ToggleItems.Any(t => t.Name == acc.Name)) {
+                // Determine default: Investments start unchecked, others start checked
+                bool defaultVisibility = !IsInvestmentAccount(acc.Type);
                 // If sync is active and global state exists, inherit initial state from global
                 bool initialVisibility = IsSyncActive &&
                                          ProjectionFilterSyncManager.ToggleStates.TryGetValue(acc.Name, out var syncVal)
                     ? syncVal
-                    : true;
+                    : defaultVisibility;
 
                 ToggleItems.Add(new SeriesToggleItem {
                     Name = acc.Name,

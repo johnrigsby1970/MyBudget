@@ -133,6 +133,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
     private void Item_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
         if (e.PropertyName == nameof(ImportedTransactionViewModel.IsSelected)) {
             UpdateIsAllSelectedState();
+            OnPropertyChanged(nameof(CanImport)); // Notify UI that CanImport changed
+            SaveCommand.NotifyCanExecuteChanged(); // Tell RelayCommand to re-check its condition
         }
     }
 
@@ -154,6 +156,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
                     item.IsSelected = targetState;
                     item.PropertyChanged += Item_PropertyChanged;
                 }
+                OnPropertyChanged(nameof(CanImport));
+                SaveCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -173,8 +177,12 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
 
         OnPropertyChanged(nameof(IsAllSelected));
+        OnPropertyChanged(nameof(CanImport)); // Notify UI that CanImport changed
+        SaveCommand.NotifyCanExecuteChanged(); // Tell RelayCommand to re-check its condition
     }
 
+    public bool CanImport => ImportedTransactions.Any(x => x.IsSelected);
+    
     public ImportReconciliationViewModel(Account account, BudgetService budgetService) {
         _account = account;
         _budgetService = budgetService;
@@ -184,20 +192,35 @@ public class ImportReconciliationViewModel : ViewModelBase {
         ConfirmCsvImportCommand = new AsyncRelayCommand(ConfirmCsvImportAsync, () => CsvMapping?.CanImport == true);
         CancelCsvImportCommand = new RelayCommand(() => { IsMappingVisible = false; });
 
-        SaveCommand = new RelayCommand(SaveAsync);
+        SaveCommand = new RelayCommand(SaveAsync, () => CanImport);
 
         // Track changes to update header state automatically
         // Single unified CollectionChanged handler
         ImportedTransactions.CollectionChanged += (s, e) => {
+            // 1. Handle new items added individually or in batches
             if (e.NewItems != null) {
                 foreach (ImportedTransactionViewModel item in e.NewItems) {
-                    // Assign subcategory lookup delegate
                     item.GetDefaultBucketForSubCategory = (subCatId) => {
                         return SubCategoriesWithNone
                             .FirstOrDefault(sub => sub.Id == subCatId)?
                             .DefaultBucketId;
                     };
 
+                    item.PropertyChanged -= Item_PropertyChanged; // Prevent duplicate subscriptions
+                    item.PropertyChanged += Item_PropertyChanged;
+                }
+            }
+
+            // 2. Handle bulk resets/AddRange where e.NewItems might be null or contain all items
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset || e.NewItems == null) {
+                foreach (var item in ImportedTransactions) {
+                    item.GetDefaultBucketForSubCategory = (subCatId) => {
+                        return SubCategoriesWithNone
+                            .FirstOrDefault(sub => sub.Id == subCatId)?
+                            .DefaultBucketId;
+                    };
+
+                    item.PropertyChanged -= Item_PropertyChanged;
                     item.PropertyChanged += Item_PropertyChanged;
                 }
             }
@@ -232,81 +255,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
     }
 
     public IAsyncRelayCommand InitializeDataCommand { get; }
-
-    // private async void SaveAsync() {
-    //     if (string.IsNullOrEmpty(LastFileName)) {
-    //         return;
-    //     }
-    //
-    //     try {
-    //         var fixDate = false;
-    //
-    //         IsBusy = true;
-    //
-    //         // Yield back to UI thread to allow WPF to render the LoadingOverlay control
-    //         await Task.Delay(50);
-    //
-    //         // Handled matched transactions
-    //         foreach (var match in ImportedTransactions.Where(x =>
-    //                      x.IsSelected &&
-    //                      x.IsMatched && !string.IsNullOrEmpty(x.MatchedManualTransactionId) &&
-    //                      x.MatchedManualTransactionDate != null && !string.IsNullOrEmpty(x.MatchedManualFitId))) {
-    //             if (string.IsNullOrEmpty(match.BankId)) continue;
-    //             if (string.IsNullOrEmpty(match.Payee)) continue;
-    //             // Track each background database call
-    //             await Task.Delay(10);
-    //             if (!match.Id.HasValue) {
-    //                 //if the id is null, it didn't actually match
-    //                 continue;
-    //             }
-    //             await _budgetService.UpdateTransactionForBankFitIdAsync(
-    //                 _account.Id,
-    //                 match.MatchedManualTransactionId!,
-    //                 match.BankId,
-    //                 match.IsCleared,
-    //                 match.Id.Value
-    //             );
-    //         }
-    //
-    //         // Handle new transactions that are checked but not matched
-    //         foreach (var newItem in ImportedTransactions.Where(x => x.IsSelected && !x.IsMatched)) {
-    //             if (string.IsNullOrEmpty(newItem.Payee)) continue;
-    //             if (string.IsNullOrEmpty(newItem.BankId)) continue;
-    //             var t = new Transaction {
-    //                 AccountId = newItem.Amount > 0 ? null : _account.Id,
-    //                 ToAccountId = newItem.Amount > 0 ? _account.Id : null,
-    //                 Amount = newItem.Amount,
-    //                 TransactionDate = newItem.Date ?? DateTime.Now,
-    //                 Description = newItem.Payee,
-    //                 FitId = newItem.BankId,
-    //                 BillId = newItem.BillId == 0 ? null : newItem.BillId,
-    //                 BucketId = newItem.BucketId == 0 ? null : newItem.BucketId,
-    //                 SubCategoryId = newItem.SubCategoryId == 0 ? null : newItem.SubCategoryId,
-    //                 FromAccountIsCleared = newItem.Amount > 0 ? null : newItem.IsCleared,
-    //                 ToAccountIsCleared = newItem.Amount > 0 ? newItem.IsCleared : null,
-    //             };
-    //             await Task.Delay(10);
-    //             await _budgetService.UpsertTransactionAsync(t);
-    //         }
-    //
-    //         await Task.Delay(50);
-    //
-    //         // 4. Now these run sequentially on the UI thread with accurate database states
-    //         await LoadDataAsync();
-    //
-    //         if (LastImportAsQfx != null && LastImportAsQfx.Value) {
-    //             await ParseAndPopulateQfxAsync(LastFileName);
-    //         }
-    //
-    //         if (LastImportAsQfx != null && !LastImportAsQfx.Value) {
-    //             await ParseAndPopulateCsv(LastFileName);
-    //         }
-    //     }
-    //     finally {
-    //         IsBusy = false;
-    //     }
-    // }
-
+    
     private async void SaveAsync() {
         if (!ImportedTransactions.Any()) return;
 
@@ -422,7 +371,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
         var rawParsedRecords = new List<ImportedTransactionViewModel>();
 
-        // 1. Read CSV into temporary holding list
+        // 1. Read the CSV into the temporary holding list
         using (var reader = new StreamReader(filePath))
         using (var csv = new CsvReader(reader, CultureInfo.InvariantCulture)) {
             await csv.ReadAsync();
@@ -481,7 +430,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 filteredImports.Add(record);
             }
         }
-
+        
         // 5. Prune already-cleared manual transactions from UI collection
         foreach (var rec in manualRecordsToRemove) {
             UnreconciledManualTransactions.Remove(rec);
@@ -500,6 +449,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
         // 7. Auto-match pass
         AutoMatchTransactions();
         await AutoApplySubCategory();
+        
+        OnPropertyChanged(nameof(CanImport));
+        SaveCommand.NotifyCanExecuteChanged();
     }
 
     private async Task ParseAndPopulateQfxAsync(string filePath) {
@@ -594,7 +546,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
         // 8. Auto-match pass
         AutoMatchTransactions();
         await AutoApplySubCategory();
-
+        
+        OnPropertyChanged(nameof(CanImport));
+        SaveCommand.NotifyCanExecuteChanged();
     }
     
     private async Task AutoApplySubCategory() {

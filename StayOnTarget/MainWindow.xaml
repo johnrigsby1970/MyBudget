@@ -229,12 +229,12 @@
                         </ListBox.ItemContainerStyle>
 
                         <ListBoxItem Content="Dashboard" ToolTip="Current Period Overview" />
-                        <ListBoxItem Content="Ledger" />
                         <ListBoxItem Content="Accounts" />
-                        <ListBoxItem Content="Paychecks" />
+                        <ListBoxItem Content="Ledger" />
                         <ListBoxItem Content="Bills" />
                         <ListBoxItem Content="Envelopes" />
                         <ListBoxItem Content="Categories" />
+                        <ListBoxItem Content="Paychecks" />
                     </ListBox>
                 </Border>
 
@@ -301,7 +301,7 @@
                                                             BorderThickness="1" CornerRadius="8" Padding="14"
                                                             Margin="0,0,6,0">
                                                         <StackPanel>
-                                                            <TextBlock Text="TOTAL LIQUID CASH" FontSize="11"
+                                                            <TextBlock Text="Total Cash on Hand" FontSize="11"
                                                                        FontWeight="Bold"
                                                                        Style="{DynamicResource    StyledSecondaryTextBlock}" />
                                                             <TextBlock Style="{DynamicResource    StyledTextBlock}"
@@ -321,7 +321,7 @@
                                                             BorderThickness="1" CornerRadius="8" Padding="14"
                                                             Margin="6,0,0,0">
                                                         <StackPanel>
-                                                            <TextBlock Text="EXTRA CASH" FontSize="11"
+                                                            <TextBlock Text="Available Money" FontSize="11"
                                                                        FontWeight="Bold"
                                                                        Style="{DynamicResource    StyledSecondaryTextBlock}" />
                                                             <TextBlock Style="{DynamicResource    StyledTextBlock}"
@@ -359,7 +359,7 @@
                                                             <StackPanel Grid.Column="0">
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledTextBlock}"
-                                                                    Text="Minimum Balance Cushion"
+                                                                    Text="Minimum Balance Setting"
                                                                     FontWeight="Medium" />
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledSecondaryTextBlock}"
@@ -426,7 +426,7 @@
                                                             <StackPanel Grid.Column="0">
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledTextBlock}"
-                                                                    Text="Unpaid Period Bills"
+                                                                    Text="Upcoming Bills"
                                                                     FontWeight="Medium" />
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledSecondaryTextBlock}"
@@ -466,7 +466,7 @@
                                                             <StackPanel Grid.Column="0">
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledTextBlock}"
-                                                                    Text="Remaining Everyday Budget"
+                                                                    Text="Remaining Planned Spending"
                                                                     FontWeight="Medium" />
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledSecondaryTextBlock}"
@@ -516,11 +516,11 @@
                                                             <StackPanel Grid.Column="0">
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledTextBlock}"
-                                                                    Text="Total Committed Funds:"
+                                                                    Text="Total Reserved:"
                                                                     FontWeight="Bold" FontSize="13" />
                                                                 <TextBlock
                                                                     Style="{DynamicResource    StyledSecondaryTextBlock}"
-                                                                    Text="Total cash reserved for cushions, savings goals, bills, and everyday budget"
+                                                                    Text="Total cash reserved for balance safety cushions, savings goals, bills, and everyday budget"
                                                                     FontSize="11"
                                                                     TextWrapping="Wrap" />
                                                             </StackPanel>
@@ -637,7 +637,7 @@
                                                                 <StackPanel>
                                                                     <TextBlock
                                                                         Style="{DynamicResource StyledSecondaryTextBlock}"
-                                                                        Text="Investment Suggestion"
+                                                                        Text="Recommended Investing"
                                                                         FontSize="11"
                                                                         FontWeight="SemiBold" />
                                                                     <TextBlock
@@ -687,7 +687,7 @@
                                 </Setter>
                                 <Style.Triggers>
                                     <!-- Index 1: Ledger View -->
-                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="1">
+                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="2">
                                         <Setter Property="Content">
                                             <Setter.Value>
                                                 <DockPanel>
@@ -1158,25 +1158,9 @@
                                                                         Grid.Row="0" Margin="5"
                                                                         TextWrapping="Wrap" Height="Auto"
                                                                         Visibility="{Binding IsBillDescriptionExpanded, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                                                        Amounts set here apply only for this period.
-                                                                        <Hyperlink
-                                                                            Command="{Binding ToggleBillDescriptionCommand}">
-                                                                            Read more...
-                                                                        </Hyperlink>
+                                                                        Current period bill estimated payments, actual paid amounts, and overrides from default estimates. To change estimates, use the bills menu on the left to change estimated payments for future spending.
                                                                     </TextBlock>
-                                                                    <TextBlock
-                                                                        Style="{DynamicResource StyledTextBlock}"
-                                                                        Grid.Row="0"
-                                                                        Margin="5"
-                                                                        TextWrapping="Wrap"
-                                                                        Height="Auto"
-                                                                        Visibility="{Binding IsBillDescriptionExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                                        Amounts set here apply only for this period and are used for projections prior to the actual bill being entered as a transaction.
-                                                                        <Hyperlink
-                                                                            Command="{Binding ToggleBillDescriptionCommand}">
-                                                                            Read less
-                                                                        </Hyperlink>
-                                                                    </TextBlock>
+
                                                                     <DataGrid Grid.Row="1"
                                                                               ItemsSource="{Binding CurrentPeriodBills}"
                                                                               SelectedItem="{Binding SelectedPeriodBill}"
@@ -1406,22 +1390,7 @@
                                                                             Margin="5"
                                                                             TextWrapping="Wrap"
                                                                             Visibility="{Binding IsBucketDescriptionExpanded, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                                                                            Amounts set here apply only for this period.
-                                                                            <Hyperlink
-                                                                                Command="{Binding ToggleBucketDescriptionCommand}">
-                                                                                Read more...
-                                                                            </Hyperlink>
-                                                                        </TextBlock>
-                                                                        <TextBlock
-                                                                            Style="{DynamicResource    StyledTextBlock}"
-                                                                            Margin="5"
-                                                                            TextWrapping="Wrap"
-                                                                            Visibility="{Binding IsBucketDescriptionExpanded, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                                                            Amounts set here apply only for this period.
-                                                                            <Hyperlink
-                                                                                Command="{Binding ToggleBucketDescriptionCommand}">
-                                                                                Read less
-                                                                            </Hyperlink>
+                                                                            Current period envelope budgeted amounts, actual spending in those envelopes, and overrides from default estimates. To change estimates, use the envelopes menu on the left to change budget for future spending.
                                                                         </TextBlock>
                                                                     </StackPanel>
 
@@ -1630,7 +1599,7 @@
                                     </DataTrigger>
 
                                     <!-- Index 2: Accounts View -->
-                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="2">
+                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="1">
                                         <Setter Property="Content">
                                             <Setter.Value>
                                                 <DockPanel>
@@ -2039,7 +2008,7 @@
                                     </DataTrigger>
 
                                     <!-- Index 3: Paychecks View -->
-                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="3">
+                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="6">
                                         <Setter Property="Content">
                                             <Setter.Value>
                                                 <DockPanel>
@@ -2238,7 +2207,7 @@
                                     </DataTrigger>
 
                                     <!-- Index 4: Bills View -->
-                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="4">
+                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="3">
                                         <Setter Property="Content">
                                             <Setter.Value>
                                                 <DockPanel>
@@ -2505,7 +2474,7 @@
                                     </DataTrigger>
 
                                     <!-- Index 5: Envelopes View -->
-                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="5">
+                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="4">
                                         <Setter Property="Content">
                                             <Setter.Value>
                                                 <DockPanel>
@@ -2663,7 +2632,7 @@
                                     </DataTrigger>
 
                                     <!-- Index 6: Categories View -->
-                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="6">
+                                    <DataTrigger Binding="{Binding SelectedOuterTabIndex}" Value="5">
                                         <Setter Property="Content">
                                             <Setter.Value>
                                                 <Grid>
@@ -3327,15 +3296,40 @@
                             <TabItem Header="Snowball Debt Planner">
                                 <Grid>
                                     <DockPanel Grid.Column="0">
+                             
+                                        
                                         <Grid>
                                             <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="1*" />
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="2*" />
                                             </Grid.RowDefinitions>
-
+<!-- Advisory Note for Downloaded Transactions & Debt Balances -->
+                                        <Border  Grid.Row="0" Background="{DynamicResource SurfaceBackgroundBrush}"
+                                                 BorderBrush="{DynamicResource BorderColorBrush}"
+                                                 BorderThickness="1"
+                                                 CornerRadius="6"
+                                                 Padding="10,8"
+                                                 Margin="0,0,0,10"
+                                                 Visibility="{Binding SnowballOptions.EnableSnowball, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <StackPanel>
+                                                <DockPanel Margin="0,0,0,2">
+                                                    <TextBlock Text="💡 Snowball Data Notice"
+                                                               FontSize="11"
+                                                               FontWeight="Bold"
+                                                               Foreground="{DynamicResource SpecialHeadingBrush}"
+                                                               VerticalAlignment="Center" />
+                                                </DockPanel>
+                                                <TextBlock Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                           Text="Projections only reflect transactions currently in the system. Imported bank files only include posted transactions, so recent external payments (like wiping a credit card balance) won't show up immediately. Until those transactions import, the planner may suggest paying off debt you've already cleared. Ensure your accounts are fully up to date to see accurate investment vs. debt payoff suggestions."
+                                                           FontSize="10.5"
+                                                           TextWrapping="Wrap"
+                                                           LineHeight="15" />
+                                            </StackPanel>
+                                        </Border>
                                             <!-- EMPTY STATE / PROMOTIONAL PLACEHOLDER FOR SNOWBALL STRATEGY -->
-                                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                                                           HorizontalScrollBarVisibility="Disabled"
                                                           Visibility="{Binding SnowballOptions.EnableSnowball, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                                 <StackPanel Margin="0,0,0,10">
@@ -3508,7 +3502,7 @@
                                                     </Border>
                                                 </StackPanel>
                                             </ScrollViewer>
-                                            <DataGrid x:Name="SnowballGrid" Grid.Row="0"
+                                            <DataGrid x:Name="SnowballGrid" Grid.Row="1"
                                                       ItemsSource="{Binding SnowballProjections}"
                                                       Visibility="{Binding SnowballOptions.EnableSnowball, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                       AutoGenerateColumns="False"
@@ -3615,14 +3609,14 @@
                                                     </DataGridTextColumn>
                                                 </DataGrid.Columns>
                                             </DataGrid>
-                                            <GridSplitter Grid.Row="1" ResizeDirection="Rows" Height="2"
+                                            <GridSplitter Grid.Row="2" ResizeDirection="Rows" Height="2"
                                                           HorizontalAlignment="Stretch"
                                                           Style="{DynamicResource    ModernGridSplitterStyle}"
                                                           VerticalAlignment="Stretch"
                                                           ResizeBehavior="PreviousAndNext"
                                                           ShowsPreview="True" />
 
-                                            <Grid Grid.Row="2" Margin="0,5,0,0">
+                                            <Grid Grid.Row="3" Margin="0,5,0,0">
 
                                                 <local:ProjectionLiveChartControl
                                                     Projections="{Binding SnowballProjections}"
@@ -4178,6 +4172,7 @@
                                                 </ScrollViewer>
                                             </Grid>
                                         </Grid>
+                                   
                                     </DockPanel>
 
                                     <!-- Column 1: Flap Handle + Collapsible Side Panel -->
