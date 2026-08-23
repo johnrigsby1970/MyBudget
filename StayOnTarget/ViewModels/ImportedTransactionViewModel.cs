@@ -1,4 +1,6 @@
-﻿namespace StayOnTarget.ViewModels {
+﻿using Serilog;
+
+namespace StayOnTarget.ViewModels {
     // A wrapper for the QFX imported transactions
     public class ImportedTransactionViewModel : ViewModelBase {
         // Delegate assigned by ImportReconciliationViewModel's CollectionChanged handler
@@ -82,9 +84,15 @@
         public int? SubCategoryId {
             get => _subCategoryId;
             set {
-                if (SetProperty(ref _subCategoryId, value)) {
-                    // Trigger auto-assignment when SubCategoryId changes in the DataGrid row
-                    ApplyDefaultBucket();
+                try {
+                    if (SetProperty(ref _subCategoryId, value)) {
+                        // Trigger auto-assignment when SubCategoryId changes in the DataGrid row
+                        ApplyDefaultBucket();
+                    }
+                }
+                catch (Exception ex) {
+                    Log.Error(ex, "Error setting SubCategoryId in ImportedTransactionViewModel.");
+                    
                 }
             }
         }
@@ -102,19 +110,25 @@
         }
         
         private void ApplyDefaultBucket() {
-            // 1. Skip if already matched (matched transactions maintain their existing mappings)
-            // 2. Skip if SubCategory is empty or 0 ("None")
-            // 3. Only auto-fill if BucketId is currently unset or 0 ("None")
-            if (!IsMatched && 
-                SubCategoryId.HasValue && 
-                SubCategoryId.Value != 0 && 
-                (!BucketId.HasValue || BucketId == 0)) {
+            try {
+                // 1. Skip if already matched (matched transactions maintain their existing mappings)
+                // 2. Skip if SubCategory is empty or 0 ("None")
+                // 3. Only auto-fill if BucketId is currently unset or 0 ("None")
+                if (!IsMatched && 
+                    SubCategoryId.HasValue && 
+                    SubCategoryId.Value != 0 && 
+                    (!BucketId.HasValue || BucketId == 0)) {
 
-                var defaultBucket = GetDefaultBucketForSubCategory?.Invoke(SubCategoryId.Value);
+                    var defaultBucket = GetDefaultBucketForSubCategory?.Invoke(SubCategoryId.Value);
 
-                if (defaultBucket.HasValue && defaultBucket.Value != 0) {
-                    BucketId = defaultBucket.Value;
+                    if (defaultBucket.HasValue && defaultBucket.Value != 0) {
+                        BucketId = defaultBucket.Value;
+                    }
                 }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error applying default bucket for subcategory.");
+                
             }
         }
     }

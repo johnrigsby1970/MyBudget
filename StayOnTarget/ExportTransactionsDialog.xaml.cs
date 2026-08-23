@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using Serilog;
 using StayOnTarget.ViewModels;
 
 namespace StayOnTarget
@@ -7,9 +8,29 @@ namespace StayOnTarget
     {
         public ExportTransactionsDialog(ExportTransactionsViewModel viewModel)
         {
-            InitializeComponent();
-            DataContext = viewModel;
-            viewModel.RequestClose += (s, e) => DialogResult = true;
+            try
+            {
+                InitializeComponent();
+                DataContext = viewModel;
+                viewModel.RequestClose += (s, e) =>
+                {
+                    try
+                    {
+                        DialogResult = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Error setting DialogResult during RequestClose in ExportTransactionsDialog.");
+                        
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Critical error initializing ExportTransactionsDialog.");
+                
+                MessageBox.Show($"Failed to open export dialog: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

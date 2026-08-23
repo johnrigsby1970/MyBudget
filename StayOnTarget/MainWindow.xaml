@@ -900,6 +900,7 @@
                                                                                 <RowDefinition Height="Auto" />
                                                                                 <RowDefinition Height="Auto" />
                                                                                 <RowDefinition Height="Auto" />
+                                                                                <RowDefinition Height="Auto" />
                                                                             </Grid.RowDefinitions>
 
                                                                             <Label
@@ -1093,6 +1094,50 @@
                                                                                     VerticalAlignment="Center"
                                                                                     Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
                                                                             </StackPanel>
+                                                                            <!-- Reconciliation & Bank Status Sub-Panel -->
+<Border Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="4"
+        Background="{DynamicResource SurfaceBackgroundBrush}"
+        BorderBrush="{DynamicResource BorderColorBrush}"
+        BorderThickness="1" CornerRadius="6" Padding="10" Margin="5">
+    <StackPanel>
+        <DockPanel Margin="0,0,0,6">
+            <TextBlock Text="Bank &amp; Reconciliation Status" 
+                       Style="{DynamicResource StyledTextBlock}" 
+                       FontWeight="SemiBold" FontSize="12" />
+        </DockPanel>
+
+        <!-- Status Table / Rows for Both Sides -->
+        <ItemsControl ItemsSource="{Binding EditingTransactionStatusItems}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="120" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <!-- Account Name -->
+                        <TextBlock Grid.Column="0" Text="{Binding AccountName}" 
+                                   VerticalAlignment="Center" FontWeight="Medium" />
+                        
+                        <!-- Status Dropdown or Toggle (Uncleared / Cleared / Reconciled) -->
+                        <ComboBox Grid.Column="1" 
+                                  ItemsSource="{Binding AvailableStatuses}"
+                                  SelectedValue="{Binding CurrentStatus, UpdateSourceTrigger=PropertyChanged}"
+                                  Margin="4,0" />
+                                  
+                        <!-- Info / Reconciliation ID indicator -->
+                        <TextBlock Grid.Column="2" Text="{Binding StatusDetailsText}" 
+                                   Style="{DynamicResource StyledSecondaryTextBlock}" 
+                                   VerticalAlignment="Center" FontSize="11" Margin="6,0,0,0" />
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</Border>
+                                                                            
                                                                         </Grid>
                                                                     </StackPanel>
                                                                 </Grid>

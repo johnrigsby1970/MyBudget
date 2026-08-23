@@ -22,22 +22,29 @@ public partial class ReconciliationWindow : Window {
 
     private async void OkButton_Click(object sender, RoutedEventArgs e) {
         try {
-                _viewModel.SpinnerMessage = "Reconciling records...";
-                _viewModel.IsBusy = true; // Shows the overlay & starts spinner
-                // Yield back to UI thread to allow WPF to render the LoadingOverlay control
-                await Task.Delay(50);
-                await Task.Run(async () => {
-                    await _viewModel.UpdateReconciliationTransactionsAsync();
-                });
-                
-                _viewModel.IsBusy = false; // Hides spinner
-                DialogResult = true;
+            _viewModel.SpinnerMessage = "Reconciling records...";
+            _viewModel.IsBusy = true; // Shows the overlay & starts spinner
+        
+            // Yield briefly to let WPF render the spinner animation
+            await Task.Delay(50);
+
+            // Run the heavy database processing on a background thread pool thread
+            await Task.Run(async () => {
+                await _viewModel.UpdateReconciliationTransactionsAsync();
+            });
+        
+            // If UpdateReconciliationTransactionsAsync modifies observable collections 
+            // bound to the UI, make sure those collection changes are dispatched back:
+            // e.g., await Dispatcher.InvokeAsync(() => _viewModel.RefreshCollections());
+
+            DialogResult = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during OkButton_Click.");
+            
         }
         finally {
-            _viewModel.IsBusy = false; // Hides spinner
+            _viewModel.IsBusy = false; // Hides spinner safely
         }
     }
 

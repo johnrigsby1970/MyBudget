@@ -1,5 +1,4 @@
 using Dapper;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StayOnTarget.Data;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
@@ -85,11 +84,12 @@ public class UpsertTransactionSafetyTests
         BucketId = src.BucketId,
         PaycheckId = src.PaycheckId,
         PaycheckOccurrenceDate = src.PaycheckOccurrenceDate,
-        FitId = src.FitId,
+        ToFitId = src.ToFitId,
+        FromFitId = src.FromFitId,
         IsPrincipalOnly = src.IsPrincipalOnly,
         IsInterestOnly = src.IsInterestOnly,
-        FromAccountReconciledId = src.FromAccountReconciledId,
-        ToAccountReconciledId = src.ToAccountReconciledId,
+        FromAccountReconciliationId = src.FromAccountReconciliationId,
+        ToAccountReconciliationId = src.ToAccountReconciliationId,
         FromAccountIsCleared = src.FromAccountIsCleared,
         ToAccountIsCleared = src.ToAccountIsCleared,
         AccountName = src.AccountName,
@@ -149,7 +149,8 @@ public class UpsertTransactionSafetyTests
             {
                 t.Description = "[R1] " + t.Description;
                 t.Memo = "R1_MEMO_" + t.TransactionId.ToString("N")[..6];
-                t.FitId = "R1_FIT_" + t.TransactionId.ToString("N")[..8];
+                t.ToFitId = "R1_TOFIT_" + t.TransactionId.ToString("N")[..8];
+                t.FromFitId = "R1_FROMFIT_" + t.TransactionId.ToString("N")[..8];
             }
 
             foreach (var t in targets)

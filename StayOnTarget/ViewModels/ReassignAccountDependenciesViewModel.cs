@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using Serilog;
 using StayOnTarget.Models;
 
 namespace StayOnTarget.ViewModels;
@@ -14,14 +15,33 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
         public int? TargetAccountId
         {
             get => _targetAccountId;
-            set => SetProperty(ref _targetAccountId, value);
+            set
+            {
+                try
+                {
+                    SetProperty(ref _targetAccountId, value);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error setting TargetAccountId in ReassignItem.");
+                    
+                }
+            }
         }
 
         public ReassignItem(T item, string description, int? currentAccountId)
         {
-            Item = item;
-            Description = description;
-            _targetAccountId = currentAccountId;
+            try
+            {
+                Item = item;
+                Description = description;
+                _targetAccountId = currentAccountId;
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Critical error initializing ReassignItem.");
+                
+            }
         }
     }
 
@@ -34,14 +54,36 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
         public int? TargetAccountId
         {
             get => _targetAccountId;
-            set => SetProperty(ref _targetAccountId, value);
+            set
+            {
+                try
+                {
+                    SetProperty(ref _targetAccountId, value);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error setting TargetAccountId in ReassignBillItem.");
+                    
+                }
+            }
         }
 
         private int? _targetToAccountId;
         public int? TargetToAccountId
         {
             get => _targetToAccountId;
-            set => SetProperty(ref _targetToAccountId, value);
+            set
+            {
+                try
+                {
+                    SetProperty(ref _targetToAccountId, value);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Error setting TargetToAccountId in ReassignBillItem.");
+                    
+                }
+            }
         }
 
         public bool ShowAccountId { get; }
@@ -49,12 +91,20 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
 
         public ReassignBillItem(Bill bill, int sourceAccountId)
         {
-            Bill = bill;
-            Description = bill.Name;
-            ShowAccountId = bill.AccountId == sourceAccountId;
-            ShowToAccountId = bill.ToAccountId == sourceAccountId;
-            _targetAccountId = bill.AccountId;
-            _targetToAccountId = bill.ToAccountId;
+            try
+            {
+                Bill = bill;
+                Description = bill.Name;
+                ShowAccountId = bill.AccountId == sourceAccountId;
+                ShowToAccountId = bill.ToAccountId == sourceAccountId;
+                _targetAccountId = bill.AccountId;
+                _targetToAccountId = bill.ToAccountId;
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Critical error initializing ReassignBillItem.");
+                
+            }
         }
     }
 
@@ -62,21 +112,54 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
     public ObservableCollection<ReassignItem<Paycheck>> Paychecks
     {
         get => _paychecks;
-        set => SetProperty(ref _paychecks, value);
+        set
+        {
+            try
+            {
+                SetProperty(ref _paychecks, value);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting Paychecks collection in ReassignAccountDependenciesViewModel.");
+                
+            }
+        }
     }
 
     private ObservableCollection<ReassignBillItem> _bills = new();
     public ObservableCollection<ReassignBillItem> Bills
     {
         get => _bills;
-        set => SetProperty(ref _bills, value);
+        set
+        {
+            try
+            {
+                SetProperty(ref _bills, value);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting Bills collection in ReassignAccountDependenciesViewModel.");
+                
+            }
+        }
     }
 
     private ObservableCollection<ReassignItem<BudgetBucket>> _buckets = new();
     public ObservableCollection<ReassignItem<BudgetBucket>> Buckets
     {
         get => _buckets;
-        set => SetProperty(ref _buckets, value);
+        set
+        {
+            try
+            {
+                SetProperty(ref _buckets, value);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting Buckets collection in ReassignAccountDependenciesViewModel.");
+                
+            }
+        }
     }
 
     public List<Account> AvailableAccounts { get; }
@@ -90,9 +173,17 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
         get => _globalTargetAccount;
         set
         {
-            if (SetProperty(ref _globalTargetAccount, value))
+            try
             {
-                ApplyGlobalReassignment(value?.Id == -1 ? null : value?.Id);
+                if (SetProperty(ref _globalTargetAccount, value))
+                {
+                    ApplyGlobalReassignment(value?.Id == -1 ? null : value?.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting GlobalTargetAccount in ReassignAccountDependenciesViewModel.");
+                
             }
         }
     }
@@ -104,31 +195,46 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
         IEnumerable<Account> availableAccounts,
         int sourceAccountId)
     {
-        AvailableAccounts = availableAccounts.ToList();
-        AvailableAccountsWithNone = new List<Account> { NoneAccount }.Concat(AvailableAccounts).ToList();
+        try
+        {
+            AvailableAccounts = availableAccounts.ToList();
+            AvailableAccountsWithNone = new List<Account> { NoneAccount }.Concat(AvailableAccounts).ToList();
 
-        foreach (var p in paychecks)
-            Paychecks.Add(new ReassignItem<Paycheck>(p, p.Name, p.AccountId));
+            foreach (var p in paychecks)
+                Paychecks.Add(new ReassignItem<Paycheck>(p, p.Name, p.AccountId));
 
-        foreach (var b in bills)
-            Bills.Add(new ReassignBillItem(b, sourceAccountId));
+            foreach (var b in bills)
+                Bills.Add(new ReassignBillItem(b, sourceAccountId));
 
-        foreach (var b in buckets)
-            Buckets.Add(new ReassignItem<BudgetBucket>(b, b.Name, b.AccountId));
+            foreach (var b in buckets)
+                Buckets.Add(new ReassignItem<BudgetBucket>(b, b.Name, b.AccountId));
 
-        _globalTargetAccount = NoneAccount;
-        ApplyGlobalReassignment(null);
+            _globalTargetAccount = NoneAccount;
+            ApplyGlobalReassignment(null);
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Critical error initializing ReassignAccountDependenciesViewModel.");
+            
+        }
     }
 
     private void ApplyGlobalReassignment(int? targetAccountId)
     {
-        foreach (var p in Paychecks) p.TargetAccountId = targetAccountId;
-        foreach (var b in Bills)
+        try
         {
-            if (b.ShowAccountId) b.TargetAccountId = targetAccountId;
-            if (b.ShowToAccountId) b.TargetToAccountId = targetAccountId;
+            foreach (var p in Paychecks) p.TargetAccountId = targetAccountId;
+            foreach (var b in Bills)
+            {
+                if (b.ShowAccountId) b.TargetAccountId = targetAccountId;
+                if (b.ShowToAccountId) b.TargetToAccountId = targetAccountId;
+            }
+            foreach (var b in Buckets) b.TargetAccountId = targetAccountId;
         }
-        foreach (var b in Buckets) b.TargetAccountId = targetAccountId;
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error applying global reassignment in ReassignAccountDependenciesViewModel.");
+            
+        }
     }
-
 }

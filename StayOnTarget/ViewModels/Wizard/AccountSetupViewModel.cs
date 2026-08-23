@@ -224,7 +224,13 @@ public partial class AccountSetupViewModel : ViewModelBase, IWizardStepViewModel
                 Amount = isDebtAccount ? -1 * account.Balance: account.Balance, //the balance is entered as a positive number, but we want to record it as a negative number
                 TransactionDate = account.BalanceAsOf,
                 TransactionId = Guid.NewGuid(),
-                FitId = Guid.NewGuid().ToString(),
+
+                FromFitId = isDebtAccount ? Guid.NewGuid().ToString() : "",
+                ToFitId = isDebtAccount
+                    ? ""
+                    : Guid.NewGuid().ToString(),
+                
+                
                 Description = Constants.OpeningBalance,
                 Memo = Constants.OpeningBalance
             };

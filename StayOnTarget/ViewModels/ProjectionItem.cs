@@ -1,4 +1,5 @@
-﻿using StayOnTarget.Services.Projections;
+﻿using Serilog;
+using StayOnTarget.Services.Projections;
 
 namespace StayOnTarget.ViewModels;
 
@@ -30,9 +31,17 @@ public class ProjectionItem : ViewModelBase
         get => _paycheckId; 
         set 
         {
-            if (SetProperty(ref _paycheckId, value))
+            try
             {
-                OnPropertyChanged(nameof(NeedsAttention));
+                if (SetProperty(ref _paycheckId, value))
+                {
+                    OnPropertyChanged(nameof(NeedsAttention));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting PaycheckId in ProjectionItem.");
+                
             }
         } 
     }
@@ -46,9 +55,17 @@ public class ProjectionItem : ViewModelBase
         get => _bucketId; 
         set
         {
-            if (SetProperty(ref _bucketId, value))
+            try
             {
-                OnPropertyChanged(nameof(CanFundDrawdown));
+                if (SetProperty(ref _bucketId, value))
+                {
+                    OnPropertyChanged(nameof(CanFundDrawdown));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting BucketId in ProjectionItem.");
+                
             }
         }
     }
@@ -78,9 +95,17 @@ public class ProjectionItem : ViewModelBase
         get => _isBelowFloor; 
         set 
         {
-            if (SetProperty(ref _isBelowFloor, value))
+            try
             {
-                IsWarning = value; // Synchronizes warning state cleanly
+                if (SetProperty(ref _isBelowFloor, value))
+                {
+                    IsWarning = value; // Synchronizes warning state cleanly
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting IsBelowFloor in ProjectionItem.");
+                
             }
         } 
     }
@@ -103,11 +128,19 @@ public class ProjectionItem : ViewModelBase
         get => _type;
         set
         {
-            if (SetProperty(ref _type, value))
+            try
             {
-                OnPropertyChanged(nameof(IsSweep));
-                OnPropertyChanged(nameof(IsBucket));
-                OnPropertyChanged(nameof(CanFundDrawdown));
+                if (SetProperty(ref _type, value))
+                {
+                    OnPropertyChanged(nameof(IsSweep));
+                    OnPropertyChanged(nameof(IsBucket));
+                    OnPropertyChanged(nameof(CanFundDrawdown));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting Type in ProjectionItem.");
+                
             }
         }
     }
@@ -132,7 +165,16 @@ public class ProjectionItem : ViewModelBase
 
     public decimal GetAccountBalance(string accountName)
     {
-        return _accountBalances.TryGetValue(accountName, out var bal) ? bal : 0;
+        try
+        {
+            return _accountBalances.TryGetValue(accountName, out var bal) ? bal : 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Error getting account balance for {AccountName} in ProjectionItem.", accountName);
+            
+            return 0;
+        }
     }
 
     private bool _isReconciled;
@@ -146,18 +188,27 @@ public class ProjectionItem : ViewModelBase
     {
         get
         {
-            if (!BillId.HasValue || BillId.Value == 0) return false;
-
-            DateTime periodStart = MainViewModel.Instance?.CurrentPeriodDate == DateTime.MinValue 
-                ? DateTime.Today 
-                : (MainViewModel.Instance?.CurrentPeriodDate ?? DateTime.Today);
-
-            if (MainViewModel.Instance?.ProjectionStartDate.HasValue == true)
+            try
             {
-                periodStart = MainViewModel.Instance.ProjectionStartDate.Value;
-            }
+                if (!BillId.HasValue || BillId.Value == 0) return false;
 
-            return TransactionDate >= periodStart && TransactionDate <= periodStart.AddDays(31);
+                DateTime periodStart = MainViewModel.Instance?.CurrentPeriodDate == DateTime.MinValue 
+                    ? DateTime.Today 
+                    : (MainViewModel.Instance?.CurrentPeriodDate ?? DateTime.Today);
+
+                if (MainViewModel.Instance?.ProjectionStartDate.HasValue == true)
+                {
+                    periodStart = MainViewModel.Instance.ProjectionStartDate.Value;
+                }
+
+                return TransactionDate >= periodStart && TransactionDate <= periodStart.AddDays(31);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error evaluating CanPayIt in ProjectionItem.");
+                
+                return false;
+            }
         }
     }
     
@@ -165,8 +216,17 @@ public class ProjectionItem : ViewModelBase
     {
         get
         {
-            if (!BucketId.HasValue || BucketId.Value == 0) return false;
-            return Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
+            try
+            {
+                if (!BucketId.HasValue || BucketId.Value == 0) return false;
+                return Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error evaluating CanFundDrawdown in ProjectionItem.");
+                
+                return false;
+            }
         }
     }
 }

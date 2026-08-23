@@ -1,5 +1,5 @@
 ﻿using System.Windows.Controls;
-using StayOnTarget.ViewModels.Wizard;
+using Serilog;
 
 namespace StayOnTarget.Views.Wizard;
 
@@ -7,6 +7,14 @@ public partial class BillSetupView : UserControl
 {
     public BillSetupView()
     {
-        InitializeComponent();
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Critical error initializing BillSetupView.");
+            
+        }
     }
 }

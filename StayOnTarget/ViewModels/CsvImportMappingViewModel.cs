@@ -4,6 +4,7 @@ using System.Text.Json;
 using CsvHelper;
 using System.Globalization;
 using StayOnTarget.Helpers;
+using Serilog;
 
 namespace StayOnTarget.ViewModels;
 
@@ -19,9 +20,15 @@ public class CsvImportMappingViewModel : ViewModelBase {
     public string? DateHeader {
         get => _dateHeader;
         set {
-            if (SetProperty(ref _dateHeader, value)) {
-                RefreshPreview();
-                OnPropertyChanged(nameof(CanImport));
+            try {
+                if (SetProperty(ref _dateHeader, value)) {
+                    RefreshPreview();
+                    OnPropertyChanged(nameof(CanImport));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting DateHeader in CsvImportMappingViewModel[cite: 19].");
+                
             }
         }
     }
@@ -30,9 +37,15 @@ public class CsvImportMappingViewModel : ViewModelBase {
     public string? AmountHeader {
         get => _amountHeader;
         set {
-            if (SetProperty(ref _amountHeader, value)) {
-                RefreshPreview();
-                OnPropertyChanged(nameof(CanImport));
+            try {
+                if (SetProperty(ref _amountHeader, value)) {
+                    RefreshPreview();
+                    OnPropertyChanged(nameof(CanImport));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting AmountHeader in CsvImportMappingViewModel[cite: 19].");
+                
             }
         }
     }
@@ -41,9 +54,15 @@ public class CsvImportMappingViewModel : ViewModelBase {
     public string? PayeeHeader {
         get => _payeeHeader;
         set {
-            if (SetProperty(ref _payeeHeader, value)) {
-                RefreshPreview();
-                OnPropertyChanged(nameof(CanImport));
+            try {
+                if (SetProperty(ref _payeeHeader, value)) {
+                    RefreshPreview();
+                    OnPropertyChanged(nameof(CanImport));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting PayeeHeader in CsvImportMappingViewModel[cite: 19].");
+                
             }
         }
     }
@@ -52,9 +71,15 @@ public class CsvImportMappingViewModel : ViewModelBase {
     public string? BankIdHeader {
         get => _bankIdHeader;
         set {
-            if (SetProperty(ref _bankIdHeader, value)) {
-                RefreshPreview();
-                OnPropertyChanged(nameof(CanImport));
+            try {
+                if (SetProperty(ref _bankIdHeader, value)) {
+                    RefreshPreview();
+                    OnPropertyChanged(nameof(CanImport));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting BankIdHeader in CsvImportMappingViewModel[cite: 19].");
+                
             }
         }
     }
@@ -65,102 +90,130 @@ public class CsvImportMappingViewModel : ViewModelBase {
                             !string.IsNullOrEmpty(BankIdHeader);
 
     public CsvImportMappingViewModel(string filePath, string mappingConfigPath) {
-        FilePath = filePath;
-        LoadPreview();
-        
-        AvailableHeaders.Add(null);
-        foreach (var header in Headers) {
-            AvailableHeaders.Add(header);
-        }
+        try {
+            FilePath = filePath;
+            LoadPreview();
+            
+            AvailableHeaders.Add(null);
+            foreach (var header in Headers) {
+                AvailableHeaders.Add(header);
+            }
 
-        if (File.Exists(mappingConfigPath)) {
-            LoadMapping(mappingConfigPath);
-        } else {
-            AutoDetectHeaders();
+            if (File.Exists(mappingConfigPath)) {
+                LoadMapping(mappingConfigPath);
+            } else {
+                AutoDetectHeaders();
+            }
+        }
+        catch (Exception ex) {
+            Log.Fatal(ex, "Critical error initializing CsvImportMappingViewModel[cite: 19].");
+            
         }
     }
 
     private void LoadPreview() {
-        using var reader = new StreamReader(FilePath);
-        using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-        csv.Read();
-        csv.ReadHeader();
-        Headers = csv.HeaderRecord?.ToList() ?? new List<string>();
+        try {
+            using var reader = new StreamReader(FilePath);
+            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+            csv.Read();
+            csv.ReadHeader();
+            Headers = csv.HeaderRecord?.ToList() ?? new List<string>();
 
-        int count = 0;
-        while (csv.Read() && count < 5) {
-            var row = new Dictionary<string, string>();
-            foreach (var header in Headers) {
-                row[header] = csv.GetField(header) ?? "";
+            int count = 0;
+            while (csv.Read() && count < 5) {
+                var row = new Dictionary<string, string>();
+                foreach (var header in Headers) {
+                    row[header] = csv.GetField(header) ?? "";
+                }
+                _rawPreviewData.Add(row);
+                count++;
             }
-            _rawPreviewData.Add(row);
-            count++;
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error loading preview for CSV import[cite: 19].");
+            
         }
     }
 
     private void RefreshPreview() {
-        PreviewRows.Clear();
-        var tempRows = new List<ImportedTransactionViewModel>(_rawPreviewData.Count);
+        try {
+            PreviewRows.Clear();
+            var tempRows = new List<ImportedTransactionViewModel>(_rawPreviewData.Count);
 
-        foreach (var rawRow in _rawPreviewData) {
-            var tx = new ImportedTransactionViewModel();
-        
-            if (!string.IsNullOrEmpty(DateHeader) && rawRow.TryGetValue(DateHeader, out var dateStr)) {
-                if (DateTime.TryParse(dateStr, CultureInfo.CurrentCulture, DateTimeStyles.None, out var d))
-                    tx.Date = d;
+            foreach (var rawRow in _rawPreviewData) {
+                var tx = new ImportedTransactionViewModel();
+            
+                if (!string.IsNullOrEmpty(DateHeader) && rawRow.TryGetValue(DateHeader, out var dateStr)) {
+                    if (DateTime.TryParse(dateStr, CultureInfo.CurrentCulture, DateTimeStyles.None, out var d))
+                        tx.Date = d;
+                }
+
+                if (!string.IsNullOrEmpty(AmountHeader) && rawRow.TryGetValue(AmountHeader, out var amountStr)) {
+                    if (decimal.TryParse(amountStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var a))
+                        tx.Amount = a;
+                }
+
+                if (!string.IsNullOrEmpty(PayeeHeader) && rawRow.TryGetValue(PayeeHeader, out var payee)) {
+                    tx.Payee = payee.Trim();
+                }
+
+                if (!string.IsNullOrEmpty(BankIdHeader) && rawRow.TryGetValue(BankIdHeader, out var bankId)) {
+                    tx.BankId = bankId;
+                } else {
+                    tx.BankId = "Preview";
+                }
+
+                tempRows.Add(tx);
             }
 
-            if (!string.IsNullOrEmpty(AmountHeader) && rawRow.TryGetValue(AmountHeader, out var amountStr)) {
-                if (decimal.TryParse(amountStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var a))
-                    tx.Amount = a;
-            }
-
-            if (!string.IsNullOrEmpty(PayeeHeader) && rawRow.TryGetValue(PayeeHeader, out var payee)) {
-                tx.Payee = payee.Trim();
-            }
-
-            if (!string.IsNullOrEmpty(BankIdHeader) && rawRow.TryGetValue(BankIdHeader, out var bankId)) {
-                tx.BankId = bankId;
-            } else {
-                tx.BankId = "Preview";
-            }
-
-            tempRows.Add(tx);
+            PreviewRows.AddRange(tempRows);
         }
-
-        // Fires ONE single Reset notification to the DataGrid for the entire batch
-        PreviewRows.AddRange(tempRows);
+        catch (Exception ex) {
+            Log.Error(ex, "Error refreshing preview rows[cite: 19].");
+            
+        }
     }
 
     private void AutoDetectHeaders() {
-        foreach (var header in Headers) {
-            var lower = header.ToLower();
-            if (lower.Contains("date") && DateHeader == null) DateHeader = header;
-            else if ((lower.Contains("amount") || lower.Contains("value")) && AmountHeader == null) AmountHeader = header;
-            else if ((lower.Contains("payee") || lower.Contains("description") || lower.Contains("name")) && PayeeHeader == null) PayeeHeader = header;
-            else if ((lower.Contains("id") || lower.Contains("fitid") || lower.Contains("transaction id") || lower.Contains("reference")) && BankIdHeader == null) BankIdHeader = header;
-        }
-        
-        // If still missing, try to guess from data in the first record
-        if (_rawPreviewData.Count > 0) {
-            var firstRow = _rawPreviewData[0];
-            foreach (var kvp in firstRow) {
-                if (DateHeader == null && DateTime.TryParse(kvp.Value, out _)) DateHeader = kvp.Key;
-                else if (AmountHeader == null && decimal.TryParse(kvp.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out _)) AmountHeader = kvp.Key;
+        try {
+            foreach (var header in Headers) {
+                var lower = header.ToLower();
+                if (lower.Contains("date") && DateHeader == null) DateHeader = header;
+                else if ((lower.Contains("amount") || lower.Contains("value")) && AmountHeader == null) AmountHeader = header;
+                else if ((lower.Contains("payee") || lower.Contains("description") || lower.Contains("name")) && PayeeHeader == null) PayeeHeader = header;
+                else if ((lower.Contains("id") || lower.Contains("fitid") || lower.Contains("transaction id") || lower.Contains("reference")) && BankIdHeader == null) BankIdHeader = header;
             }
-        }
+            
+            if (_rawPreviewData.Count > 0) {
+                var firstRow = _rawPreviewData[0];
+                foreach (var kvp in firstRow) {
+                    if (DateHeader == null && DateTime.TryParse(kvp.Value, out _)) DateHeader = kvp.Key;
+                    else if (AmountHeader == null && decimal.TryParse(kvp.Value, NumberStyles.Any, CultureInfo.InvariantCulture, out _)) AmountHeader = kvp.Key;
+                }
+            }
 
-        RefreshPreview();
+            RefreshPreview();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error auto-detecting CSV headers[cite: 19].");
+            
+        }
     }
 
     public void SaveMapping(string path) {
-        var mapping = new Dictionary<string, string?> {
-            { "Date", DateHeader },
-            { "Amount", AmountHeader },
-            { "Payee", PayeeHeader },
-            { "BankId", BankIdHeader }
-        };
-        File.WriteAllText(path, JsonSerializer.Serialize(mapping));
+        try {
+            var mapping = new Dictionary<string, string?> {
+                { "Date", DateHeader },
+                { "Amount", AmountHeader },
+                { "Payee", PayeeHeader },
+                { "BankId", BankIdHeader }
+            };
+            File.WriteAllText(path, JsonSerializer.Serialize(mapping));
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error saving CSV mapping configuration[cite: 19].");
+            
+        }
     }
 
     private void LoadMapping(string path) {
@@ -173,7 +226,9 @@ public class CsvImportMappingViewModel : ViewModelBase {
                 if (mapping.TryGetValue("Payee", out val) && Headers.Contains(val)) PayeeHeader = val;
                 if (mapping.TryGetValue("BankId", out val) && Headers.Contains(val)) BankIdHeader = val;
             }
-        } catch {
+        } catch (Exception ex) {
+            Log.Warning(ex, "Failed to load mapping config, falling back to auto-detection[cite: 19].");
+            
             AutoDetectHeaders();
         }
     }

@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
+using Serilog;
 
 namespace StayOnTarget.ViewModels;
 
@@ -24,17 +25,23 @@ public class ExportTransactionsViewModel : ViewModelBase
 
     public ExportTransactionsViewModel(BudgetService budgetService)
     {
-        _budgetService = budgetService;
-        Accounts = new ObservableCollection<SelectableAccount>();
-        _exportFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), $"Transactions_Export_{DateTime.Now:yyyy-MM-dd}.csv");
+        try {
+            _budgetService = budgetService;
+            Accounts = new ObservableCollection<SelectableAccount>();
+            _exportFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), $"Transactions_Export_{DateTime.Now:yyyy-MM-dd}.csv");
 
-        SelectAllCommand = new RelayCommand(SelectAll);
-        ClearSelectionCommand = new RelayCommand(ClearSelection);
-        BrowseCommand = new RelayCommand(Browse);
-        ExportCommand = new AsyncRelayCommand(ExportAsync, () => CanExport());
-        CancelCommand = new RelayCommand<Window>(Cancel);
+            SelectAllCommand = new RelayCommand(SelectAll);
+            ClearSelectionCommand = new RelayCommand(ClearSelection);
+            BrowseCommand = new RelayCommand(Browse);
+            ExportCommand = new AsyncRelayCommand(ExportAsync, () => CanExport());
+            CancelCommand = new RelayCommand<Window>(Cancel);
 
-        LoadAccountsAsync();
+            LoadAccountsAsync();
+        }
+        catch (Exception ex) {
+            Log.Fatal(ex, "Critical error initializing ExportTransactionsViewModel[cite: 19].");
+            
+        }
     }
 
     public ObservableCollection<SelectableAccount> Accounts { get; }
@@ -44,9 +51,15 @@ public class ExportTransactionsViewModel : ViewModelBase
         get => _includeArchivedAccounts;
         set
         {
-            if (SetProperty(ref _includeArchivedAccounts, value))
-            {
-                LoadAccountsAsync();
+            try {
+                if (SetProperty(ref _includeArchivedAccounts, value))
+                {
+                    LoadAccountsAsync();
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting IncludeArchivedAccounts in ExportTransactionsViewModel[cite: 19].");
+                
             }
         }
     }
@@ -56,10 +69,16 @@ public class ExportTransactionsViewModel : ViewModelBase
         get => _selectedDateFilter;
         set
         {
-            if (SetProperty(ref _selectedDateFilter, value))
-            {
-                OnPropertyChanged(nameof(IsCustomDateRange));
-                UpdateDatesFromFilter();
+            try {
+                if (SetProperty(ref _selectedDateFilter, value))
+                {
+                    OnPropertyChanged(nameof(IsCustomDateRange));
+                    UpdateDatesFromFilter();
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting SelectedDateFilter in ExportTransactionsViewModel[cite: 19].");
+                
             }
         }
     }
@@ -101,9 +120,15 @@ public class ExportTransactionsViewModel : ViewModelBase
         get => _exportFilePath;
         set
         {
-            if (SetProperty(ref _exportFilePath, value))
-            {
-                ExportCommand.NotifyCanExecuteChanged();
+            try {
+                if (SetProperty(ref _exportFilePath, value))
+                {
+                    ExportCommand.NotifyCanExecuteChanged();
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting ExportFilePath in ExportTransactionsViewModel[cite: 19].");
+                
             }
         }
     }
@@ -113,10 +138,16 @@ public class ExportTransactionsViewModel : ViewModelBase
         get => _selectedPreset;
         set
         {
-            if (SetProperty(ref _selectedPreset, value))
-            {
-                UpdateDefaultFileName();
-                OnPropertyChanged(nameof(IsQuickenPreset));
+            try {
+                if (SetProperty(ref _selectedPreset, value))
+                {
+                    UpdateDefaultFileName();
+                    OnPropertyChanged(nameof(IsQuickenPreset));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting SelectedPreset in ExportTransactionsViewModel[cite: 19].");
+                
             }
         }
     }
@@ -125,12 +156,18 @@ public class ExportTransactionsViewModel : ViewModelBase
 
     private void UpdateDefaultFileName()
     {
-        string directory = Path.GetDirectoryName(ExportFilePath) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-        string dateStr = DateTime.Now.ToString("yyyy-MM-dd");
-        string fileName = SelectedPreset == CsvExportPreset.Quicken 
-            ? $"Quicken_Export_{dateStr}.csv" 
-            : $"Transactions_Export_{dateStr}.csv";
-        ExportFilePath = Path.Combine(directory, fileName);
+        try {
+            string directory = Path.GetDirectoryName(ExportFilePath) ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string dateStr = DateTime.Now.ToString("yyyy-MM-dd");
+            string fileName = SelectedPreset == CsvExportPreset.Quicken 
+                ? $"Quicken_Export_{dateStr}.csv" 
+                : $"Transactions_Export_{dateStr}.csv";
+            ExportFilePath = Path.Combine(directory, fileName);
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error updating default file name[cite: 19].");
+            
+        }
     }
 
     public IRelayCommand SelectAllCommand { get; }
@@ -141,80 +178,115 @@ public class ExportTransactionsViewModel : ViewModelBase
 
     private async void LoadAccountsAsync()
     {
-        var accounts = await _budgetService.GetAllAccountsAsync(IncludeArchivedAccounts);
-        Accounts.Clear();
-        foreach (var account in accounts)
-        {
-            Accounts.Add(new SelectableAccount(account) { IsSelected = true });
+        try {
+            var accounts = await _budgetService.GetAllAccountsAsync(IncludeArchivedAccounts);
+            Accounts.Clear();
+            foreach (var account in accounts)
+            {
+                Accounts.Add(new SelectableAccount(account) { IsSelected = true });
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error loading accounts for export[cite: 19].");
+            
         }
     }
 
     private void SelectAll()
     {
-        foreach (var account in Accounts)
-        {
-            account.IsSelected = true;
+        try {
+            foreach (var account in Accounts)
+            {
+                account.IsSelected = true;
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error selecting all accounts[cite: 19].");
+            
         }
     }
 
     private void ClearSelection()
     {
-        foreach (var account in Accounts)
-        {
-            account.IsSelected = false;
+        try {
+            foreach (var account in Accounts)
+            {
+                account.IsSelected = false;
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error clearing account selection[cite: 19].");
+            
         }
     }
 
     private void UpdateDatesFromFilter()
     {
-        var today = DateTime.Today;
-        switch (SelectedDateFilter)
-        {
-            case DateFilterOption.YearToDate:
-                FromDate = new DateTime(today.Year, 1, 1);
-                ToDate = today;
-                break;
-            case DateFilterOption.CurrentMonth:
-                FromDate = new DateTime(today.Year, today.Month, 1);
-                ToDate = today;
-                break;
-            case DateFilterOption.AllDates:
-                // No need to set specific dates, the export logic will handle AllDates
-                break;
+        try {
+            var today = DateTime.Today;
+            switch (SelectedDateFilter)
+            {
+                case DateFilterOption.YearToDate:
+                    FromDate = new DateTime(today.Year, 1, 1);
+                    ToDate = today;
+                    break;
+                case DateFilterOption.CurrentMonth:
+                    FromDate = new DateTime(today.Year, today.Month, 1);
+                    ToDate = today;
+                    break;
+                case DateFilterOption.AllDates:
+                    break;
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error updating dates from filter[cite: 19].");
+            
         }
     }
 
     private void Browse()
     {
-        var dialog = new SaveFileDialog
-        {
-            Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
-            InitialDirectory = Path.GetDirectoryName(ExportFilePath),
-            FileName = Path.GetFileName(ExportFilePath)
-        };
+        try {
+            var dialog = new SaveFileDialog
+            {
+                Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+                InitialDirectory = Path.GetDirectoryName(ExportFilePath),
+                FileName = Path.GetFileName(ExportFilePath)
+            };
 
-        if (dialog.ShowDialog() == true)
-        {
-            ExportFilePath = dialog.FileName;
+            if (dialog.ShowDialog() == true)
+            {
+                ExportFilePath = dialog.FileName;
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error opening save file dialog for export[cite: 19].");
+            
         }
     }
 
     private bool CanExport()
     {
-        return !string.IsNullOrWhiteSpace(ExportFilePath);
+        try {
+            return !string.IsNullOrWhiteSpace(ExportFilePath);
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error checking CanExport condition[cite: 19].");
+            
+            return false;
+        }
     }
 
     private async Task ExportAsync()
     {
-        var selectedAccountIds = Accounts.Where(a => a.IsSelected).Select(a => a.Account.Id).ToList();
-        if (!selectedAccountIds.Any())
-        {
-            MessageBox.Show("Please select at least one account.", "Export Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
+        try {
+            var selectedAccountIds = Accounts.Where(a => a.IsSelected).Select(a => a.Account.Id).ToList();
+            if (!selectedAccountIds.Any())
+            {
+                MessageBox.Show("Please select at least one account.", "Export Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
-        try
-        {
             var allTransactions = await _budgetService.GetRawTransactionsAsync();
             var filteredTransactions = allTransactions
                 .Where(t => t.AccountId.HasValue && selectedAccountIds.Contains(t.AccountId.Value));
@@ -231,7 +303,6 @@ public class ExportTransactionsViewModel : ViewModelBase
             {
                 if (SelectedPreset == CsvExportPreset.Quicken)
                 {
-                    // Quicken header: Date,Payee,FI Payee,Amount,Category,Account,Tag,Memo,Chknum,Debit/Credit
                     var headers = new List<string> { "Date", "Payee", "FI Payee", "Amount", "Category", "Account", "Tag", "Memo", "Chknum", "Debit/Credit" };
                     await writer.WriteLineAsync(string.Join(",", headers.Select(EscapeCsvField)));
 
@@ -239,23 +310,22 @@ public class ExportTransactionsViewModel : ViewModelBase
                     {
                         var fields = new List<string>
                         {
-                            t.TransactionDate.ToString("MM/dd/yyyy"), // Quicken specific date format
+                            t.TransactionDate.ToString("MM/dd/yyyy"),
                             t.Description,
-                            string.Empty, // FI Payee
+                            string.Empty,
                             t.Amount.ToString("0.00"),
-                            t.BucketName ?? string.Empty, // Category
-                            t.AccountName ?? string.Empty, // Account
-                            string.Empty, // Tag
-                            t.Memo ?? string.Empty, // Memo
-                            string.Empty, // Chknum
-                            string.Empty  // Debit/Credit
+                            t.BucketName ?? string.Empty,
+                            t.AccountName ?? string.Empty,
+                            string.Empty,
+                            t.Memo ?? string.Empty,
+                            string.Empty,
+                            string.Empty
                         };
                         await writer.WriteLineAsync(string.Join(",", fields.Select(EscapeCsvField)));
                     }
                 }
                 else
                 {
-                    // Standard header
                     var headers = new List<string> { "Date", "Account", "Payee", "Amount" };
                     if (IncludeBuckets) headers.Add("Bucket");
                     if (IncludeStatus) headers.Add("Status");
@@ -277,11 +347,15 @@ public class ExportTransactionsViewModel : ViewModelBase
                         if (IncludeBuckets) fields.Add(t.BucketName ?? string.Empty);
                         if (IncludeStatus)
                             fields.Add(t.AccountId.HasValue
-                                ? t.FromAccountReconciledId.HasValue ? "Reconciled" : "Cleared"
-                                : t.ToAccountReconciledId.HasValue ? "Reconciled" : "Cleared");
+                                ? t.FromAccountReconciliationId.HasValue ? "Reconciled" : "Cleared"
+                                : t.ToAccountReconciliationId.HasValue ? "Reconciled" : "Cleared");
                         if (IncludeMemos) fields.Add(t.Memo ?? string.Empty);
-                        fields.Add(t.FitId ?? string.Empty);
 
+                        fields.Add(t.AccountId.HasValue
+                            ? t.FromFitId
+                            : t.ToFitId);
+                        
+                        
                         await writer.WriteLineAsync(string.Join(",", fields.Select(EscapeCsvField)));
                     }
                 }
@@ -289,28 +363,42 @@ public class ExportTransactionsViewModel : ViewModelBase
 
             MessageBox.Show($"Successfully exported to {ExportFilePath}", "Export Successful", MessageBoxButton.OK, MessageBoxImage.Information);
             
-            // Close the dialog - this is usually handled by the view, but we can use a property or event
             RequestClose?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "Error exporting transactions[cite: 19].");
+            
             MessageBox.Show($"Error exporting transactions: {ex.Message}", "Export Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void Cancel(Window? window)
     {
-        window?.Close();
+        try {
+            window?.Close();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error closing export window[cite: 19].");
+            
+        }
     }
 
     private string EscapeCsvField(string field)
     {
-        if (string.IsNullOrEmpty(field)) return string.Empty;
-        if (field.Contains(",") || field.Contains("\"") || field.Contains("\n") || field.Contains("\r"))
-        {
-            return $"\"{field.Replace("\"", "\"\"")}\"";
+        try {
+            if (string.IsNullOrEmpty(field)) return string.Empty;
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n") || field.Contains("\r"))
+            {
+                return $"\"{field.Replace("\"", "\"\"")}\"";
+            }
+            return field;
         }
-        return field;
+        catch (Exception ex) {
+            Log.Error(ex, "Error escaping CSV field[cite: 19].");
+            
+            return field ?? string.Empty;
+        }
     }
 
     public event EventHandler? RequestClose;
@@ -327,7 +415,15 @@ public class SelectableAccount : ViewModelBase
     public bool IsSelected
     {
         get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
+        set {
+            try {
+                SetProperty(ref _isSelected, value);
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting IsSelected on SelectableAccount[cite: 19].");
+                
+            }
+        }
     }
 }
 

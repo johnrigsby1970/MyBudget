@@ -25,8 +25,8 @@ public class Transaction : ViewModelBase {
     private bool _isCashAdvance;
     private bool _isBalanceTransfer;
     private bool _isInterestOnly;
-    private int? _fromAccountReconciledId;
-    private int? _toAccountReconciledId;
+    private int? _fromAccountReconciliationId;
+    private int? _toAccountReconciliationId;
     private bool? _fromAccountIsCleared;
     private bool? _toAccountIsCleared;
 
@@ -52,11 +52,18 @@ public class Transaction : ViewModelBase {
     }
     
     
-    private string _fitId = Guid.NewGuid().ToString();
-    public string FitId 
+    private string _toFitId = Guid.NewGuid().ToString();
+    public string ToFitId 
     {
-        get => _fitId;
-        set => SetProperty(ref _fitId, value);
+        get => _toFitId;
+        set => SetProperty(ref _toFitId, value);
+    }
+    
+    private string _fromFitId = Guid.NewGuid().ToString();
+    public string FromFitId 
+    {
+        get => _fromFitId;
+        set => SetProperty(ref _fromFitId, value);
     }
 
         
@@ -178,14 +185,14 @@ public class Transaction : ViewModelBase {
         set => SetProperty(ref _isInterestOnly, value);
     }
 
-    public int? FromAccountReconciledId {
-        get => _fromAccountReconciledId;
-        set => SetProperty(ref _fromAccountReconciledId, value);
+    public int? FromAccountReconciliationId {
+        get => _fromAccountReconciliationId;
+        set => SetProperty(ref _fromAccountReconciliationId, value);
     }
 
-    public int? ToAccountReconciledId {
-        get => _toAccountReconciledId;
-        set => SetProperty(ref _toAccountReconciledId, value);
+    public int? ToAccountReconciliationId {
+        get => _toAccountReconciliationId;
+        set => SetProperty(ref _toAccountReconciliationId, value);
     }
 
     public bool? FromAccountIsCleared {

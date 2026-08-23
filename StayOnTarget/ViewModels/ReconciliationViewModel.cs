@@ -19,45 +19,63 @@ public partial class ReconciliationViewModel : ViewModelBase {
 
 
     public ReconciliationViewModel(Account account, BudgetService budgetService) {
-        _account = account;
-        _budgetService = budgetService;
-        _reconciliationService = new ReconciliationService(_budgetService);
-        CancelAdjustmentCommand = new RelayCommand(() => {
-            CurrentAssetValue = EndingBalance;
-            AdjustmentTransactionAmount = null;
-            OnPropertyChanged(nameof(AdjustmentTransactionAmount));
-            AdjustmentTransactionMemo = "Balance adjustment transaction";
-            OnPropertyChanged(nameof(AdjustmentTransactionMemo));
-            IsBalanceAdjustmentVisible = false;
-            OnPropertyChanged(nameof(IsBalanceAdjustmentVisible));
-        });
-        ShowAdjustmentCommand = new RelayCommand(() => IsBalanceAdjustmentVisible = true, () => CanShowAdjustBalance);
-
-        AdjustBalanceCommand = new AsyncRelayCommand(AdjustBalanceAsync, () => CanExecuteAdjustBalance);
-        CorrectOpeningBalanceCommand =
-            new AsyncRelayCommand(CorrectOpeningBalanceAsync, () => CanExecuteCorrectOpeningBalance);
-        CancelCorrectOpeningBalanceCommand = new AsyncRelayCommand(CancelCorrectOpeningBalanceAsync);
-
-        InitializeDataCommand = new AsyncRelayCommand(LoadDataAsync);
-
-        ToggleSelectionCommand = new RelayCommand(() => {
-            bool allSelected = ReconciliationTransactions.All(x => x.IsCleared);
-            bool allUnselected = ReconciliationTransactions.All(x => !x.IsCleared);
-
-            if (allSelected) {
-                foreach (var t in ReconciliationTransactions) t.IsCleared = false;
-            }
-            else if (allUnselected) {
-                foreach (var t in ReconciliationTransactions) t.IsCleared = true;
-            }
-            else {
-                foreach (var t in ReconciliationTransactions) {
-                    if (!t.IsCleared) t.IsCleared = true;
+        try {
+            _account = account;
+            _budgetService = budgetService;
+            _reconciliationService = new ReconciliationService(_budgetService);
+            CancelAdjustmentCommand = new RelayCommand(() => {
+                try {
+                    CurrentAssetValue = EndingBalance;
+                    AdjustmentTransactionAmount = null;
+                    OnPropertyChanged(nameof(AdjustmentTransactionAmount));
+                    AdjustmentTransactionMemo = "Balance adjustment transaction";
+                    OnPropertyChanged(nameof(AdjustmentTransactionMemo));
+                    IsBalanceAdjustmentVisible = false;
+                    OnPropertyChanged(nameof(IsBalanceAdjustmentVisible));
                 }
-            }
+                catch (Exception ex) {
+                    Log.Error(ex, "Error executing CancelAdjustmentCommand in ReconciliationViewModel.");
+                    
+                }
+            });
+            ShowAdjustmentCommand = new RelayCommand(() => IsBalanceAdjustmentVisible = true, () => CanShowAdjustBalance);
 
-            Reconcile();
-        });
+            AdjustBalanceCommand = new AsyncRelayCommand(AdjustBalanceAsync, () => CanExecuteAdjustBalance);
+            CorrectOpeningBalanceCommand =
+                new AsyncRelayCommand(CorrectOpeningBalanceAsync, () => CanExecuteCorrectOpeningBalance);
+            CancelCorrectOpeningBalanceCommand = new AsyncRelayCommand(CancelCorrectOpeningBalanceAsync);
+
+            InitializeDataCommand = new AsyncRelayCommand(LoadDataAsync);
+
+            ToggleSelectionCommand = new RelayCommand(() => {
+                try {
+                    bool allSelected = ReconciliationTransactions.All(x => x.IsCleared);
+                    bool allUnselected = ReconciliationTransactions.All(x => !x.IsCleared);
+
+                    if (allSelected) {
+                        foreach (var t in ReconciliationTransactions) t.IsCleared = false;
+                    }
+                    else if (allUnselected) {
+                        foreach (var t in ReconciliationTransactions) t.IsCleared = true;
+                    }
+                    else {
+                        foreach (var t in ReconciliationTransactions) {
+                            if (!t.IsCleared) t.IsCleared = true;
+                        }
+                    }
+
+                    Reconcile();
+                }
+                catch (Exception ex) {
+                    Log.Error(ex, "Error executing ToggleSelectionCommand in ReconciliationViewModel.");
+                    
+                }
+            });
+        }
+        catch (Exception ex) {
+            Log.Fatal(ex, "Critical error initializing ReconciliationViewModel.");
+            
+        }
     }
 
     private bool? _isAllSelected;
@@ -66,60 +84,84 @@ public partial class ReconciliationViewModel : ViewModelBase {
         get => _isAllSelected;
         set
         {
-            if (_isAllSelected != value)
-            {
-                _isAllSelected = value;
-                OnPropertyChanged(nameof(IsAllSelected));
-
-                // If user explicitly clicked header (value will be true or false, not null)
-                if (value.HasValue)
+            try {
+                if (_isAllSelected != value)
                 {
-                    SelectAllRows(value.Value);
+                    _isAllSelected = value;
+                    OnPropertyChanged(nameof(IsAllSelected));
+
+                    // If user explicitly clicked header (value will be true or false, not null)
+                    if (value.HasValue)
+                    {
+                        SelectAllRows(value.Value);
+                    }
                 }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting IsAllSelected property in ReconciliationViewModel.");
+                
             }
         }
     }
     
     private void UpdateIsAllSelectedState()
     {
-        if (ReconciliationTransactions == null || !ReconciliationTransactions.Any())
-        {
-            _isAllSelected = false;
-        }
-        else if (ReconciliationTransactions.All(x => x.IsCleared))
-        {
-            _isAllSelected = true; // All checked -> Header checked
-        }
-        else if (ReconciliationTransactions.All(x => !x.IsCleared))
-        {
-            _isAllSelected = false; // None checked -> Header unchecked
-        }
-        else
-        {
-            _isAllSelected = null; // Mix -> Header indeterminate (dash)
-        }
+        try {
+            if (ReconciliationTransactions == null || !ReconciliationTransactions.Any())
+            {
+                _isAllSelected = false;
+            }
+            else if (ReconciliationTransactions.All(x => x.IsCleared))
+            {
+                _isAllSelected = true; // All checked -> Header checked
+            }
+            else if (ReconciliationTransactions.All(x => !x.IsCleared))
+            {
+                _isAllSelected = false; // None checked -> Header unchecked
+            }
+            else
+            {
+                _isAllSelected = null; // Mix -> Header indeterminate (dash)
+            }
 
-        // Raise property change without re-triggering SelectAllRows loop
-        OnPropertyChanged(nameof(IsAllSelected));
+            // Raise property change without re-triggering SelectAllRows loop
+            OnPropertyChanged(nameof(IsAllSelected));
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error updating IsAllSelected state in ReconciliationViewModel.");
+            
+        }
     }
 
     private void SelectAllRows(bool select)
     {
-        foreach (var item in ReconciliationTransactions)
-        {
-            // Temporarily unhook event listener to prevent infinite loops during bulk check
-            item.PropertyChanged -= Item_PropertyChanged;
-            item.IsCleared = select;
-            item.PropertyChanged += Item_PropertyChanged;
+        try {
+            foreach (var item in ReconciliationTransactions)
+            {
+                // Temporarily unhook event listener to prevent infinite loops during bulk check
+                item.PropertyChanged -= Item_PropertyChanged;
+                item.IsCleared = select;
+                item.PropertyChanged += Item_PropertyChanged;
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error selecting all rows in ReconciliationViewModel.");
+            
         }
     }
     
     private void Item_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(TransactionViewModel.IsCleared))
-        {
-            // Re-evaluate header state whenever a single row checkbox toggles!
-            UpdateIsAllSelectedState();
+        try {
+            if (e.PropertyName == nameof(TransactionViewModel.IsCleared))
+            {
+                // Re-evaluate header state whenever a single row checkbox toggles!
+                UpdateIsAllSelectedState();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error handling Item_PropertyChanged in ReconciliationViewModel.");
+            
         }
     }
     
@@ -175,11 +217,17 @@ public partial class ReconciliationViewModel : ViewModelBase {
         get => _endingBalance;
 
         set {
-            if (SetProperty(ref _endingBalance, value)) {
-                OnPropertyChanged(nameof(ReconcileButtonText));
-                OnPropertyChanged(nameof(CanExecuteReconcile));
-                OnPropertyChanged(nameof(CanSave));
-                OnPropertyChanged(nameof(Difference));
+            try {
+                if (SetProperty(ref _endingBalance, value)) {
+                    OnPropertyChanged(nameof(ReconcileButtonText));
+                    OnPropertyChanged(nameof(CanExecuteReconcile));
+                    OnPropertyChanged(nameof(CanSave));
+                    OnPropertyChanged(nameof(Difference));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting EndingBalance in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -189,9 +237,15 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public decimal? OpeningBalance {
         get => _openingBalance;
         set {
-            if (SetProperty(ref _openingBalance, value)) {
-                OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
-                CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+            try {
+                if (SetProperty(ref _openingBalance, value)) {
+                    OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
+                    CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting OpeningBalance in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -201,9 +255,15 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public DateTime? OpeningBalanceAsOf {
         get => _openingBalanceAsOf;
         set {
-            if (SetProperty(ref _openingBalanceAsOf, value)) {
-                OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
-                CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+            try {
+                if (SetProperty(ref _openingBalanceAsOf, value)) {
+                    OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
+                    CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting OpeningBalanceAsOf in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -221,8 +281,14 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public decimal CurrentAssetValue {
         get => _currentAssetValue;
         set {
-            SetProperty(ref _currentAssetValue, value);
-            CalculateAdjustmentTransactionAmount();
+            try {
+                SetProperty(ref _currentAssetValue, value);
+                CalculateAdjustmentTransactionAmount();
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting CurrentAssetValue in ReconciliationViewModel.");
+                
+            }
         }
     }
 
@@ -238,11 +304,17 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public decimal? NewReconciledBalance {
         get => _newReconciledBalance;
         set {
-            if (SetProperty(ref _newReconciledBalance, value)) {
-                OnPropertyChanged(nameof(CanExecuteReconcile));
-                OnPropertyChanged(nameof(ReconcileButtonText));
-                OnPropertyChanged(nameof(CanSave));
-                OnPropertyChanged(nameof(Difference));
+            try {
+                if (SetProperty(ref _newReconciledBalance, value)) {
+                    OnPropertyChanged(nameof(CanExecuteReconcile));
+                    OnPropertyChanged(nameof(ReconcileButtonText));
+                    OnPropertyChanged(nameof(CanSave));
+                    OnPropertyChanged(nameof(Difference));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting NewReconciledBalance in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -251,11 +323,17 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public decimal? TargetBalance {
         get => _targetBalance;
         set {
-            if (SetProperty(ref _targetBalance, value)) {
-                OnPropertyChanged(nameof(CanExecuteReconcile));
-                OnPropertyChanged(nameof(ReconcileButtonText));
-                OnPropertyChanged(nameof(CanSave));
-                OnPropertyChanged(nameof(Difference));
+            try {
+                if (SetProperty(ref _targetBalance, value)) {
+                    OnPropertyChanged(nameof(CanExecuteReconcile));
+                    OnPropertyChanged(nameof(ReconcileButtonText));
+                    OnPropertyChanged(nameof(CanSave));
+                    OnPropertyChanged(nameof(Difference));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting TargetBalance in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -267,10 +345,16 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public DateTime? NewReconciledDate {
         get => _newReconciledDate;
         set {
-            if (SetProperty(ref _newReconciledDate, value)) {
-                OnPropertyChanged(nameof(CanExecuteReconcile));
-                OnPropertyChanged(nameof(CanSave));
-                OnPropertyChanged(nameof(ReconcileButtonText));
+            try {
+                if (SetProperty(ref _newReconciledDate, value)) {
+                    OnPropertyChanged(nameof(CanExecuteReconcile));
+                    OnPropertyChanged(nameof(CanSave));
+                    OnPropertyChanged(nameof(ReconcileButtonText));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting NewReconciledDate in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -280,10 +364,16 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public decimal? AdjustmentTransactionAmount {
         get => _adjustmentTransactionAmount;
         set {
-            if (SetProperty(ref _adjustmentTransactionAmount, value)) {
-                OnPropertyChanged(nameof(AdjustmentTransactionDescription));
-                OnPropertyChanged(nameof(CanExecuteAdjustBalance));
-                AdjustBalanceCommand.NotifyCanExecuteChanged();
+            try {
+                if (SetProperty(ref _adjustmentTransactionAmount, value)) {
+                    OnPropertyChanged(nameof(AdjustmentTransactionDescription));
+                    OnPropertyChanged(nameof(CanExecuteAdjustBalance));
+                    AdjustBalanceCommand.NotifyCanExecuteChanged();
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting AdjustmentTransactionAmount in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -304,9 +394,15 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public bool IsBalanceAdjustmentVisible {
         get => _isBalanceAdjustmentVisible;
         set {
-            if (SetProperty(ref _isBalanceAdjustmentVisible, value)) {
-                OnPropertyChanged(nameof(CanShowAdjustBalance));
-                ShowAdjustmentCommand.NotifyCanExecuteChanged();
+            try {
+                if (SetProperty(ref _isBalanceAdjustmentVisible, value)) {
+                    OnPropertyChanged(nameof(CanShowAdjustBalance));
+                    ShowAdjustmentCommand.NotifyCanExecuteChanged();
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting IsBalanceAdjustmentVisible in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -316,8 +412,14 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public bool IsOpeningBalanceCorrectionVisible {
         get => _isOpeningBalanceCorrectionVisible;
         set {
-            if (SetProperty(ref _isOpeningBalanceCorrectionVisible, value)) {
-                OnPropertyChanged(nameof(CanShowOpeningBalanceCorrection));
+            try {
+                if (SetProperty(ref _isOpeningBalanceCorrectionVisible, value)) {
+                    OnPropertyChanged(nameof(CanShowOpeningBalanceCorrection));
+                }
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error setting IsOpeningBalanceCorrectionVisible in ReconciliationViewModel.");
+                
             }
         }
     }
@@ -330,9 +432,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public bool CanExecuteAdjustBalance => AdjustmentTransactionAmount != null;
 
     public bool CanExecuteReconcile =>
-        ReconciliationTransactions.Any(x => x.IsCleared) && NewReconciledBalance == TargetBalance;// && NewReconciledBalance != null 
-                                        // && TargetBalance != null && NewReconciledBalance == TargetBalance ; //ReconciliationTransactions.Any();// && NewReconciledBalance != null && NewReconciledDate != null &&
-    // NewReconciledDate >= OpeningBalanceAsOf;
+        ReconciliationTransactions.Any(x => x.IsCleared) && NewReconciledBalance == TargetBalance;
 
     public bool CanSave => ReconciliationTransactions.Any(x => x.IsCleared);
 
@@ -355,137 +455,181 @@ public partial class ReconciliationViewModel : ViewModelBase {
 
     public string ReconcileButtonText {
         get {
-            // If cleared balance matches register balance (everything is caught up)
-            if (ReconciliationTransactions.Any(x => x.IsCleared) && NewReconciledBalance == TargetBalance) {
-                return "Reconcile";
-            }
+            try {
+                // If cleared balance matches register balance (everything is caught up)
+                if (ReconciliationTransactions.Any(x => x.IsCleared) && NewReconciledBalance == TargetBalance) {
+                    return "Reconcile";
+                }
 
-            // If there are still uncleared items remaining
-            return "Save Progress";
+                // If there are still uncleared items remaining
+                return "Save Progress";
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error determining ReconcileButtonText in ReconciliationViewModel.");
+                
+                return "Save Progress";
+            }
         }
     }
 
     public async Task ImportAccount() {
-        var window = new ImportReconciliationWindow(_account, _budgetService) {
-            Owner = Application.Current.MainWindow
-        };
-        window.ShowDialog();
-        await LoadDataAsync();
+        try {
+            var window = new ImportReconciliationWindow(_account, _budgetService) {
+                Owner = Application.Current.MainWindow
+            };
+            window.ShowDialog();
+            await LoadDataAsync();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error importing account in ReconciliationViewModel.");
+            
+        }
     }
 
     private async Task AdjustBalanceAsync() {
-        decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
-        decimal delta = CurrentAssetValue - currentRunningBalance;
+        try {
+            decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
+            decimal delta = CurrentAssetValue - currentRunningBalance;
 
-        if (delta == 0) return;
+            if (delta == 0) return;
 
-        var adjustmentTransaction = new Transaction {
-            AccountId = delta > 0 ? null : _account.Id,
-            ToAccountId = delta > 0 ? _account.Id : null,
-            TransactionDate = DateTime.Today,
-            Description = delta > 0 ? "Value Increase" : "Value Decrease",
-            Memo = AdjustmentTransactionMemo,
-            FromAccountIsCleared = delta > 0 ? null : true,
-            ToAccountIsCleared = delta > 0 ? true : null,
-            Amount = Math.Abs(delta)
-        };
+            var adjustmentTransaction = new Transaction {
+                AccountId = delta > 0 ? null : _account.Id,
+                ToAccountId = delta > 0 ? _account.Id : null,
+                TransactionDate = DateTime.Today,
+                Description = delta > 0 ? "Value Increase" : "Value Decrease",
+                Memo = AdjustmentTransactionMemo,
+                FromAccountIsCleared = delta > 0 ? null : true,
+                ToAccountIsCleared = delta > 0 ? true : null,
+                Amount = Math.Abs(delta)
+            };
 
-        await _budgetService.UpsertTransactionAsync(adjustmentTransaction);
-        CurrentAssetValue = 0; // Reset so it gets recalculated in LoadData
-        IsBalanceAdjustmentVisible = false;
-        OnPropertyChanged(nameof(CanExecuteAdjustBalance));
-        
-        await LoadDataAsync();
+            await _budgetService.UpsertTransactionAsync(adjustmentTransaction);
+            CurrentAssetValue = 0; // Reset so it gets recalculated in LoadData
+            IsBalanceAdjustmentVisible = false;
+            OnPropertyChanged(nameof(CanExecuteAdjustBalance));
+            
+            await LoadDataAsync();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error adjusting balance asynchronously in ReconciliationViewModel.");
+            
+        }
     }
 
     private async Task CancelCorrectOpeningBalanceAsync() {
-        CanReconcile = false;
-        if (OpeningBalanceMaximumAsOf.HasValue) {
-            BlockingWarningMessage =
-                $"Transactions predate your Opening Balance date, or you have yet to set one. Reconciliation is not possible until this is addressed. Please provide a new opening balance as of or prior to {OpeningBalanceMaximumAsOf.Value:MM/dd/yyyy}. Return to Reconciliation once you know this value, and it will prompt you for this entry.";
-        }
-        else {
-            BlockingWarningMessage =
-                "Transactions predate your Opening Balance date, or you have yet to set one. Reconciliation is not possible until this is addressed. Please provide a new opening balance older than the first transaction. Return to Reconciliation once you know this value, and it will prompt you for this entry.";
-        }
+        try {
+            CanReconcile = false;
+            if (OpeningBalanceMaximumAsOf.HasValue) {
+                BlockingWarningMessage =
+                    $"Transactions predate your Opening Balance date, or you have yet to set one. Reconciliation is not possible until this is addressed. Please provide a new opening balance as of or prior to {OpeningBalanceMaximumAsOf.Value:MM/dd/yyyy}. Return to Reconciliation once you know this value, and it will prompt you for this entry.";
+            }
+            else {
+                BlockingWarningMessage =
+                    "Transactions predate your Opening Balance date, or you have yet to set one. Reconciliation is not possible until this is addressed. Please provide a new opening balance older than the first transaction. Return to Reconciliation once you know this value, and it will prompt you for this entry.";
+            }
 
-        IsOpeningBalanceCorrectionVisible = false;
-        OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
-        CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
-        CancelCorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+            IsOpeningBalanceCorrectionVisible = false;
+            OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
+            CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+            CancelCorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error canceling correct opening balance in ReconciliationViewModel.");
+            
+        }
     }
 
     private async Task CorrectOpeningBalanceAsync() {
-        if (OpeningBalance == null) return;
-        if (OpeningBalanceAsOf == null) return;
+        try {
+            if (OpeningBalance == null) return;
+            if (OpeningBalanceAsOf == null) return;
 
-        (bool hasTransactions, decimal? openingBalance, DateTime? openingBalanceDate) openingRecord =
-            await _budgetService.GetAccountBalanceOpeningStateAsync(_account.Id);
+            (bool hasTransactions, decimal? openingBalance, DateTime? openingBalanceDate) openingRecord =
+                await _budgetService.GetAccountBalanceOpeningStateAsync(_account.Id);
 
-        var isDebtAccount = _account.IsLiability; //debtAccountTypes.Contains(_account.Type);
+            var isDebtAccount = _account.IsLiability;
 
-        if (openingRecord.openingBalance == null) {
-            var openingBalanceTransaction = new Transaction() {
-                AccountId = isDebtAccount ? _account.Id : null,
-                ToAccountId = isDebtAccount
-                    ? null
-                    : _account.Id,
-                AccountName = isDebtAccount
-                    ? _account.Name
-                    : null,
-                ToAccountName = isDebtAccount
-                    ? null
-                    : _account.Name,
-                Amount = isDebtAccount
-                    ? -1 * OpeningBalance.Value
-                    : OpeningBalance
-                        .Value, //the balance is entered as a positive number, but we want to record it as a negative number
-                TransactionDate = OpeningBalanceAsOf.Value,
-                TransactionId = Guid.NewGuid(),
-                FitId = Guid.NewGuid().ToString(),
-                Description = Constants.OpeningBalance,
-                Memo = Constants.OpeningBalance
-            };
+            if (openingRecord.openingBalance == null) {
+                var openingBalanceTransaction = new Transaction() {
+                    AccountId = isDebtAccount ? _account.Id : null,
+                    ToAccountId = isDebtAccount
+                        ? null
+                        : _account.Id,
+                    AccountName = isDebtAccount
+                        ? _account.Name
+                        : null,
+                    ToAccountName = isDebtAccount
+                        ? null
+                        : _account.Name,
+                    Amount = isDebtAccount
+                        ? -1 * OpeningBalance.Value
+                        : OpeningBalance
+                            .Value,
+                    TransactionDate = OpeningBalanceAsOf.Value,
+                    TransactionId = Guid.NewGuid(),
+                    ToFitId = Guid.NewGuid().ToString(),
+                    FromFitId = Guid.NewGuid().ToString(),
+                    Description = Constants.OpeningBalance,
+                    Memo = Constants.OpeningBalance
+                };
 
-            await _budgetService.UpsertTransactionAsync(openingBalanceTransaction);
+                await _budgetService.UpsertTransactionAsync(openingBalanceTransaction);
+            }
+            else {
+                var allTransactions = await _budgetService.GetAccountTransactionsAsync(_account.Id);
+                var openingBalanceTransaction =
+                    allTransactions.FirstOrDefault(t => t.Description == Constants.OpeningBalance);
+                openingBalanceTransaction!.Amount = isDebtAccount ? -1 * OpeningBalance.Value : OpeningBalance.Value;
+                openingBalanceTransaction!.TransactionDate = OpeningBalanceAsOf.Value;
+
+                await _budgetService.UpsertTransactionAsync(openingBalanceTransaction);
+            }
+
+            IsOpeningBalanceCorrectionVisible = false;
+            OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
+            CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
+
+            await LoadDataAsync();
         }
-        else {
-            var allTransactions = await _budgetService.GetAccountTransactionsAsync(_account.Id);
-            var openingBalanceTransaction =
-                allTransactions.FirstOrDefault(t => t.Description == Constants.OpeningBalance);
-            openingBalanceTransaction!.Amount = isDebtAccount ? -1 * OpeningBalance.Value : OpeningBalance.Value;
-            openingBalanceTransaction!.TransactionDate = OpeningBalanceAsOf.Value;
-
-            await _budgetService.UpsertTransactionAsync(openingBalanceTransaction);
+        catch (Exception ex) {
+            Log.Error(ex, "Error correcting opening balance asynchronously in ReconciliationViewModel.");
+            
         }
-
-        IsOpeningBalanceCorrectionVisible = false;
-        OnPropertyChanged(nameof(CanExecuteCorrectOpeningBalance));
-        CorrectOpeningBalanceCommand.NotifyCanExecuteChanged();
-
-        await LoadDataAsync();
     }
 
     private void CalculateAdjustmentTransactionAmount() {
-        decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
-        decimal delta = CurrentAssetValue - currentRunningBalance;
+        try {
+            decimal currentRunningBalance = BeginningBalance + ReconciliationTransactions.Sum(t => t.Amount);
+            decimal delta = CurrentAssetValue - currentRunningBalance;
 
-        if (delta == 0) {
-            AdjustmentTransactionAmount = null;
+            if (delta == 0) {
+                AdjustmentTransactionAmount = null;
+            }
+            else {
+                AdjustmentTransactionAmount = delta;
+            }
+
+            OnPropertyChanged(nameof(AdjustmentTransactionAmount));
+            OnPropertyChanged(nameof(CanExecuteAdjustBalance));
+
+            // Force WPF to evaluate CanExecute immediately
+            CommandManager.InvalidateRequerySuggested();
         }
-        else {
-            AdjustmentTransactionAmount = delta;
+        catch (Exception ex) {
+            Log.Error(ex, "Error calculating adjustment transaction amount in ReconciliationViewModel.");
+            
         }
-
-        OnPropertyChanged(nameof(AdjustmentTransactionAmount));
-        OnPropertyChanged(nameof(CanExecuteAdjustBalance));
-
-        // Force WPF to evaluate CanExecute immediately
-        CommandManager.InvalidateRequerySuggested();
     }
 
     private async Task PromptForOpeningBalance(DateTime beforeDate) {
-        IsOpeningBalanceCorrectionVisible = true;
+        try {
+            IsOpeningBalanceCorrectionVisible = true;
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error prompting for opening balance in ReconciliationViewModel.");
+            
+        }
     }
 
 
@@ -530,19 +674,12 @@ public partial class ReconciliationViewModel : ViewModelBase {
 // ---------------------------------------------------------------------
             if (!hasOpeningBalance) {
                 if (earliestTransaction != null) {
-                    // PROMPT: Set opening balance dated before earliest transaction
                     OpeningBalanceMaximumAsOf = (DateTime)earliestTransaction!.TransactionDate.AddDays(-1);
                     OpeningBalanceAsOf = OpeningBalanceMaximumAsOf;
-                    // CanReconcile = false;
-                    // BlockingWarningMessage = $"Transactions predate your Opening Balance date. Please provide a new opening balance as of or prior to {OpeningBalanceMaximumAsOf.Value:MM/dd/yyyy}.";
 
                     await PromptForOpeningBalance(OpeningBalanceMaximumAsOf.Value);
 
                     return; // Stops execution
-                }
-                else {
-                    // PROMPT: Set opening balance during file import (it will go through this code again
-                    //PromptForOpeningBalanceWithImport();
                 }
             }
 
@@ -562,35 +699,16 @@ public partial class ReconciliationViewModel : ViewModelBase {
                     x.Description != Constants.OpeningBalance && x.ReconciliationId != null);
 
                 if (isOpeningBalanceReconciled && hasAnyReconciledRecords) {
-                    // PROMPT: Conflict with reconciled history — user must fix via Ledger
-
-
                     OpeningBalanceMaximumAsOf = (DateTime)earliestTransaction!.TransactionDate.AddDays(-1);
                     OpeningBalanceAsOf = OpeningBalanceMaximumAsOf;
-                    //  CanReconcile = false;
-                    // BlockingWarningMessage = $"Transactions predate your Opening Balance date. Please provide a new opening balance as of or prior to {OpeningBalanceMaximumAsOf.Value:MM/dd/yyyy}.";
 
                     await PromptForOpeningBalance(OpeningBalanceMaximumAsOf.Value);
 
-                    // // 1. Alert the user
-                    // MessageBox.Show(
-                    //     "The opening balance for this account should be older than any other transactions. There are reconciled transactions older than the opening balance. You will need to fix the opening balance to proceed..",
-                    //     "Opening Balance Invalid",
-                    //     MessageBoxButton.OK,
-                    //     MessageBoxImage.Warning);
-
-                    // 2. Set dialog result (if opened via ShowDialog) and close
-                    // CanReconcile = false;
-                    // BlockingWarningMessage = "Reconciled transactions predate your Opening Balance date. Please correct your opening balance in the Ledger before reconciling.";
-                    //
                     return; // Stops execution
                 }
                 else {
-                    // PROMPT: Re-assign opening balance date prior to earliest transaction
                     OpeningBalanceMaximumAsOf = (DateTime)earliestTransaction!.TransactionDate.AddDays(-1);
                     OpeningBalanceAsOf = OpeningBalanceMaximumAsOf;
-                    //  CanReconcile = false;
-                    // BlockingWarningMessage = $"Transactions predate your Opening Balance date. Please provide a new opening balance as of or prior to {OpeningBalanceMaximumAsOf.Value:MM/dd/yyyy}.";
 
                     await PromptForOpeningBalance(OpeningBalanceMaximumAsOf.Value);
 
@@ -610,9 +728,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
                 .Select(x => new TransactionViewModel(x, Account))
                 .ToList();
             
-            // ReSharper disable once NotAccessedVariable
             bool hasTransactionPriorToLastReconcile = false;
-            // ReSharper disable once RedundantAssignment
             (EndingBalance, lastReconciledDate, beginningBalance, hasTransactionPriorToLastReconcile) =
                 await _reconciliationService.CalculateRunningBalanceAsync(_account.Id, reconciliationTransactions!);
             BeginningBalance = beginningBalance;
@@ -664,8 +780,8 @@ public partial class ReconciliationViewModel : ViewModelBase {
                 new ObservableCollection<TransactionViewModel>(reconciliationTransactions!);
         }
         catch (Exception ex) {
-            // Must catch exceptions locally to prevent app crash!
-            Log.Error("ReconciliationViewModel failed to load data: " + ex.Message);
+            Log.Error(ex, "ReconciliationViewModel failed to load data.");
+            
         }
         finally {
             IsBusy = false;
@@ -673,87 +789,97 @@ public partial class ReconciliationViewModel : ViewModelBase {
     }
 
     public async Task UpdateReconciliationTransactionsAsync() {
-        decimal? newReconciledBalance = null;
-        DateTime? newReconciledDate = null;
-        newReconciledBalance = BeginningBalance;
-        foreach (var t in ReconciliationTransactions.OrderBy(b => b.TransactionDate)) {
-            if (t.IsCleared) {
-                if (t.AccountId == _account.Id) {
-                    if (_account.IsLiability) {
-                        newReconciledBalance += t.Amount;
+        try {
+            decimal? newReconciledBalance = null;
+            DateTime? newReconciledDate = null;
+            newReconciledBalance = BeginningBalance;
+            foreach (var t in ReconciliationTransactions.OrderBy(b => b.TransactionDate)) {
+                if (t.IsCleared) {
+                    if (t.AccountId == _account.Id) {
+                        if (_account.IsLiability) {
+                            newReconciledBalance += t.Amount;
+                        }
+                        else {
+                            newReconciledBalance -= t.Amount;
+                        }
                     }
-                    else {
-                        newReconciledBalance -= t.Amount;
+                    else if (t.ToAccountId == _account.Id) {
+                        if (_account.IsLiability) {
+                            newReconciledBalance -= t.Amount;
+                        }
+                        else {
+                            newReconciledBalance += t.Amount;
+                        }
                     }
+
+                    newReconciledDate = t.TransactionDate;
                 }
-                else if (t.ToAccountId == _account.Id) {
-                    if (_account.IsLiability) {
-                        newReconciledBalance -= t.Amount;
-                    }
-                    else {
-                        newReconciledBalance += t.Amount;
+            }
+            var recordedBalance = NewReconciledBalance ?? newReconciledBalance ?? 0;
+            recordedBalance = _account.IsLiability ? -recordedBalance : recordedBalance;
+            var targetBalance = _account.IsLiability ? -TargetBalance : TargetBalance;
+            if (ReconciliationTransactions.Any(x => x.IsCleared) &&
+                recordedBalance == targetBalance) {
+                foreach (var tx in ReconciliationTransactions) {
+                    if (tx.IsCleared) {
+                        tx.IsReconciled = true;
                     }
                 }
 
-                //newReconciledBalance = t.RunningBalance;
-                newReconciledDate = t.TransactionDate;
+                await _reconciliationService.ReconcileAccountAsync(
+                    _account.Id,
+                    ReconciliationTransactions.ToList(),
+                    recordedBalance,
+                    NewReconciledDate ?? newReconciledDate ?? DateTime.MinValue);
+            }
+            else {
+                await _reconciliationService.ClearAccountAsync(
+                    _account.Id,
+                    ReconciliationTransactions.ToList());
             }
         }
-        var recordedBalance = NewReconciledBalance ?? newReconciledBalance ?? 0;
-        recordedBalance = _account.IsLiability ? -recordedBalance : recordedBalance;
-        var targetBalance = _account.IsLiability ? -TargetBalance : TargetBalance;
-        if (ReconciliationTransactions.Any(x => x.IsCleared) &&
-            recordedBalance == targetBalance) {
-            foreach (var tx in ReconciliationTransactions) {
-                if (tx.IsCleared) {
-                    tx.IsReconciled = true;
-                }
-            }
-
-            await _reconciliationService.ReconcileAccountAsync(
-                _account.Id,
-                ReconciliationTransactions.ToList(),
-                recordedBalance,
-                NewReconciledDate ?? newReconciledDate ?? DateTime.MinValue);
-        }
-        else {
-            //nothing flagged as reconciled, but there are bank cleared transactions
-            await _reconciliationService.ClearAccountAsync(
-                _account.Id,
-                ReconciliationTransactions.ToList());
+        catch (Exception ex) {
+            Log.Error(ex, "Error updating reconciliation transactions asynchronously in ReconciliationViewModel.");
+            
         }
     }
 
     public void Reconcile() {
-        decimal? newReconciledBalance = null;
-        DateTime? newReconciledDate = null;
-        
-        newReconciledBalance = BeginningBalance;
-        UpdateIsAllSelectedState();
-        foreach (var t in ReconciliationTransactions.OrderBy(b => b.TransactionDate)) {
-            if (t.IsCleared) {
-                if (t.AccountId == _account.Id) {
-                    if (_account.IsLiability) {
-                        newReconciledBalance += t.Amount;
+        try {
+            decimal? newReconciledBalance = null;
+            DateTime? newReconciledDate = null;
+            
+            newReconciledBalance = BeginningBalance;
+            UpdateIsAllSelectedState();
+            foreach (var t in ReconciliationTransactions.OrderBy(b => b.TransactionDate)) {
+                if (t.IsCleared) {
+                    if (t.AccountId == _account.Id) {
+                        if (_account.IsLiability) {
+                            newReconciledBalance += t.Amount;
+                        }
+                        else {
+                            newReconciledBalance -= t.Amount;
+                        }
                     }
-                    else {
-                        newReconciledBalance -= t.Amount;
+                    else if (t.ToAccountId == _account.Id) {
+                        if (_account.IsLiability) {
+                            newReconciledBalance -= t.Amount;
+                        }
+                        else {
+                            newReconciledBalance += t.Amount;
+                        }
                     }
+                    
+                    newReconciledDate = t.TransactionDate;
                 }
-                else if (t.ToAccountId == _account.Id) {
-                    if (_account.IsLiability) {
-                        newReconciledBalance -= t.Amount;
-                    }
-                    else {
-                        newReconciledBalance += t.Amount;
-                    }
-                }
-                
-                newReconciledDate = t.TransactionDate;
             }
-        }
 
-        NewReconciledBalance = newReconciledBalance;
-        NewReconciledDate = newReconciledDate;
+            NewReconciledBalance = newReconciledBalance;
+            NewReconciledDate = newReconciledDate;
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error executing Reconcile method in ReconciliationViewModel.");
+            
+        }
     }
 }

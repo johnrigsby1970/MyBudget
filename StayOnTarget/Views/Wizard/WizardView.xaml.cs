@@ -1,16 +1,34 @@
-﻿using StayOnTarget.ViewModels.Wizard;
+﻿using System.Windows.Controls;
+using Serilog;
+using StayOnTarget.ViewModels.Wizard;
 
 namespace StayOnTarget.Views.Wizard;
 
-public partial class WizardView {
+public partial class WizardView : UserControl {
     public WizardView()
     {
-        InitializeComponent();
+        try
+        {
+            InitializeComponent();
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Critical error initializing parameterless WizardView.");
+            
+        }
     }
 
     public WizardView(WizardViewModel viewModel)
     {
-        InitializeComponent();
-        DataContext = viewModel; // Sets the DataContext directly
+        try
+        {
+            InitializeComponent();
+            DataContext = viewModel; // Sets the DataContext directly
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Critical error initializing WizardView with ViewModel.");
+            
+        }
     }
 }

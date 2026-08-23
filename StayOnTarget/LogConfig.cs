@@ -8,7 +8,7 @@ public static class LogConfig
 {
     public static void Initialize()
     {
-        var logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StayOnTarget", "Logs");
+        var logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Constants.AppName, "Logs");
         try
         {
             if (!Directory.Exists(logDirectory))
@@ -21,7 +21,16 @@ public static class LogConfig
             Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Debug()
                 .WriteTo.Console()
-                .WriteTo.File(logFilePath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7)
+                .WriteTo.File(logFilePath, rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7, shared: true, buffered: false)
+                .WriteTo.Sentry(o =>
+                {
+                    // Tell Serilog NOT to re-initialize the SDK (we already initialized it in OnStartup)
+                    o.InitializeSdk = false;
+                    o.Dsn = "https://8bb5d363029e82d05ec88dc7ed3aebe6@o4511910567149568.ingest.us.sentry.io/4511960904957952";
+                    // Log messages at Warning/Error become Sentry breadcrumbs or events
+                    o.MinimumBreadcrumbLevel = Serilog.Events.LogEventLevel.Information;
+                    o.MinimumEventLevel = Serilog.Events.LogEventLevel.Error;
+                })
                 .CreateLogger();
 
             Log.Information("Application starting up...");
