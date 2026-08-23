@@ -609,7 +609,7 @@ public static class ProjectionEngineExtensions {
                                 ? Math.Round(pay.ExpectedAmount * (alloc.AllocationValue / 100m), 2)
                                 : alloc.AllocationValue;
 
-                            decimal amountToUse = GetBucketProjectedAmount(bucket, pb, expectedAllocAmount, bucketBalances);
+                            decimal amountToUse = GetBucketProjectedAmount(bucket, pb, expectedAllocAmount, bucketBalances, nextPay);
                             decimal actualAmount = amountToUse;
 
                             if (amountToUse > 0) {
@@ -666,7 +666,7 @@ public static class ProjectionEngineExtensions {
                         var pb = periodBuckets.FirstOrDefault(p =>
                             p.BucketId == bucket.Id && (p.PeriodDate.Date == nextDue.Date));
 
-                        decimal amountToUse = GetBucketProjectedAmount(bucket, pb, bucket.ExpectedAmount, bucketBalances);
+                        decimal amountToUse = GetBucketProjectedAmount(bucket, pb, bucket.ExpectedAmount, bucketBalances, nextDue);
 
                         if (amountToUse > 0) {
                             if (bucket.Type == BucketType.AccumulatingDrawdown && (pb == null || pb.Id == 0)) {
@@ -716,19 +716,23 @@ public static class ProjectionEngineExtensions {
         BudgetBucket bucket, 
         PeriodBucket? pb,
         decimal defaultExpectedAmount,
-        Dictionary<int, decimal> bucketBalances) {
+        Dictionary<int, decimal> bucketBalances,
+        DateTime targetDate) {
         
         if (pb != null) return pb.ActualAmount;
 
+        // Resolve seasonal override for target date, falling back to passed default/allocation
+        decimal effectiveAmount = bucket.GetEffectiveAmount(targetDate);
+        
         if (bucket.Type == BucketType.AccumulatingDrawdown) {
             decimal currentBal = bucketBalances.TryGetValue(bucket.Id, out var b) ? b : bucket.CurrentBalance;
             decimal shortfall = Math.Max(0, bucket.TargetBalance - currentBal);
             if (shortfall <= 0) return 0m;
 
-            return Math.Min(defaultExpectedAmount, shortfall);
+            return Math.Min(effectiveAmount, shortfall);
         }
 
-        return defaultExpectedAmount;
+        return effectiveAmount;
     }
 
     public static void AddBillEvents(this List<ProjectionGridItem> events,
@@ -774,7 +778,7 @@ public static class ProjectionEngineExtensions {
 
                 if (!isPaid) {
                     //bill has been paid by a logged transaction. We will use the logged transaction instead of the expected bill or paid period bill entry.
-                    var amountToUse = (pb != null) ? pb.ActualAmount : bill.ExpectedAmount;
+                    var amountToUse = (pb != null) ? pb.ActualAmount : bill.GetEffectiveAmount(nextDue);
                     var dueDate = (pb != null) ? pb.DueDate : nextDue;
                     if (dueDate >= DateTime.Today) {
                         var paidSuffix = (pb != null && pb.IsPaid) ? " (PAID)" : "";

@@ -166,6 +166,9 @@ public class DatabaseContext {
     public void InitializeDatabase() {
         Log.Information("Initializing database.");
         try {
+            // Registering for non-nullable dictionary:
+            SqlMapper.AddTypeHandler(new JsonObjectTypeHandler<Dictionary<string, decimal>>());
+            
             using var connection = GetConnection();
             connection.Open();
             Log.Debug("Database connection opened for initialization.");
@@ -224,7 +227,8 @@ public class DatabaseContext {
             IsPrincipalOnly INTEGER DEFAULT 0,
             IsActive INTEGER DEFAULT 1,
             BucketId INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL, 
-            SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL,
+            SubCategoryId INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL,            
+            Overrides TEXT NULL,
             FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
             FOREIGN KEY(ToAccountId) REFERENCES Accounts(Id)
         );
@@ -291,6 +295,7 @@ public class DatabaseContext {
             TargetBalance NUMERIC NOT NULL DEFAULT 0, 
             CurrentBalance NUMERIC NOT NULL DEFAULT 0, 
             InitialBalance NUMERIC NOT NULL DEFAULT 0,
+            Overrides TEXT NULL,
             FOREIGN KEY(AccountId) REFERENCES Accounts(Id),
             FOREIGN KEY(PaycheckId) REFERENCES PayChecks(Id) ON DELETE SET NULL
         );
@@ -463,6 +468,9 @@ public class DatabaseContext {
             EnsureColumnExists(connection, "Bills", "BucketId", "INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL");
             EnsureColumnExists(connection, "Bills", "SubCategoryId",
                 "INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL");
+            
+            EnsureColumnExists(connection, "Bills", "Overrides", "TEXT NULL");
+            EnsureColumnExists(connection, "Buckets", "Overrides", "TEXT NULL");
 
             // Composite Unique Indexes
             connection.Execute(@"
@@ -533,6 +541,18 @@ public class DatabaseContext {
             // Seed Default Categories
             CategorySeeder.SeedDefaultCategories(connection);
 
+            connection.Execute(@"
+                CREATE INDEX IF NOT EXISTS IX_Transactions_AccountId ON Transactions(AccountId);
+                CREATE INDEX IF NOT EXISTS IX_Transactions_TransactionDate ON Transactions(TransactionDate);
+                CREATE INDEX IF NOT EXISTS IX_Transactions_BucketId ON Transactions(BucketId);
+                CREATE INDEX IF NOT EXISTS IX_Transactions_SubCategoryId ON Transactions(SubCategoryId);
+                CREATE INDEX IF NOT EXISTS IX_Transactions_BillId ON Transactions(BillId);
+                CREATE INDEX IF NOT EXISTS IX_Bills_AccountId ON Bills(AccountId);
+                CREATE INDEX IF NOT EXISTS IX_Bills_BucketId ON Bills(BucketId);
+                CREATE INDEX IF NOT EXISTS IX_Subcategories_CategoryId ON Subcategories(CategoryId);
+                CREATE INDEX IF NOT EXISTS IX_Buckets_AccountId ON Buckets(AccountId);
+
+            ");
             // Turn foreign key enforcement back ON
             connection.Execute("PRAGMA foreign_keys = ON;");
 

@@ -2320,6 +2320,7 @@
                                                                     <RowDefinition Height="Auto" />
                                                                     <RowDefinition Height="Auto" />
                                                                     <RowDefinition Height="Auto" />
+                                                                    <RowDefinition Height="Auto" />
                                                                 </Grid.RowDefinitions>
 
                                                                 <Label Style="{DynamicResource    StyledLabel}"
@@ -2465,6 +2466,85 @@
                                                                           SelectedValue="{Binding EditingBillClone.BucketId}"
                                                                           SelectedValuePath="Id"
                                                                           DisplayMemberPath="Name" Margin="5" />
+
+                                                                <!-- Monthly / Seasonal Overrides Section -->
+                                                                <StackPanel Grid.Row="5" Grid.Column="0"
+                                                                            Grid.ColumnSpan="4" Margin="5"
+                                                                            Visibility="{Binding EditingBillClone.Frequency, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Monthly}">
+
+                                                                    <DockPanel Margin="0,5,0,4">
+                                                                        <TextBlock Text="Monthly / Seasonal Overrides"
+                                                                                Style="{DynamicResource StyledTextBlock}"
+                                                                                FontWeight="Bold"
+                                                                                VerticalAlignment="Center" />
+
+                                                                        <!-- Add Override Button -->
+                                                                        <Button Content="+ Add Month"
+                                                                                Command="{Binding AddBillOverrideCommand}"
+                                                                                Style="{DynamicResource SecondaryButtonStyle}"
+                                                                                DockPanel.Dock="Right"
+                                                                                HorizontalAlignment="Right"
+                                                                                Padding="8,2"
+                                                                                FontSize="11" />
+                                                                    </DockPanel>
+
+                                                                    <TextBlock
+                                                                        Text="Set explicit override amounts for specific months (e.g. higher utility costs in summer)."
+                                                                        Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                        FontSize="11" Margin="0,0,0,6" />
+
+                                                                    <DataGrid
+                                                                        ItemsSource="{Binding EditingBillOverrides}"
+                                                                        AutoGenerateColumns="False"
+                                                                        CanUserAddRows="False"
+                                                                        CanUserDeleteRows="False"
+                                                                        MaxHeight="160"
+                                                                        Margin="0,0,0,5">
+                                                                        <DataGrid.Columns>
+                                                                            <!-- Month Selector -->
+                                                                            <DataGridTemplateColumn Header="Month"
+                                                                                    Width="140">
+                                                                                <DataGridTemplateColumn.CellTemplate>
+                                                                                    <DataTemplate>
+                                                                                        <ComboBox
+                                                                                            ItemsSource="{Binding DataContext.MonthOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                            SelectedValuePath="Key"
+                                                                                            DisplayMemberPath="Name"
+                                                                                            SelectedValue="{Binding MonthKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                                            Margin="2" />
+                                                                                    </DataTemplate>
+                                                                                </DataGridTemplateColumn.CellTemplate>
+                                                                            </DataGridTemplateColumn>
+
+                                                                            <!-- Override Amount -->
+                                                                            <DataGridTemplateColumn
+                                                                                Header="Override Amount" Width="140">
+                                                                                <DataGridTemplateColumn.CellTemplate>
+                                                                                    <DataTemplate>
+                                                                                        <controls:NumericTextBox
+                                                                                            Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}"
+                                                                                            Margin="2" />
+                                                                                    </DataTemplate>
+                                                                                </DataGridTemplateColumn.CellTemplate>
+                                                                            </DataGridTemplateColumn>
+
+                                                                            <!-- Delete Row Button -->
+                                                                            <DataGridTemplateColumn Width="60">
+                                                                                <DataGridTemplateColumn.CellTemplate>
+                                                                                    <DataTemplate>
+                                                                                        <Button Content="✕"
+                                                                                            Command="{Binding DataContext.RemoveBillOverrideCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                            CommandParameter="{Binding}"
+                                                                                            Style="{DynamicResource DangerButtonStyle}"
+                                                                                            Padding="4,1"
+                                                                                            Margin="2"
+                                                                                            ToolTip="Remove this override" />
+                                                                                    </DataTemplate>
+                                                                                </DataGridTemplateColumn.CellTemplate>
+                                                                            </DataGridTemplateColumn>
+                                                                        </DataGrid.Columns>
+                                                                    </DataGrid>
+                                                                </StackPanel>
                                                             </Grid>
                                                         </StackPanel>
                                                     </Grid>
@@ -2600,28 +2680,117 @@
                                                                         <ColumnDefinition Width="Auto" />
                                                                         <ColumnDefinition Width="*" />
                                                                     </Grid.ColumnDefinitions>
-                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="*" />
+                                                                        <RowDefinition Height="Auto" />
+                                                                    </Grid.RowDefinitions>
+                                                                    <Label Grid.Row="1"
+                                                                           Style="{DynamicResource    StyledLabel}"
                                                                            Grid.Column="0" Content="Name:"
                                                                            VerticalAlignment="Center" />
-                                                                    <TextBox Grid.Column="1"
+                                                                    <TextBox Grid.Row="1" Grid.Column="1"
                                                                              Text="{Binding EditingBucketClone.Name, UpdateSourceTrigger=PropertyChanged}"
                                                                              Margin="5" VerticalAlignment="Center" />
-                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                    <Label Grid.Row="1"
+                                                                           Style="{DynamicResource    StyledLabel}"
                                                                            Grid.Column="2" Content="Envelope Type:"
                                                                            VerticalAlignment="Center" />
-                                                                    <ComboBox Grid.Column="3"
+                                                                    <ComboBox Grid.Row="1" Grid.Column="3"
                                                                               ItemsSource="{Binding BucketTypes}"
                                                                               SelectedItem="{Binding EditingBucketClone.Type, UpdateSourceTrigger=PropertyChanged}"
                                                                               Margin="5" VerticalAlignment="Center" />
-                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                    <Label Grid.Row="1"
+                                                                           Style="{DynamicResource    StyledLabel}"
                                                                            Grid.Column="4" Content="Paid From:"
                                                                            VerticalAlignment="Center" />
-                                                                    <ComboBox Grid.Column="5"
+                                                                    <ComboBox Grid.Row="1" Grid.Column="5"
                                                                               ItemsSource="{Binding ActiveAccountsWithNone}"
                                                                               SelectedValue="{Binding EditingBucketClone.AccountId}"
                                                                               SelectedValuePath="Id"
                                                                               DisplayMemberPath="Name" Margin="5"
                                                                               VerticalAlignment="Center" />
+
+
+                                                                    <!-- Monthly / Seasonal Overrides Section -->
+                                                                    <StackPanel Grid.Row="1" Grid.Column="0"
+                                                                            Grid.ColumnSpan="4" Margin="5"
+                                                                            Visibility="{Binding EditingBucketClone.TargetFrequency, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Monthly}">
+
+                                                                        <DockPanel Margin="0,5,0,4">
+                                                                            <TextBlock
+                                                                                Text="Monthly / Seasonal Overrides"
+                                                                                Style="{DynamicResource StyledTextBlock}"
+                                                                                FontWeight="Bold"
+                                                                                VerticalAlignment="Center" />
+
+                                                                            <!-- Add Override Button -->
+                                                                            <Button Content="+ Add Month"
+                                                                                    Command="{Binding AddBuckwtOverrideCommand}"
+                                                                                    Style="{DynamicResource SecondaryButtonStyle}"
+                                                                                    DockPanel.Dock="Right"
+                                                                                    HorizontalAlignment="Right"
+                                                                                    Padding="8,2"
+                                                                                    FontSize="11" />
+                                                                        </DockPanel>
+
+                                                                        <TextBlock
+                                                                            Text="Set explicit override amounts for specific months (e.g. higher exponses in Summer)."
+                                                                            Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                            FontSize="11" Margin="0,0,0,6" />
+
+                                                                        <DataGrid
+                                                                            ItemsSource="{Binding EditingBucketOverrides}"
+                                                                            AutoGenerateColumns="False"
+                                                                            CanUserAddRows="False"
+                                                                            CanUserDeleteRows="False"
+                                                                            MaxHeight="160"
+                                                                            Margin="0,0,0,5">
+                                                                            <DataGrid.Columns>
+                                                                                <!-- Month Selector -->
+                                                                                <DataGridTemplateColumn Header="Month"
+                                                                                    Width="140">
+                                                                                    <DataGridTemplateColumn.CellTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <ComboBox
+                                                                                                ItemsSource="{Binding DataContext.MonthOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                                SelectedValuePath="Key"
+                                                                                                DisplayMemberPath="Name"
+                                                                                                SelectedValue="{Binding MonthKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                Margin="2" />
+                                                                                        </DataTemplate>
+                                                                                    </DataGridTemplateColumn.CellTemplate>
+                                                                                </DataGridTemplateColumn>
+
+                                                                                <!-- Override Amount -->
+                                                                                <DataGridTemplateColumn
+                                                                                    Header="Override Amount"
+                                                                                    Width="140">
+                                                                                    <DataGridTemplateColumn.CellTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <controls:NumericTextBox
+                                                                                                Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}"
+                                                                                                Margin="2" />
+                                                                                        </DataTemplate>
+                                                                                    </DataGridTemplateColumn.CellTemplate>
+                                                                                </DataGridTemplateColumn>
+
+                                                                                <!-- Delete Row Button -->
+                                                                                <DataGridTemplateColumn Width="60">
+                                                                                    <DataGridTemplateColumn.CellTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <Button Content="✕"
+                                                                                                Command="{Binding DataContext.RemoveBucketOverrideCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                                CommandParameter="{Binding}"
+                                                                                                Style="{DynamicResource DangerButtonStyle}"
+                                                                                                Padding="4,1"
+                                                                                                Margin="2"
+                                                                                                ToolTip="Remove this override" />
+                                                                                        </DataTemplate>
+                                                                                    </DataGridTemplateColumn.CellTemplate>
+                                                                                </DataGridTemplateColumn>
+                                                                            </DataGrid.Columns>
+                                                                        </DataGrid>
+                                                                    </StackPanel>
                                                                 </Grid>
                                                             </StackPanel>
                                                         </ScrollViewer>
@@ -3057,7 +3226,7 @@
                             </StackPanel>
 
                             <CheckBox Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                      Content="Pay off credit cards using excess checking each period"
+                                      Content="Pay off new credit card spending each period"
                                       Foreground="{DynamicResource SecondaryTextBrush}"
                                       IsChecked="{Binding UseAutoSweep}" VerticalAlignment="Center"
                                       Margin="5,6,5,2" />
@@ -3296,8 +3465,8 @@
                             <TabItem Header="Snowball Debt Planner">
                                 <Grid>
                                     <DockPanel Grid.Column="0">
-                             
-                                        
+
+
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto" />
@@ -3305,29 +3474,29 @@
                                                 <RowDefinition Height="Auto" />
                                                 <RowDefinition Height="2*" />
                                             </Grid.RowDefinitions>
-<!-- Advisory Note for Downloaded Transactions & Debt Balances -->
-                                        <Border  Grid.Row="0" Background="{DynamicResource SurfaceBackgroundBrush}"
-                                                 BorderBrush="{DynamicResource BorderColorBrush}"
-                                                 BorderThickness="1"
-                                                 CornerRadius="6"
-                                                 Padding="10,8"
-                                                 Margin="0,0,0,10"
-                                                 Visibility="{Binding SnowballOptions.EnableSnowball, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <StackPanel>
-                                                <DockPanel Margin="0,0,0,2">
-                                                    <TextBlock Text="💡 Snowball Data Notice"
-                                                               FontSize="11"
-                                                               FontWeight="Bold"
-                                                               Foreground="{DynamicResource SpecialHeadingBrush}"
-                                                               VerticalAlignment="Center" />
-                                                </DockPanel>
-                                                <TextBlock Style="{DynamicResource StyledSecondaryTextBlock}"
-                                                           Text="Projections only reflect transactions currently in the system. Imported bank files only include posted transactions, so recent external payments (like wiping a credit card balance) won't show up immediately. Until those transactions import, the planner may suggest paying off debt you've already cleared. Ensure your accounts are fully up to date to see accurate investment vs. debt payoff suggestions."
-                                                           FontSize="10.5"
-                                                           TextWrapping="Wrap"
-                                                           LineHeight="15" />
-                                            </StackPanel>
-                                        </Border>
+                                            <!-- Advisory Note for Downloaded Transactions & Debt Balances -->
+                                            <Border Grid.Row="0" Background="{DynamicResource SurfaceBackgroundBrush}"
+                                                    BorderBrush="{DynamicResource BorderColorBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="10,8"
+                                                    Margin="0,0,0,10"
+                                                    Visibility="{Binding SnowballOptions.EnableSnowball, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <StackPanel>
+                                                    <DockPanel Margin="0,0,0,2">
+                                                        <TextBlock Text="💡 Snowball Data Notice"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{DynamicResource SpecialHeadingBrush}"
+                                                                   VerticalAlignment="Center" />
+                                                    </DockPanel>
+                                                    <TextBlock Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                               Text="Projections only reflect transactions currently in the system. Imported bank files only include posted transactions, so recent external payments (like wiping a credit card balance) won't show up immediately. Until those transactions import, the planner may suggest paying off debt you've already cleared. Ensure your accounts are fully up to date to see accurate investment vs. debt payoff suggestions."
+                                                               FontSize="10.5"
+                                                               TextWrapping="Wrap"
+                                                               LineHeight="15" />
+                                                </StackPanel>
+                                            </Border>
                                             <!-- EMPTY STATE / PROMOTIONAL PLACEHOLDER FOR SNOWBALL STRATEGY -->
                                             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto"
                                                           HorizontalScrollBarVisibility="Disabled"
@@ -4172,7 +4341,7 @@
                                                 </ScrollViewer>
                                             </Grid>
                                         </Grid>
-                                   
+
                                     </DockPanel>
 
                                     <!-- Column 1: Flap Handle + Collapsible Side Panel -->

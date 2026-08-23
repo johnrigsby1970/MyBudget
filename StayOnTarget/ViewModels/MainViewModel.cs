@@ -67,6 +67,30 @@ public class MainViewModel : ViewModelBase {
 
     #region Properties
 
+    public List<MonthOption> MonthOptions { get; } = new()
+    {
+        new MonthOption { Key = "01", Name = "January" },
+        new MonthOption { Key = "02", Name = "February" },
+        new MonthOption { Key = "03", Name = "March" },
+        new MonthOption { Key = "04", Name = "April" },
+        new MonthOption { Key = "05", Name = "May" },
+        new MonthOption { Key = "06", Name = "June" },
+        new MonthOption { Key = "07", Name = "July" },
+        new MonthOption { Key = "08", Name = "August" },
+        new MonthOption { Key = "09", Name = "September" },
+        new MonthOption { Key = "10", Name = "October" },
+        new MonthOption { Key = "11", Name = "November" },
+        new MonthOption { Key = "12", Name = "December" }
+    };
+    
+    // Commands
+    public IRelayCommand AddBucketOverrideCommand { get; }
+    public IRelayCommand<OverrideItem> RemoveBucketOverrideCommand { get; }
+    
+    // Commands
+    public IRelayCommand AddBillOverrideCommand { get; }
+    public IRelayCommand<OverrideItem> RemoveBillOverrideCommand { get; }
+    
     private bool _isFlyoutOpen;
     public bool IsFlyoutOpen
     {
@@ -275,6 +299,14 @@ public class MainViewModel : ViewModelBase {
 
         InitializeDataCommand = new AsyncRelayCommand(InitializeDataAsync);
 
+        // Constructor initialization
+        AddBillOverrideCommand = new RelayCommand(AddBillOverride);
+        RemoveBillOverrideCommand = new RelayCommand<OverrideItem>(RemoveBillOverride);
+        
+        // Constructor initialization
+        AddBucketOverrideCommand = new RelayCommand(AddBucketOverride);
+        RemoveBucketOverrideCommand = new RelayCommand<OverrideItem>(RemoveBucketOverride);
+        
         InitializeNavigationMenu();
 
         // Initialize commands directly in the constructor
@@ -1180,9 +1212,26 @@ public class MainViewModel : ViewModelBase {
 
     public Bill? EditingBillClone {
         get => _editingBillClone;
-        set => SetProperty(ref _editingBillClone, value);
+        set {
+            if (SetProperty(ref _editingBillClone, value)) {
+                // Synchronize the override collection whenever the clone changes or resets
+                SyncEditingBillOverrides(value);
+            }
+        }
     }
 
+    private void SyncEditingBillOverrides(Bill? bill) {
+        EditingBillOverrides.Clear();
+        if (bill?.Overrides != null) {
+            foreach (var kvp in bill.Overrides) {
+                EditingBillOverrides.Add(new OverrideItem { 
+                    MonthKey = kvp.Key, 
+                    Amount = kvp.Value 
+                });
+            }
+        }
+    }
+    
     public PeriodBill? EditingPeriodBillClone {
         get => _editingPeriodBillClone;
         set => SetProperty(ref _editingPeriodBillClone, value);
@@ -1547,6 +1596,42 @@ public class MainViewModel : ViewModelBase {
 
     #region Bill CRUD
 
+    #region Overrides
+    
+    public ObservableCollection<OverrideItem> EditingBillOverrides { get; } = new();
+    
+    // Sync back before saving in SaveBillAsync
+    private void SyncBillOverridesToClone() {
+        if (EditingBillClone == null) return;
+    
+        EditingBillClone.Overrides = EditingBillOverrides
+            .Where(x => !string.IsNullOrWhiteSpace(x.MonthKey))
+            .ToDictionary(x => x.MonthKey.Trim(), x => x.Amount);
+    }
+    
+    private void AddBillOverride()
+    {
+        // Default to January ("01") or the next unassigned month
+        var existingKeys = EditingBillOverrides.Select(x => x.MonthKey).ToHashSet();
+        var defaultMonth = MonthOptions.FirstOrDefault(m => !existingKeys.Contains(m.Key)) ?? MonthOptions.First();
+
+        EditingBillOverrides.Add(new OverrideItem 
+        { 
+            MonthKey = defaultMonth.Key, 
+            Amount = EditingBillClone?.ExpectedAmount ?? 0m 
+        });
+    }
+
+    private void RemoveBillOverride(OverrideItem? item)
+    {
+        if (item != null)
+        {
+            EditingBillOverrides.Remove(item);
+        }
+    }
+    
+    #endregion
+    
     private void AddBill() {
         try {
             EditingBillClone = new Bill { Name = "New Bill", ExpectedAmount = 0, DueDay = 1, IsActive = true };
@@ -1570,7 +1655,9 @@ public class MainViewModel : ViewModelBase {
                 Category = SelectedBill.Category, IsActive = SelectedBill.IsActive,
                 IsArchived = SelectedBill.IsArchived,
                 BucketId = SelectedBill.BucketId,
-                SubCategoryId = SelectedBill.SubCategoryId
+                SubCategoryId = SelectedBill.SubCategoryId,
+                // Deep copy the dictionary
+                Overrides = new Dictionary<string, decimal>(SelectedBill.Overrides)
             };
             IsEditingBill = true;
         }
@@ -1605,6 +1692,8 @@ public class MainViewModel : ViewModelBase {
             if (EditingBillClone.AccountId == 0) EditingBillClone.AccountId = null;
             if (EditingBillClone.ToAccountId == 0) EditingBillClone.ToAccountId = null;
 
+            SyncBillOverridesToClone();
+            
             if (SelectedBill != null) {
                 UpdateBillFromClone(SelectedBill, EditingBillClone);
                 await _budgetService.UpsertBillAsync(SelectedBill);
@@ -1647,6 +1736,8 @@ public class MainViewModel : ViewModelBase {
         target.IsPrincipalOnly = clone.IsPrincipalOnly;
         target.BucketId = clone.BucketId;
         target.SubCategoryId = clone.SubCategoryId;
+        // Copy overrides back
+        target.Overrides = new Dictionary<string, decimal>(clone.Overrides);
     }
 
     private void CancelBill() {
@@ -1794,6 +1885,42 @@ public class MainViewModel : ViewModelBase {
 
     #region Bucket CRUD
 
+    #region Overrides
+    
+    public ObservableCollection<OverrideItem> EditingBucketOverrides { get; } = new();
+    
+    // Sync back before saving in SaveBillAsync
+    private void SyncBucketOverridesToClone() {
+        if (EditingBucketClone == null) return;
+    
+        EditingBucketClone.Overrides = EditingBucketOverrides
+            .Where(x => !string.IsNullOrWhiteSpace(x.MonthKey))
+            .ToDictionary(x => x.MonthKey.Trim(), x => x.Amount);
+    }
+    
+    private void AddBucketOverride()
+    {
+        // Default to January ("01") or the next unassigned month
+        var existingKeys = EditingBucketOverrides.Select(x => x.MonthKey).ToHashSet();
+        var defaultMonth = MonthOptions.FirstOrDefault(m => !existingKeys.Contains(m.Key)) ?? MonthOptions.First();
+
+        EditingBucketOverrides.Add(new OverrideItem 
+        { 
+            MonthKey = defaultMonth.Key, 
+            Amount = EditingBillClone?.ExpectedAmount ?? 0m 
+        });
+    }
+
+    private void RemoveBucketOverride(OverrideItem? item)
+    {
+        if (item != null)
+        {
+            EditingBucketOverrides.Remove(item);
+        }
+    }
+    
+    #endregion
+    
     private void AddBucket() {
         try {
             EditingBucketClone = new BudgetBucket {
@@ -1905,6 +2032,8 @@ public class MainViewModel : ViewModelBase {
                 .Select(x => x.Id)
                 .ToList();
 
+            SyncBucketOverridesToClone();
+            
             if (SelectedBucket != null) {
                 UpdateBucketFromClone(SelectedBucket, EditingBucketClone);
                 SelectedBucket.InitialBalance =

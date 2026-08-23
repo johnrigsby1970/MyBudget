@@ -100,4 +100,29 @@ public class Bill : ViewModelBase
         get => _subCategoryId;
         set => SetProperty(ref _subCategoryId, value);
     }
+    
+    // Key: "YYYY-MM", Value: explicit overridden amount
+    public Dictionary<string, decimal> Overrides { get; set; } = new();
+
+    /// <summary>
+    /// Calculates the projection amount for any future date.
+    /// Priority: 1) Specific "YYYY-MM" -> 2) Seasonal "MM" -> 3) Base ExpectedAmount
+    /// </summary>
+    public decimal GetEffectiveAmount(int year, int month)
+    {
+        string specificKey = $"{year:D4}-{month:D2}";
+        string seasonalKey = $"{month:D2}";
+
+        if (Overrides.TryGetValue(specificKey, out var specificAmount))
+            return specificAmount;
+
+        if (Overrides.TryGetValue(seasonalKey, out var seasonalAmount))
+            return seasonalAmount;
+
+        return ExpectedAmount;
+    }
+
+    public decimal GetEffectiveAmount(DateTime date) 
+        => GetEffectiveAmount(date.Year, date.Month);
+    
 }

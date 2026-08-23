@@ -15,9 +15,7 @@ public partial class BudgetService
         await conn.OpenAsync();
 
         return await conn.QueryAsync<BudgetBucket>(
-            @"SELECT Id, Name, ExpectedAmount, AccountId, Type, TargetBalance, 
-                     CurrentBalance, InitialBalance, IsArchived, IsActive,
-                     TargetFrequency, TargetAmount, NextDueDate 
+            @"SELECT * 
               FROM Buckets 
               WHERE IsActive = 1 AND (IsArchived = 0 OR @includeArchived = 1) 
               ORDER BY Name",
@@ -38,12 +36,12 @@ public partial class BudgetService
                     INSERT INTO Buckets (
                         Name, ExpectedAmount, AccountId, Type, 
                         TargetBalance, CurrentBalance, InitialBalance,
-                        TargetFrequency, TargetAmount, NextDueDate
+                        TargetFrequency, TargetAmount, NextDueDate, Overrides
                     ) 
                     VALUES (
                         @Name, @ExpectedAmount, @AccountId, @Type, 
                         @TargetBalance, @CurrentBalance, @InitialBalance,
-                        @TargetFrequency, @TargetAmount, @NextDueDate
+                        @TargetFrequency, @TargetAmount, @NextDueDate, @Overrides
                     );
                     SELECT last_insert_rowid();", 
                     new {
@@ -56,7 +54,8 @@ public partial class BudgetService
                         bucket.InitialBalance,
                         TargetFrequency = bucket.TargetFrequency.HasValue ? (int?)bucket.TargetFrequency.Value : null,
                         bucket.TargetAmount,
-                        NextDueDate = bucket.NextDueDate?.ToString("yyyy-MM-dd")
+                        NextDueDate = bucket.NextDueDate?.ToString("yyyy-MM-dd"),
+                        Overrides = bucket.Overrides
                     }, tx);
             }
             else 
@@ -72,7 +71,8 @@ public partial class BudgetService
                         InitialBalance = @InitialBalance,
                         TargetFrequency = @TargetFrequency,
                         TargetAmount = @TargetAmount,
-                        NextDueDate = @NextDueDate
+                        NextDueDate = @NextDueDate,
+                        Overrides = @Overrides
                     WHERE Id = @Id", 
                     new {
                         bucket.Id,
@@ -85,7 +85,8 @@ public partial class BudgetService
                         bucket.InitialBalance,
                         TargetFrequency = bucket.TargetFrequency.HasValue ? (int?)bucket.TargetFrequency.Value : null,
                         bucket.TargetAmount,
-                        NextDueDate = bucket.NextDueDate?.ToString("yyyy-MM-dd")
+                        NextDueDate = bucket.NextDueDate?.ToString("yyyy-MM-dd"),
+                        Overrides = bucket.Overrides
                     }, tx);
             }
 

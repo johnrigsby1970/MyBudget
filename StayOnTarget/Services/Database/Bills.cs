@@ -32,18 +32,20 @@ public partial class BudgetService
             bill.IsActive,
             bill.IsPrincipalOnly,
             bill.BucketId,
-            bill.SubCategoryId
+            bill.SubCategoryId,
+            // Dapper type handler intercepts 'Overrides' and serializes the Dictionary to JSON TEXT
+            bill.Overrides
         };
         if (bill.Id == 0)
         {
-            bill.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Bills (Name, ExpectedAmount, Frequency, DueDay, AccountId, ToAccountId, NextDueDate, Category, IsActive, IsPrincipalOnly, BucketId, SubCategoryId) 
-                           VALUES (@Name, @ExpectedAmount, @Frequency, @DueDay, @AccountId, @ToAccountId, @NextDueDate, @Category, @IsActive, @IsPrincipalOnly, @BucketId, @SubCategoryId);
+            bill.Id = await conn.ExecuteScalarAsync<int>(@"INSERT INTO Bills (Name, ExpectedAmount, Frequency, DueDay, AccountId, ToAccountId, NextDueDate, Category, IsActive, IsPrincipalOnly, BucketId, SubCategoryId, Overrides) 
+                           VALUES (@Name, @ExpectedAmount, @Frequency, @DueDay, @AccountId, @ToAccountId, @NextDueDate, @Category, @IsActive, @IsPrincipalOnly, @BucketId, @SubCategoryId, @Overrides);
                 SELECT last_insert_rowid();", param);
         }
         else
         {
             await conn.ExecuteAsync(@"UPDATE Bills SET Name=@Name, ExpectedAmount=@ExpectedAmount, Frequency=@Frequency, 
-                           DueDay=@DueDay, AccountId=@AccountId, ToAccountId=@ToAccountId, NextDueDate=@NextDueDate, Category=@Category, IsActive=@IsActive, IsPrincipalOnly=@IsPrincipalOnly, BucketId=@BucketId, SubCategoryId=@SubCategoryId WHERE Id=@Id", param);
+                           DueDay=@DueDay, AccountId=@AccountId, ToAccountId=@ToAccountId, NextDueDate=@NextDueDate, Category=@Category, IsActive=@IsActive, IsPrincipalOnly=@IsPrincipalOnly, BucketId=@BucketId, SubCategoryId=@SubCategoryId, Overrides=@Overrides WHERE Id=@Id", param);
         }
     }   
     
