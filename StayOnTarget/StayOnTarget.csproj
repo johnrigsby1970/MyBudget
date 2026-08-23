@@ -41,7 +41,7 @@
         <None Update="Assets\Generate-StoreAssets.ps1">
           <CopyToOutputDirectory>Never</CopyToOutputDirectory>
         </None>
-        <None Update="AppManifest.xml">
+        <None Update="AppxManifest.xml">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>
