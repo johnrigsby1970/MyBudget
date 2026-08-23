@@ -1,0 +1,213 @@
+name: Build WPF Application (MSIX)
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    env:
+      Solution_Path: StayOnTarget.sln                        # Path to your solution
+      Wap_Project_Path: StayOnTarget.Package/StayOnTarget.Package.wapproj    # Path to your WAP project
+      Wap_Project_Directory: StayOnTarget.Package
+      Configuration: Release
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Restore Project and Packaging Dependencies
+      run: |
+        msbuild $env:Wap_Project_Path `
+          /t:Restore `
+          /p:Configuration=$env:Configuration `
+          /p:Platform=x64 `
+          /p:RuntimeIdentifier=win-x64
+
+        msbuild StayOnTarget.csproj `
+          /t:Restore `
+          /p:Configuration=$env:Configuration `
+          /p:Platform=x64 `
+          /p:RuntimeIdentifier=win-x64 `
+          /p:IntermediateOutputPath="obj/wappublish/win-x64"
+
+    - name: Publish WPF App (Self-Contained)
+      run: |
+        # Publish self-contained build (bundles .NET runtime + single-file executable)
+        dotnet publish StayOnTarget.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained true `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -o "${{ github.workspace }}/publish"
+
+        # Force copy manifest to root of publish directory as AppxManifest.xml
+        if (Test-Path "AppxManifest.xml") {
+          Copy-Item "AppxManifest.xml" "${{ github.workspace }}/publish/AppxManifest.xml" -Force
+        } elseif (Test-Path "Package.appxmanifest") {
+          Copy-Item "Package.appxmanifest" "${{ github.workspace }}/publish/AppxManifest.xml" -Force
+        }
+
+        # Fix Executable path in AppxManifest.xml for root publish directory
+        (Get-Content "${{ github.workspace }}/publish/AppxManifest.xml") -replace 'Executable="StayOnTarget\\StayOnTarget\.exe"', 'Executable="StayOnTarget.exe"' | Set-Content "${{ github.workspace }}/publish/AppxManifest.xml"
+
+        # Copy Assets folder to publish/Assets if present
+        if (Test-Path "Assets") {
+          Copy-Item "Assets" "${{ github.workspace }}/publish/Assets" -Recurse -Force
+        }
+
+    - name: Create Standalone Portable Executable Zip
+      run: |
+        # Package the self-contained publish folder into a portable zip
+        New-Item -ItemType Directory -Force -Path "${{ github.workspace }}/Artifacts/Portable"
+        Compress-Archive -Path "${{ github.workspace }}/publish/*" -DestinationPath "${{ github.workspace }}/Artifacts/Portable/StayOnTarget-Portable-win-x64.zip" -Force
+
+    - name: Create Store MSIX & MSIXUpload Package
+      run: |
+        $version = "0.0.1.0" # Target version for Microsoft Store
+        $publishDir = "${{ github.workspace }}/publish"
+        $manifestPath = "$publishDir/AppxManifest.xml"
+
+        # 1. Dynamically update the Version attribute in the published AppxManifest.xml
+        if (Test-Path $manifestPath) {
+          [xml]$xml = Get-Content $manifestPath
+          $xml.Package.Identity.Version = $version
+          $xml.Save($manifestPath)
+          Write-Host "Successfully updated AppxManifest.xml version to $version"
+        } else {
+          Write-Error "AppxManifest.xml not found at $manifestPath"
+          exit 1
+        }
+
+        # Locate MakeAppx tool
+        $makeAppx = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter "makeappx.exe" | Where-Object FullName -like "*x64*" | Select-Object -First 1).FullName
+
+        $msixDir = "${{ github.workspace }}/Artifacts/MSIX"
+        $msixPath = "$msixDir/StayOnTarget.msix"
+        
+        # Name the output container using the exact Partner Center package identity format
+        $msixUploadName = "JohnRigsby.StayOnTarget_${version}_x64.msixupload"
+        $msixUploadPath = "$msixDir/$msixUploadName"
+
+        New-Item -ItemType Directory -Force -Path $msixDir
+
+        # 2. Pack into MSIX using updated AppxManifest.xml
+        & $makeAppx pack /d $publishDir /p $msixPath /o
+
+        # 3. Prepare staging directories for .msixupload container
+        $stagingDir = "${{ github.workspace }}/upload_staging"
+        $symbolsDir = "${{ github.workspace }}/symbols_staging"
+        New-Item -ItemType Directory -Force -Path $stagingDir | Out-Null
+        New-Item -ItemType Directory -Force -Path $symbolsDir | Out-Null
+
+        # Copy MSIX file into staging
+        Copy-Item $msixPath "$stagingDir/StayOnTarget.msix"
+
+        # 4. Compress PDB symbols into .appxsym archive
+        $pdbFiles = Get-ChildItem -Path $publishDir -Filter "*.pdb"
+        if ($pdbFiles) {
+          Copy-Item -Path $pdbFiles.FullName -Destination $symbolsDir
+          Compress-Archive -Path "$symbolsDir/*" -DestinationPath "$stagingDir/StayOnTarget.appxsym" -Force
+        }
+
+        # 5. Zip .msix + .appxsym into final .msixupload file
+        Compress-Archive -Path "$stagingDir/*" -DestinationPath $msixUploadPath -Force
+
+        # Cleanup temporary staging directories
+        Remove-Item $stagingDir -Recurse -Force
+        Remove-Item $symbolsDir -Recurse -Force
+
+    - name: Upload Artifacts to Build Run
+      uses: actions/upload-artifact@v4
+      with:
+        name: Build-Artifacts
+        path: |
+          Artifacts/MSIX/*
+          Artifacts/Portable/*
+
+    - name: Check for build errors in log
+      if: failure()
+      run: |
+        if (Test-Path "msbuild.log") { Get-Content "msbuild.log" -Tail 100 }
+
+    - name: List Files for Debugging
+      run: |
+        Write-Host "Checking for msbuild.log..."
+        if (Test-Path "msbuild.log") {
+            Write-Host "Found msbuild.log. Content:"
+            Get-Content "msbuild.log" -Tail 200
+        } else {
+            Write-Host "msbuild.log not found."
+        }
+        Write-Host "Searching for MSIX files..."
+        Get-ChildItem -Recurse "${{ github.workspace }}" -Filter "*.msix*"
+        Get-ChildItem -Recurse "${{ github.workspace }}" -Filter "*.msixupload"
+        Get-ChildItem -Recurse "${{ github.workspace }}" -Filter "*.msixbundle"
+        Get-ChildItem -Recurse "${{ github.workspace }}" -Filter "*.appx*"
+        Write-Host "Checking Artifacts directory..."
+        if (Test-Path "${{ github.workspace }}\Artifacts") {
+            Get-ChildItem -Recurse "${{ github.workspace }}\Artifacts"
+        }
+        Write-Host "Checking AppPackages directory..."
+        if (Test-Path "${{ github.workspace }}\StayOnTarget.Package\AppPackages") {
+            Get-ChildItem -Recurse "${{ github.workspace }}\StayOnTarget.Package\AppPackages"
+        }
+        Write-Host "Checking StayOnTarget.Package obj and bin..."
+        if (Test-Path "${{ github.workspace }}\StayOnTarget.Package\obj") {
+            Get-ChildItem -Recurse "${{ github.workspace }}\StayOnTarget.Package\obj"
+        }
+        if (Test-Path "${{ github.workspace }}\StayOnTarget.Package\bin") {
+            Get-ChildItem -Recurse "${{ github.workspace }}\StayOnTarget.Package\bin"
+        }
+
+    # Uploads both the MSIX store files and the Standalone Portable ZIP to GitHub Releases
+    - name: Upload to GitHub Release
+      if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          Artifacts/Portable/**/*.zip
+          Artifacts/MSIX/**/*.msixupload
+          Artifacts/MSIX/**/*.msix
+          Artifacts/MSIX/**/*.msixbundle
+          **/AppPackages/**/*.msix
+          **/AppPackages/**/*.msixbundle
+          StayOnTarget.Package/AppPackages/**/*.msixupload
+          StayOnTarget.Package/AppPackages/**/*.msix
+          StayOnTarget.Package/AppPackages/**/*.msixbundle
+        name: Release ${{ github.ref_name }}
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Keeps internal build log copy in GitHub Actions Artifacts
+    - name: Upload Build Artifacts (Internal)
+      uses: actions/upload-artifact@v4
+      with:
+        name: StayOnTarget-MSIX
+        path: |
+          Artifacts/MSIX/
+          StayOnTarget.Package/AppPackages/
