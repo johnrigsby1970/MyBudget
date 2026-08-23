@@ -46,7 +46,7 @@ jobs:
           /p:Platform=x64 `
           /p:RuntimeIdentifier=win-x64
 
-        msbuild StayOnTarget.csproj `
+        msbuild StayOnTarget/StayOnTarget.csproj `
           /t:Restore `
           /p:Configuration=$env:Configuration `
           /p:Platform=x64 `
