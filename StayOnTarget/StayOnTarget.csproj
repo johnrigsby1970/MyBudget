@@ -31,14 +31,32 @@
         <!-- Add this line to override the vulnerable 2.1.11 transitive dependency -->
         <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="3.53.3" />
     </ItemGroup>
-
+    <PropertyGroup>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+    </PropertyGroup>
     <ItemGroup>
-
+        <None Include="AppxManifest.xml">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="Assets\**">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Assets\Generate-StoreAssets.ps1">
+          <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+    <ItemGroup>
         <Compile Update="Properties\Settings.Designer.cs" AutoGen="True" DesignTimeSharedInput="True" DependentUpon="Settings.settings" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Assets\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Update="Assets\source.png">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
 </Project>

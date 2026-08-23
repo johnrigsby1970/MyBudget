@@ -56,7 +56,7 @@ jobs:
     - name: Publish WPF App (Self-Contained)
       run: |
         # Publish self-contained build (bundles .NET runtime + single-file executable)
-        dotnet publish StayOnTarget.csproj `
+        dotnet publish StayOnTarget/StayOnTarget.csproj `
           -c Release `
           -r win-x64 `
           --self-contained true `
