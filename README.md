@@ -1,18 +1,26 @@
 Tool to manage personal budget, with envelopes mixed with known bills to project usage over longer term across multiple accounts and account types.
 
-# StayOnTarget
+# Stay On Target
 
-Tool to manage personal budget, with envelopes mixed with known bills to project usage over longer term across multiple accounts and account types.
+Stay On Target is a local-first, personal envelope budgeting and financial forecasting desktop application designed for Windows. It helps you allocate funds into named categories (envelopes), track expected versus actual bills, and project your financial health across multiple accounts over the long term.
+
+## Privacy Policy
+
+**Your privacy is absolute.** Stay On Target operates on a **local-first architecture**.
+
+* **No Cloud Storage or Data Harvesting:** Your financial data, budgets, and transaction histories are stored locally on your device inside an encrypted SQLite database.
+* **Data We Do Not Collect:** We do not collect names, account numbers, passwords, or any identifiable personal information.
+* **Imported Transaction Data:** When you import bank or credit card statements, transaction descriptions are processed locally on your machine to normalize merchant names and map categories. While transaction records contain vendor names and amounts, **this data never leaves your local device**, and we do not transmit, store, or have access to your financial records.
+* **Crash Reporting & Telemetry:** If error tracking (such as Sentry) is utilized, it is strictly limited to technical crash diagnostics and application exceptions to improve stability. No financial data, transaction amounts, or personal identifiers are ever included in telemetry logs.
 
 ## Dependencies
 
-* This program is coded to run on Windows 10 and above using Microsoft .Net 8 runtime. 
-* You will need to install the Microsoft .Net Desktop Runtime.
-* Microsoft .NET Desktop Runtime can be found at https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+* Built for Windows 10 and above.
+* Powered by the Microsoft .NET runtime.
 
 ## Description
 
-The application allocates money from accounts into named buckets/categories (envelopes) and tracks expected vs. actual amounts per period, which is the core concept of envelope budgeting.
+The application allocates money from accounts into named buckets/categories (envelopes) and tracks expected vs. actual amounts per period, which is the core concept of envelope budgeting:
 
 1. **Budget Bucket** - represents named budget categories with expected amounts, which are the "envelopes"
 2. **Period Bucket** - tracks actual amounts per period for each bucket, allowing you to allocate money into envelopes each pay period
@@ -20,27 +28,13 @@ The application allocates money from accounts into named buckets/categories (env
 
 ## Getting Started
 
-### Installing
+### Installing via Microsoft Store (Recommended)
+* Stay On Target is available directly through the Microsoft Store for secure installation, automatic updates, and seamless system integration.
 
-* Using the green <> Code button in GitHub, download the zip file of this repository.
-* Download and extract the zip file to a directory on your computer. The location is not important, but you need to 
-  remember where you put it.
-* Build it yourself or execute the published file in the folder StayOnTarget\bin\Release\net8.0-windows\publish.
-* Locate and run the StayOnTarget.exe program.
-* You will need the .net 8 desktop runtime installed. If prompted, download and install the runtime.
-* Windows will warn you "Don't Run!" (explained below) the first time you execute the program. Choose the "More info" link to show the "Run anyway" button.
-* Click this "Run anyway" button.
-
-
-### Executing program
-
-* Execute StayOnTarget.exe. As mentioned above, you will be told the program should not be trusted. This program is not signed with 
-a code signing certificate. Trust it or not, but you can also inspect and compile the code yourself from this 
-repository if you do not want to trust the compiled program. 100% of the code is open source and available.
-* The reason for the prompt is that the compiled code is not signed with a certificate. What that means to you is that it is  
- possible a hacker could alter it after it is built and before you download it. If it is signed, a hacker cannot do that. 
-* The program is built and directly uploaded to GitHub. Unless the hacker can break in to GitHub, the code is safe.
-* A certificate costs $600 per year. This software is currently free to use. One that is signed would cost money, and at present, the use audience doesn't justify the cost. 
+### Installing via GitHub Releases (Portable / Manual)
+* Download the latest `StayOnTarget-Portable-win-x64.zip` from the GitHub Releases page.
+* Extract the zip file to a directory of your choice on your computer.
+* Locate and run `StayOnTarget.exe`.
 
 ## Authors
 
@@ -48,11 +42,10 @@ John Rigsby
 
 ## Version History
 
+* **v0.0.1.0** - Initial release, featuring core envelope budgeting, local SQLite database storage, and bank file importing.
 
 ## License
 
-Stay On Target © 2026 by John Rigsby is licensed under GNU General Public License https://www.gnu.org/licenses/
+Stay On Target © 2026 by John Rigsby. All rights reserved.
 
-## Acknowledgments
-
-
+This software is proprietary commercial software. You may view the source code in this repository for educational and auditing purposes, but you are strictly prohibited from redistributing, modifying, decompiling for malicious use, or selling commercial derivatives of this software without explicit written permission from the author.
