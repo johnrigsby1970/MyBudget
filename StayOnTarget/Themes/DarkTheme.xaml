@@ -35,6 +35,18 @@
     <SolidColorBrush x:Key="GridBucketForegroundBrush" Color="#6C5CE7" />
     <SolidColorBrush x:Key="GridSweepForegroundBrush" Color="Goldenrod" />
     
+    <SolidColorBrush x:Key="DescriptionBannerBackgroundBrush" Color="LightSkyBlue" />
+    <SolidColorBrush x:Key="PastDuePillBackgroundBrush" Color="#22EF4444" />
+    <SolidColorBrush x:Key="UpcomingBillPillBackgroundBrush" Color="#22EF4444" />
+    
+    <SolidColorBrush x:Key="StrategyBadgeBackgroundBrush" Color="#1E3B82F6" />
+    <SolidColorBrush x:Key="StrategyBadgeBorderBrush" Color="#3B82F6" />
+    <SolidColorBrush x:Key="StrategyBadgeTextBrush" Color="#2563EB" />
+    
+    <SolidColorBrush x:Key="DebtRecoveryBadgeBackgroundBrush" Color="#1E10B981" />
+    <SolidColorBrush x:Key="DebtRecoveryBadgeBorderBrush" Color="#10B981" />
+    <SolidColorBrush x:Key="DebtRecoveryBadgeTextBrush" Color="#10B981" />
+    
     <SolidColorBrush x:Key="ReadinessStatusTextBrush" Color="#64748B" />
     <SolidColorBrush x:Key="ReadinessStatusHeaderOptimalBrush" Color="#22C55E" />
     <SolidColorBrush x:Key="ReadinessStatusHeaderTransferRecommendedBrush" Color="#EAB308" />
@@ -47,6 +59,11 @@
     <SolidColorBrush x:Key="ReadinessStatusOptimalBorderBrush" Color="#BBF7D0" />
     <SolidColorBrush x:Key="ReadinessStatusTransferRecommendedBorderBrush" Color="#FEF08A" />
     <SolidColorBrush x:Key="ReadinessStatusGlobalDeficitBorderBrush" Color="#FECACA" />
+    
+    <SolidColorBrush x:Key="GridStatusOptimalBackgroundBrush" Color="#0F4844" />
+    <SolidColorBrush x:Key="GridStatusOptimalForegroundBrush" Color="#94A3B8" />
+    <SolidColorBrush x:Key="GridStatusDeficitBackgroundBrush" Color="#7B445A" />
+    <SolidColorBrush x:Key="GridStatusDeficitForegroundBrush" Color="#94A3B8" />
     
     <SolidColorBrush x:Key="SpecialHeadingBrush" Color="#0284C7" />
     <SolidColorBrush x:Key="StrategyTaskBrush" Color="#0284C7" />
