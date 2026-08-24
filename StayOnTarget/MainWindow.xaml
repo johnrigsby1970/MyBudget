@@ -46,6 +46,7 @@
         </Style>
 
         <converters:LessThanConverter x:Key="LessThanConverter" />
+        <converters:VisibleForMortgageTypeConverter x:Key="VisibleForMortgageTypeConverter" />
         <converters:MultiBooleanToVisibilityConverter x:Key="MultiBooleanToVisibilityConverter" />
         <converters:MarkBillPaidVisibilityConverter x:Key="MarkBillPaidVisibilityConverter" />
         <converters:NullOrZeroToVisibilityConverter x:Key="NullOrZeroToVisibilityConverter" />
@@ -977,8 +978,10 @@
                                                                                     SelectedValuePath="Id"
                                                                                     DisplayMemberPath="Name" Margin="5" />
 
-                                                                            <Label Grid.Column="2" Grid.Row="3"
-                                                                                    Content="To Account:" />
+                                                                            <Label
+                                                                                Style="{DynamicResource StyledLabel}"
+                                                                                Grid.Column="2" Grid.Row="3"
+                                                                                Content="To Account:" />
                                                                             <ComboBox Grid.Column="3" Grid.Row="3"
                                                                                     x:Name="ToAccountComboBox"
                                                                                     ItemsSource="{Binding TransactionToAccounts}"
@@ -1086,58 +1089,96 @@
                                                                                     Content="Principal Only (Mortgage/Loan Extra)"
                                                                                     IsChecked="{Binding EditingTransactionClone.IsPrincipalOnly}"
                                                                                     VerticalAlignment="Center"
-                                                                                    Margin="0,0,10,0"
-                                                                                    Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                                                    Margin="0,0,10,0">
+                                                                                    <CheckBox.Visibility>
+                                                                                        <MultiBinding
+                                                                                            Converter="{StaticResource VisibleForMortgageTypeConverter}">
+                                                                                            <!-- Binding 1: The integer ID of the To Account -->
+                                                                                            <Binding
+                                                                                                Path="EditingTransactionClone.ToAccountId" />
+                                                                                            <!-- Binding 2: The full list of accounts to look up the type -->
+                                                                                            <Binding Path="Accounts" />
+                                                                                        </MultiBinding>
+                                                                                    </CheckBox.Visibility>
+                                                                                </CheckBox>
                                                                                 <CheckBox
                                                                                     Content="Rebalance (Adds to Debt)"
                                                                                     IsChecked="{Binding EditingTransactionClone.IsRebalance}"
-                                                                                    VerticalAlignment="Center"
-                                                                                    Visibility="{Binding SelectedItem, ElementName=ToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                                                    VerticalAlignment="Center">
+                                                                                    <CheckBox.Visibility>
+                                                                                        <MultiBinding
+                                                                                            Converter="{StaticResource VisibleForMortgageTypeConverter}">
+                                                                                            <!-- Binding 1: The integer ID of the To Account -->
+                                                                                            <Binding
+                                                                                                Path="EditingTransactionClone.ToAccountId" />
+                                                                                            <!-- Binding 2: The full list of accounts to look up the type -->
+                                                                                            <Binding Path="Accounts" />
+                                                                                        </MultiBinding>
+                                                                                    </CheckBox.Visibility>
+                                                                                </CheckBox>
                                                                             </StackPanel>
                                                                             <!-- Reconciliation & Bank Status Sub-Panel -->
-<Border Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="4"
-        Background="{DynamicResource SurfaceBackgroundBrush}"
-        BorderBrush="{DynamicResource BorderColorBrush}"
-        BorderThickness="1" CornerRadius="6" Padding="10" Margin="5">
-    <StackPanel>
-        <DockPanel Margin="0,0,0,6">
-            <TextBlock Text="Bank &amp; Reconciliation Status" 
-                       Style="{DynamicResource StyledTextBlock}" 
-                       FontWeight="SemiBold" FontSize="12" />
-        </DockPanel>
+                                                                            <Border Grid.Row="8" Grid.Column="0"
+                                                                                    Grid.ColumnSpan="4"
+                                                                                    Background="{DynamicResource SurfaceBackgroundBrush}"
+                                                                                    BorderBrush="{DynamicResource BorderColorBrush}"
+                                                                                    BorderThickness="1"
+                                                                                    CornerRadius="6" Padding="10"
+                                                                                    Margin="5">
+                                                                                <StackPanel>
+                                                                                    <DockPanel Margin="0,0,0,6">
+                                                                                        <TextBlock
+                                                                                            Text="Bank &amp; Reconciliation Status"
+                                                                                            Style="{DynamicResource StyledTextBlock}"
+                                                                                            FontWeight="SemiBold"
+                                                                                            FontSize="12" />
+                                                                                    </DockPanel>
 
-        <!-- Status Table / Rows for Both Sides -->
-        <ItemsControl ItemsSource="{Binding EditingTransactionStatusItems}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Grid Margin="0,3">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="120" />
-                            <ColumnDefinition Width="120" />
-                        </Grid.ColumnDefinitions>
-                        
-                        <!-- Account Name -->
-                        <TextBlock Grid.Column="0" Text="{Binding AccountName}" 
-                                   VerticalAlignment="Center" FontWeight="Medium" />
-                        
-                        <!-- Status Dropdown or Toggle (Uncleared / Cleared / Reconciled) -->
-                        <ComboBox Grid.Column="1" 
-                                  ItemsSource="{Binding AvailableStatuses}"
-                                  SelectedValue="{Binding CurrentStatus, UpdateSourceTrigger=PropertyChanged}"
-                                  Margin="4,0" />
-                                  
-                        <!-- Info / Reconciliation ID indicator -->
-                        <TextBlock Grid.Column="2" Text="{Binding StatusDetailsText}" 
-                                   Style="{DynamicResource StyledSecondaryTextBlock}" 
-                                   VerticalAlignment="Center" FontSize="11" Margin="6,0,0,0" />
-                    </Grid>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </StackPanel>
-</Border>
-                                                                            
+                                                                                    <!-- Status Table / Rows for Both Sides -->
+                                                                                    <ItemsControl
+                                                                                        ItemsSource="{Binding EditingTransactionStatusItems}">
+                                                                                        <ItemsControl.ItemTemplate>
+                                                                                            <DataTemplate>
+                                                                                                <Grid Margin="0,3">
+                                                                                                    <Grid.ColumnDefinitions>
+                                                                                                        <ColumnDefinition
+                                                                                                            Width="*" />
+                                                                                                        <ColumnDefinition
+                                                                                                            Width="120" />
+                                                                                                        <ColumnDefinition
+                                                                                                            Width="120" />
+                                                                                                    </Grid.ColumnDefinitions>
+
+                                                                                                    <!-- Account Name -->
+                                                                                                    <TextBlock
+                                                                                                        Grid.Column="0"
+                                                                                                        Style="{DynamicResource StyledTextBlock}"
+                                                                                                        Text="{Binding AccountName}"
+                                                                                                        VerticalAlignment="Center"
+                                                                                                        FontWeight="Medium" />
+
+                                                                                                    <!-- Status Dropdown or Toggle (Uncleared / Cleared / Reconciled) -->
+                                                                                                    <ComboBox
+                                                                                                        Grid.Column="1"
+                                                                                                        ItemsSource="{Binding AvailableStatuses}"
+                                                                                                        SelectedValue="{Binding CurrentStatus, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                        Margin="4,0" />
+
+                                                                                                    <!-- Info / Reconciliation ID indicator -->
+                                                                                                    <TextBlock
+                                                                                                        Grid.Column="2"
+                                                                                                        Text="{Binding StatusDetailsText}"
+                                                                                                        Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                                                        VerticalAlignment="Center"
+                                                                                                        FontSize="11"
+                                                                                                        Margin="6,0,0,0" />
+                                                                                                </Grid>
+                                                                                            </DataTemplate>
+                                                                                        </ItemsControl.ItemTemplate>
+                                                                                    </ItemsControl>
+                                                                                </StackPanel>
+                                                                            </Border>
+
                                                                         </Grid>
                                                                     </StackPanel>
                                                                 </Grid>
@@ -1881,6 +1922,7 @@
                                                                               SelectedItem="{Binding EditingAccountClone.Type}"
                                                                               Margin="5" />
                                                                     <CheckBox Content="Primary"
+                                                                              Foreground="{DynamicResource SecondaryTextBrush}"
                                                                               IsChecked="{Binding EditingAccountClone.IsPrimary}"
                                                                               VerticalAlignment="Center"
                                                                               Margin="0,0,10,0"
@@ -2033,6 +2075,7 @@
                                                                                 Margin="5" />
                                                                         <CheckBox Grid.Row="1" Grid.Column="2"
                                                                                 Content="Grace Period"
+                                                                                Foreground="{DynamicResource SecondaryTextBrush}"
                                                                                 IsChecked="{Binding EditingAccountClone.CreditCardDetails.PayPreviousMonthBalanceInFull, UpdateSourceTrigger=PropertyChanged}"
                                                                                 VerticalAlignment="Center"
                                                                                 Margin="5"
@@ -2486,11 +2529,22 @@
                                                                             Grid.ColumnSpan="4"
                                                                             Orientation="Horizontal" Margin="5">
                                                                     <CheckBox
+                                                                        Foreground="{DynamicResource SecondaryTextBrush}"
                                                                         Content="Principal Only (Mortgage/Loan Extra)"
                                                                         IsChecked="{Binding EditingBillClone.IsPrincipalOnly}"
                                                                         VerticalAlignment="Center"
-                                                                        Margin="0,0,10,0"
-                                                                        Visibility="{Binding SelectedItem, ElementName=BillToAccountComboBox, ConverterParameter='Mortgage|PersonalLoan|HELOC|StudentLoan', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}" />
+                                                                        Margin="0,0,10,0">
+                                                                        <CheckBox.Visibility>
+                                                                            <MultiBinding
+                                                                                Converter="{StaticResource VisibleForMortgageTypeConverter}">
+                                                                                <!-- Binding 1: The integer ID of the To Account -->
+                                                                                <Binding
+                                                                                    Path="EditingBillClone.ToAccountId" />
+                                                                                <!-- Binding 2: The full list of accounts to look up the type -->
+                                                                                <Binding Path="Accounts" />
+                                                                            </MultiBinding>
+                                                                        </CheckBox.Visibility>
+                                                                    </CheckBox>
                                                                 </StackPanel>
 
                                                                 <Label Style="{DynamicResource    StyledLabel}"
@@ -2603,23 +2657,25 @@
                                         <Setter Property="Content">
                                             <Setter.Value>
                                                 <DockPanel>
+                                                    <!-- Bottom Action Bar -->
                                                     <Grid DockPanel.Dock="Bottom">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="Auto" />
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
                                                         <StackPanel Grid.Column="0" Orientation="Horizontal"
                                                                     HorizontalAlignment="Left">
                                                             <Button Content="Delete"
                                                                     Command="{Binding DeleteBucketCommand}"
-                                                                    Margin="5"
-                                                                    Width="80">
+                                                                    Margin="5" Width="80">
                                                                 <Button.Style>
                                                                     <Style TargetType="Button"
-                                                                           BasedOn="{StaticResource DangerButtonStyle}">
-                                                                        <Setter Property="Visibility"
-                                                                                Value="Visible" />
+                                                                           BasedOn="{StaticResource    DangerButtonStyle}">
+                                                                        <Setter Property="Visibility" Value="Visible" />
                                                                         <Style.Triggers>
                                                                             <DataTrigger
                                                                                 Binding="{Binding EditingBucketClone.Id, Converter={StaticResource IntToVisibilityConverter}}"
@@ -2640,15 +2696,13 @@
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal"
                                                                     HorizontalAlignment="Right">
-                                                            <Button Content="Add"
+                                                            <Button Content="Add" Command="{Binding AddBucketCommand}"
                                                                     Style="{DynamicResource    SecondaryButtonStyle}"
-                                                                    Command="{Binding AddBucketCommand}" Margin="5"
-                                                                    Width="80"
+                                                                    Margin="5" Width="80"
                                                                     Visibility="{Binding IsNotEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                             <Button Content="Edit"
                                                                     Style="{DynamicResource    SecondaryButtonStyle}"
-                                                                    Command="{Binding EditBucketCommand}"
-                                                                    Margin="5"
+                                                                    Command="{Binding EditBucketCommand}" Margin="5"
                                                                     Width="80">
                                                                 <Button.Visibility>
                                                                     <MultiBinding
@@ -2660,14 +2714,12 @@
                                                             </Button>
                                                             <Button Content="Save"
                                                                     Style="{DynamicResource    PrimaryButtonStyle}"
-                                                                    Command="{Binding SaveBucketCommand}"
-                                                                    Margin="5"
+                                                                    Command="{Binding SaveBucketCommand}" Margin="5"
                                                                     Width="80"
                                                                     Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                             <Button Content="Cancel"
                                                                     Style="{DynamicResource    SecondaryButtonStyle}"
-                                                                    Command="{Binding CancelBucketCommand}"
-                                                                    Margin="5"
+                                                                    Command="{Binding CancelBucketCommand}" Margin="5"
                                                                     Width="80"
                                                                     Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                         </StackPanel>
@@ -2678,10 +2730,11 @@
                                                             <RowDefinition Height="*" />
                                                             <RowDefinition Height="Auto" />
                                                         </Grid.RowDefinitions>
+
+                                                        <!-- ENHANCED DATAGRID -->
                                                         <DataGrid Grid.Row="0" ItemsSource="{Binding Buckets}"
                                                                   SelectedItem="{Binding SelectedBucket}"
-                                                                  AutoGenerateColumns="False"
-                                                                  CanUserAddRows="False"
+                                                                  AutoGenerateColumns="False" CanUserAddRows="False"
                                                                   IsReadOnly="True">
                                                             <DataGrid.InputBindings>
                                                                 <MouseBinding MouseAction="LeftDoubleClick"
@@ -2689,11 +2742,12 @@
                                                             </DataGrid.InputBindings>
                                                             <DataGrid.Columns>
                                                                 <DataGridTextColumn Header="Name"
-                                                                        Binding="{Binding Name}" Width="*" />
+                                                                        Binding="{Binding Name}" Width="Auto" />
                                                                 <DataGridTextColumn Header="Type"
-                                                                        Binding="{Binding Type}" Width="140" />
+                                                                        Binding="{Binding Type, Converter={StaticResource EnumToDisplayNameConverter}}"
+                                                                        Width="140" />
                                                                 <DataGridTextColumn Header="Target Cadence"
-                                                                        Binding="{Binding TargetFrequency}"
+                                                                        Binding="{Binding TargetFrequency, Converter={StaticResource EnumToDisplayNameConverter}}"
                                                                         Width="120" />
                                                                 <DataGridTextColumn Header="Target Amount"
                                                                         Binding="{Binding TargetAmount, StringFormat=C}"
@@ -2707,15 +2761,18 @@
                                                             </DataGrid.Columns>
                                                         </DataGrid>
 
-                                                        <ScrollViewer Grid.Row="1"
-                                                                      VerticalScrollBarVisibility="Auto"
+                                                        <!-- EDIT FORM SECTION -->
+                                                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                                                                       MaxHeight="450">
                                                             <StackPanel Margin="10"
                                                                         Visibility="{Binding IsEditingBucket, Converter={StaticResource BooleanToVisibilityConverter}}">
                                                                 <TextBlock
-                                                                    Style="{DynamicResource    StyledTextBlock}"
+                                                                    Style="{DynamicResource StyledSecondaryTextBlock}"
                                                                     Text="Edit Envelope Configuration"
-                                                                    FontWeight="Bold" Margin="0,0,0,5" />
+                                                                    FontWeight="Bold"
+                                                                    Margin="0,0,0,5" />
+
+                                                                <!-- Row 1: Name, Type, Paid From -->
                                                                 <Grid>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="Auto" />
@@ -2729,36 +2786,38 @@
                                                                         <RowDefinition Height="*" />
                                                                         <RowDefinition Height="Auto" />
                                                                     </Grid.RowDefinitions>
-                                                                    <Label Grid.Row="1"
+                                                                    <Label Grid.Row="0"
                                                                            Style="{DynamicResource    StyledLabel}"
                                                                            Grid.Column="0" Content="Name:"
                                                                            VerticalAlignment="Center" />
-                                                                    <TextBox Grid.Row="1" Grid.Column="1"
+                                                                    <TextBox Grid.Row="0" Grid.Column="1"
                                                                              Text="{Binding EditingBucketClone.Name, UpdateSourceTrigger=PropertyChanged}"
                                                                              Margin="5" VerticalAlignment="Center" />
-                                                                    <Label Grid.Row="1"
+
+                                                                    <Label Grid.Row="0"
                                                                            Style="{DynamicResource    StyledLabel}"
                                                                            Grid.Column="2" Content="Envelope Type:"
                                                                            VerticalAlignment="Center" />
-                                                                    <ComboBox Grid.Row="1" Grid.Column="3"
+                                                                    <ComboBox Grid.Row="0" Grid.Column="3"
                                                                               ItemsSource="{Binding BucketTypes}"
+                                                                              Style="{DynamicResource    StyledEnumComboBox}"
                                                                               SelectedItem="{Binding EditingBucketClone.Type, UpdateSourceTrigger=PropertyChanged}"
                                                                               Margin="5" VerticalAlignment="Center" />
-                                                                    <Label Grid.Row="1"
+
+                                                                    <Label Grid.Row="0"
                                                                            Style="{DynamicResource    StyledLabel}"
                                                                            Grid.Column="4" Content="Paid From:"
                                                                            VerticalAlignment="Center" />
-                                                                    <ComboBox Grid.Row="1" Grid.Column="5"
+                                                                    <ComboBox Grid.Row="0" Grid.Column="5"
                                                                               ItemsSource="{Binding ActiveAccountsWithNone}"
                                                                               SelectedValue="{Binding EditingBucketClone.AccountId}"
                                                                               SelectedValuePath="Id"
                                                                               DisplayMemberPath="Name" Margin="5"
                                                                               VerticalAlignment="Center" />
 
-
                                                                     <!-- Monthly / Seasonal Overrides Section -->
                                                                     <StackPanel Grid.Row="1" Grid.Column="0"
-                                                                            Grid.ColumnSpan="4" Margin="5"
+                                                                            Grid.ColumnSpan="6" Margin="5"
                                                                             Visibility="{Binding EditingBucketClone.TargetFrequency, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Monthly}">
 
                                                                         <DockPanel Margin="0,5,0,4">
@@ -2770,7 +2829,7 @@
 
                                                                             <!-- Add Override Button -->
                                                                             <Button Content="+ Add Month"
-                                                                                    Command="{Binding AddBuckwtOverrideCommand}"
+                                                                                    Command="{Binding AddBucketOverrideCommand}"
                                                                                     Style="{DynamicResource SecondaryButtonStyle}"
                                                                                     DockPanel.Dock="Right"
                                                                                     HorizontalAlignment="Right"
@@ -2779,7 +2838,7 @@
                                                                         </DockPanel>
 
                                                                         <TextBlock
-                                                                            Text="Set explicit override amounts for specific months (e.g. higher exponses in Summer)."
+                                                                            Text="Set explicit override amounts for specific months (e.g. higher expenses in Summer)."
                                                                             Style="{DynamicResource StyledSecondaryTextBlock}"
                                                                             FontSize="11" Margin="0,0,0,6" />
 
@@ -2836,7 +2895,307 @@
                                                                             </DataGrid.Columns>
                                                                         </DataGrid>
                                                                     </StackPanel>
+
                                                                 </Grid>
+
+                                                                <!-- Row 2: Target Projection Cadence Fields (HIDDEN for UpfrontFloor) -->
+                                                                <Grid Margin="0,5">
+                                                                    <Grid.Style>
+                                                                        <Style TargetType="Grid">
+                                                                            <Setter Property="Visibility"
+                                                                                    Value="Visible" />
+                                                                            <Style.Triggers>
+                                                                                <!-- Hide Cadence row completely when UpfrontFloor -->
+                                                                                <DataTrigger
+                                                                                    Binding="{Binding EditingBucketClone.Type}"
+                                                                                    Value="UpfrontFloor">
+                                                                                    <Setter Property="Visibility"
+                                                                                        Value="Collapsed" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Grid.Style>
+
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <!-- Target Frequency -->
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Column="0" Content="Target Frequency:"
+                                                                           VerticalAlignment="Center" />
+                                                                    <ComboBox Grid.Column="1"
+                                                                              Style="{DynamicResource    StyledEnumComboBox}"
+                                                                              ItemsSource="{Binding TargetFrequencyTypes}"
+                                                                              SelectedItem="{Binding EditingBucketClone.TargetFrequency, UpdateSourceTrigger=PropertyChanged}"
+                                                                              Margin="5" VerticalAlignment="Center" />
+
+                                                                    <!-- Target Amount -->
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Column="2" Content="Target Amount:"
+                                                                           VerticalAlignment="Center" />
+                                                                    <controls:NumericTextBox Grid.Column="3"
+                                                                            Text="{Binding EditingBucketClone.TargetAmount, UpdateSourceTrigger=PropertyChanged}"
+                                                                            Margin="5" VerticalAlignment="Center" />
+
+                                                                    <!-- Next Due Date -->
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Column="4" Content="Next Due Date:"
+                                                                           VerticalAlignment="Center" />
+                                                                    <DatePicker Grid.Column="5"
+                                                                            SelectedDate="{Binding EditingBucketClone.NextDueDate, UpdateSourceTrigger=PropertyChanged}"
+                                                                            Margin="5" VerticalAlignment="Center" />
+                                                                </Grid>
+
+                                                                <!-- Row 3: Reserve & Floor Balances -->
+                                                                <Grid Margin="0,5">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <!-- Target Floor Balance (ONLY Visible for UpfrontFloor) -->
+                                                                    <Label Grid.Column="0" Content="Target Floor:"
+                                                                           VerticalAlignment="Center">
+                                                                        <Label.Style>
+                                                                            <Style TargetType="Label"
+                                                                                    BasedOn="{StaticResource StyledLabel}">
+                                                                                <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger
+                                                                                        Binding="{Binding EditingBucketClone.Type}"
+                                                                                        Value="UpfrontFloor">
+                                                                                        <Setter Property="Visibility"
+                                                                                            Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Label.Style>
+                                                                    </Label>
+                                                                    <controls:NumericTextBox Grid.Column="1"
+                                                                            Text="{Binding EditingBucketClone.TargetBalance, UpdateSourceTrigger=PropertyChanged}"
+                                                                            Margin="5" VerticalAlignment="Center">
+                                                                        <controls:NumericTextBox.Style>
+                                                                            <Style TargetType="controls:NumericTextBox"
+                                                                                    BasedOn="{StaticResource {x:Type controls:NumericTextBox}}">
+                                                                                <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger
+                                                                                        Binding="{Binding EditingBucketClone.Type}"
+                                                                                        Value="UpfrontFloor">
+                                                                                        <Setter Property="Visibility"
+                                                                                            Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </controls:NumericTextBox.Style>
+                                                                    </controls:NumericTextBox>
+
+                                                                    <!-- Current Balance (ONLY Visible for AccumulatingDrawdown) -->
+                                                                    <Label Grid.Column="2" Content="Current Balance:"
+                                                                           VerticalAlignment="Center">
+                                                                        <Label.Style>
+                                                                            <Style TargetType="Label"
+                                                                                    BasedOn="{StaticResource StyledLabel}">
+                                                                                <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger
+                                                                                        Binding="{Binding EditingBucketClone.Type}"
+                                                                                        Value="AccumulatingDrawdown">
+                                                                                        <Setter Property="Visibility"
+                                                                                            Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Label.Style>
+                                                                    </Label>
+                                                                    <controls:NumericTextBox Grid.Column="3"
+                                                                            Text="{Binding EditingBucketClone.CurrentBalance, UpdateSourceTrigger=PropertyChanged}"
+                                                                            Margin="5" VerticalAlignment="Center">
+                                                                        <controls:NumericTextBox.Style>
+                                                                            <Style TargetType="controls:NumericTextBox"
+                                                                                    BasedOn="{StaticResource {x:Type controls:NumericTextBox}}">
+                                                                                <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger
+                                                                                        Binding="{Binding EditingBucketClone.Type}"
+                                                                                        Value="AccumulatingDrawdown">
+                                                                                        <Setter Property="Visibility"
+                                                                                            Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </controls:NumericTextBox.Style>
+                                                                    </controls:NumericTextBox>
+                                                                </Grid>
+
+                                                                <!-- Paycheck Allocations Section (Hidden for UpfrontFloor) -->
+                                                                <StackPanel Margin="0,10,0,5">
+                                                                    <StackPanel.Style>
+                                                                        <Style TargetType="StackPanel">
+                                                                            <Setter Property="Visibility"
+                                                                                    Value="Visible" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger
+                                                                                    Binding="{Binding EditingBucketClone.Type}"
+                                                                                    Value="UpfrontFloor">
+                                                                                    <Setter Property="Visibility"
+                                                                                        Value="Collapsed" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </StackPanel.Style>
+
+                                                                    <TextBlock
+                                                                        Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                        Text="Linked Paycheck Allocations:"
+                                                                        FontWeight="SemiBold"
+                                                                        Margin="0,0,0,5" />
+                                                                    <Border BorderBrush="Gray" BorderThickness="1"
+                                                                            CornerRadius="3"
+                                                                            Height="100">
+                                                                        <DataGrid
+                                                                            ItemsSource="{Binding EditableAllocations}"
+                                                                            AutoGenerateColumns="False"
+                                                                            CanUserAddRows="True">
+                                                                            <DataGrid.Columns>
+                                                                                <DataGridTemplateColumn
+                                                                                    Header="Paycheck" Width="*">
+                                                                                    <DataGridTemplateColumn.CellTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <TextBlock
+                                                                                                Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                                                Text="{Binding PaycheckName}"
+                                                                                                VerticalAlignment="Center"
+                                                                                                Margin="4,0" />
+                                                                                        </DataTemplate>
+                                                                                    </DataGridTemplateColumn.CellTemplate>
+                                                                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                                                                        <DataTemplate>
+                                                                                            <ComboBox
+                                                                                                ItemsSource="{Binding DataContext.Paychecks, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                                SelectedValue="{Binding PaycheckId, UpdateSourceTrigger=PropertyChanged}"
+                                                                                                SelectedValuePath="Id"
+                                                                                                DisplayMemberPath="Name"
+                                                                                                IsDropDownOpen="True" />
+                                                                                        </DataTemplate>
+                                                                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                                                                </DataGridTemplateColumn>
+                                                                                <DataGridTextColumn
+                                                                                    Header="Allocation Value"
+                                                                                    Binding="{Binding AllocationValue, StringFormat=N2}"
+                                                                                    Width="120" />
+                                                                                <DataGridCheckBoxColumn Header="Active"
+                                                                                    Binding="{Binding IsActive}"
+                                                                                    Width="60" />
+                                                                            </DataGrid.Columns>
+                                                                        </DataGrid>
+                                                                    </Border>
+                                                                </StackPanel>
+
+                                                                <!-- Dynamic Purpose Description Banner -->
+                                                                <Border Background="LightSkyBlue" BorderBrush="#CBD5E1"
+                                                                        BorderThickness="1" CornerRadius="4"
+                                                                        Padding="8,6" Margin="0,0,0,8">
+                                                                    <TextBlock x:Name="BucketPurposeText"
+                                                                               TextWrapping="Wrap" FontSize="11"
+                                                                               Foreground="#334155" LineHeight="15">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <!-- Default Standard Envelope Description -->
+                                                                                <Setter Property="Text"
+                                                                                    Value="💡 Think of this as a temporary allowance for a period. Spending comes out of this envelope first. If you spend less, the leftover cash goes back to your main account. If you spend more, it automatically pulls from your extra reserves." />
+                                                                                <Style.Triggers>
+                                                                                    <!-- UpfrontFloor Description -->
+                                                                                    <DataTrigger
+                                                                                        Binding="{Binding EditingBucketClone.Type}"
+                                                                                        Value="UpfrontFloor">
+                                                                                        <Setter Property="Text"
+                                                                                            Value="💡 Sets a minimum balance cushion in your account. Make sure your account actually holds these funds—projections will alert you whenever your balance falls below this required floor at any point in the projected timeline." />
+                                                                                    </DataTrigger>
+                                                                                    <!-- AccumulatingDrawdown Description -->
+                                                                                    <DataTrigger
+                                                                                        Binding="{Binding EditingBucketClone.Type}"
+                                                                                        Value="AccumulatingDrawdown">
+                                                                                        <Setter Property="Text"
+                                                                                            Value="💡 Builds up cash over time from paychecks toward a goal. Ensure your account actually holds these saved funds, as projections will alert you if your balance drops below your accumulated target and offers actions to take to indicate money has been set aside as available for this savings goal." />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </Border>
+
+                                                                <!-- SubCategory Association Section (KEPT VISIBLE FOR ALL TYPES) -->
+                                                                <TextBlock
+                                                                    Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                    Text="Associated Subcategories:" Margin="0,10,0,5"
+                                                                    FontWeight="SemiBold" />
+                                                                <Border BorderBrush="Gray" BorderThickness="1"
+                                                                        CornerRadius="3" Height="100">
+                                                                    <ListBox
+                                                                        ItemsSource="{Binding EditableSubCategories}"
+                                                                        ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                                        <ListBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <StackPanel Orientation="Horizontal"
+                                                                                    Margin="2">
+                                                                                    <CheckBox
+                                                                                        IsChecked="{Binding IsSelected}"
+                                                                                        VerticalAlignment="Center">
+                                                                                        <StackPanel
+                                                                                            Orientation="Horizontal">
+                                                                                            <TextBlock
+                                                                                                Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                                                Text="{Binding CategoryName}"
+                                                                                                FontWeight="Bold"
+                                                                                                Margin="0,0,5,0" />
+                                                                                            <TextBlock
+                                                                                                Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                                                Text=">"
+                                                                                                Margin="0,0,5,0"
+                                                                                                Foreground="Gray" />
+                                                                                            <TextBlock
+                                                                                                Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                                                Text="{Binding Name}" />
+                                                                                        </StackPanel>
+                                                                                    </CheckBox>
+                                                                                    <TextBlock
+                                                                                        Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                                        x:Name="StatusText"
+                                                                                        Text="{Binding AssignmentStatusText}"
+                                                                                        Margin="10,0,0,0"
+                                                                                        VerticalAlignment="Center"
+                                                                                        FontStyle="Italic"
+                                                                                        Foreground="Gray" />
+                                                                                </StackPanel>
+                                                                                <DataTemplate.Triggers>
+                                                                                    <DataTrigger
+                                                                                        Binding="{Binding IsReassigned}"
+                                                                                        Value="True">
+                                                                                        <Setter TargetName="StatusText"
+                                                                                            Property="Foreground"
+                                                                                            Value="DarkOrange" />
+                                                                                        <Setter TargetName="StatusText"
+                                                                                            Property="FontWeight"
+                                                                                            Value="SemiBold" />
+                                                                                    </DataTrigger>
+                                                                                </DataTemplate.Triggers>
+                                                                            </DataTemplate>
+                                                                        </ListBox.ItemTemplate>
+                                                                    </ListBox>
+                                                                </Border>
                                                             </StackPanel>
                                                         </ScrollViewer>
                                                     </Grid>
@@ -2851,27 +3210,30 @@
                                             <Setter.Value>
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <!-- Left: Categories -->
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="5" />
+                                                        <ColumnDefinition Width="5" /> <!-- Splitter -->
+                                                        <!-- Right: Subcategories -->
                                                         <ColumnDefinition Width="1.5*" />
                                                     </Grid.ColumnDefinitions>
-                                                    <!-- Left Categories -->
+
+                                                    <!-- ==================== LEFT: CATEGORIES ==================== -->
                                                     <DockPanel Grid.Column="0" Margin="5">
+                                                        <!-- Category Action Buttons -->
                                                         <Grid DockPanel.Dock="Bottom">
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="Auto" />
                                                                 <ColumnDefinition Width="*" />
                                                                 <ColumnDefinition Width="Auto" />
                                                             </Grid.ColumnDefinitions>
+
                                                             <Button Grid.Column="0" Content="Delete"
                                                                     Command="{Binding DeleteCategoryCommand}"
-                                                                    Margin="2,5"
-                                                                    Width="70">
+                                                                    Margin="2,5" Width="70">
                                                                 <Button.Style>
                                                                     <Style TargetType="Button"
-                                                                           BasedOn="{StaticResource DangerButtonStyle}">
-                                                                        <Setter Property="Visibility"
-                                                                                Value="Visible" />
+                                                                           BasedOn="{StaticResource    DangerButtonStyle}">
+                                                                        <Setter Property="Visibility" Value="Visible" />
                                                                         <Style.Triggers>
                                                                             <DataTrigger
                                                                                 Binding="{Binding EditingCategoryClone.Id, Converter={StaticResource IntToVisibilityConverter}}"
@@ -2889,17 +3251,20 @@
                                                                     </Style>
                                                                 </Button.Style>
                                                             </Button>
+
                                                             <StackPanel Grid.Column="2" Orientation="Horizontal"
                                                                         HorizontalAlignment="Right">
                                                                 <Button Content="Add"
                                                                         Style="{DynamicResource    SecondaryButtonStyle}"
                                                                         Command="{Binding AddCategoryCommand}"
-                                                                        Margin="2,5" Width="60"
+                                                                        Margin="2,5"
+                                                                        Width="60"
                                                                         Visibility="{Binding IsNotEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                                 <Button Content="Edit"
                                                                         Style="{DynamicResource    SecondaryButtonStyle}"
                                                                         Command="{Binding EditCategoryCommand}"
-                                                                        Margin="2,5" Width="60">
+                                                                        Margin="2,5"
+                                                                        Width="60">
                                                                     <Button.Visibility>
                                                                         <MultiBinding
                                                                             Converter="{StaticResource BooleanAndToVisibilityConverter}">
@@ -2911,49 +3276,234 @@
                                                                 <Button Content="Save"
                                                                         Style="{DynamicResource    PrimaryButtonStyle}"
                                                                         Command="{Binding SaveCategoryCommand}"
-                                                                        Margin="2,5" Width="60"
+                                                                        Margin="2,5"
+                                                                        Width="60"
                                                                         Visibility="{Binding IsEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                                 <Button Content="Cancel"
                                                                         Style="{DynamicResource    SecondaryButtonStyle}"
                                                                         Command="{Binding CancelCategoryCommand}"
-                                                                        Margin="2,5" Width="60"
+                                                                        Margin="2,5"
+                                                                        Width="60"
                                                                         Visibility="{Binding IsEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                                             </StackPanel>
                                                         </Grid>
-                                                        <DataGrid ItemsSource="{Binding Categories}"
-                                                                  SelectedItem="{Binding SelectedCategory}"
-                                                                  AutoGenerateColumns="False"
-                                                                  CanUserAddRows="False"
-                                                                  IsReadOnly="True">
-                                                            <DataGrid.Columns>
-                                                                <DataGridTextColumn Header="Category"
-                                                                        Binding="{Binding Name}" Width="*" />
-                                                            </DataGrid.Columns>
-                                                        </DataGrid>
+
+                                                        <!-- Category Main View + Edit Area -->
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="*" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+
+                                                            <DataGrid Grid.Row="0" ItemsSource="{Binding Categories}"
+                                                                      SelectedItem="{Binding SelectedCategory}"
+                                                                      AutoGenerateColumns="False"
+                                                                      CanUserAddRows="False" IsReadOnly="True">
+                                                                <DataGrid.InputBindings>
+                                                                    <MouseBinding MouseAction="LeftDoubleClick"
+                                                                            Command="{Binding EditCategoryCommand}" />
+                                                                </DataGrid.InputBindings>
+                                                                <DataGrid.Columns>
+                                                                    <DataGridTextColumn Header="Category"
+                                                                            Binding="{Binding Name}" Width="*" />
+                                                                </DataGrid.Columns>
+                                                            </DataGrid>
+
+                                                            <!-- Category Edit Form -->
+                                                            <StackPanel Grid.Row="1" Margin="5"
+                                                                        Visibility="{Binding IsEditingCategory, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <TextBlock
+                                                                    Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                    Text="Edit Category" FontWeight="Bold"
+                                                                    Margin="0,0,0,5" />
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto" />
+                                                                        <RowDefinition Height="Auto" />
+                                                                    </Grid.RowDefinitions>
+
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Row="0" Grid.Column="0" Content="Name:" />
+                                                                    <TextBox Grid.Row="0" Grid.Column="1"
+                                                                             Text="{Binding EditingCategoryClone.Name, UpdateSourceTrigger=PropertyChanged}"
+                                                                             Margin="2" />
+
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Row="1" Grid.Column="0"
+                                                                           Content="Sort Order:" />
+                                                                    <controls:NumericTextBox Grid.Row="1"
+                                                                            Grid.Column="1"
+                                                                            Text="{Binding EditingCategoryClone.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                                                            Margin="2" />
+                                                                </Grid>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </DockPanel>
 
+                                                    <!-- Grid Splitter -->
                                                     <GridSplitter Grid.Column="1" Width="5"
                                                                   HorizontalAlignment="Stretch"
-                                                                  Style="{DynamicResource    ModernGridSplitterStyle}" />
+                                                                  Background="LightGray" />
 
-                                                    <!-- Right Subcategories -->
+                                                    <!-- ==================== RIGHT: SUBCATEGORIES ==================== -->
                                                     <DockPanel Grid.Column="2" Margin="5">
-                                                        <DataGrid ItemsSource="{Binding SubCategories}"
-                                                                  SelectedItem="{Binding SelectedSubCategory}"
-                                                                  AutoGenerateColumns="False"
-                                                                  CanUserAddRows="False"
-                                                                  IsReadOnly="True">
-                                                            <DataGrid.Columns>
-                                                                <DataGridTextColumn Header="Category"
-                                                                        Binding="{Binding CategoryName}"
-                                                                        Width="120" />
-                                                                <DataGridTextColumn Header="Subcategory"
-                                                                        Binding="{Binding Name}" Width="*" />
-                                                                <!-- <DataGridTextColumn Header="Default Envelope" Binding="{Binding DefaultBucketName}" Width="140" /> -->
-                                                            </DataGrid.Columns>
-                                                        </DataGrid>
+                                                        <!-- SubCategory Action Buttons -->
+                                                        <Grid DockPanel.Dock="Bottom">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+
+                                                            <Button Grid.Column="0" Content="Delete"
+                                                                    Command="{Binding DeleteSubCategoryCommand}"
+                                                                    Margin="2,5" Width="70">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button"
+                                                                           BasedOn="{StaticResource    DangerButtonStyle}">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger
+                                                                                Binding="{Binding EditingSubCategoryClone.Id, Converter={StaticResource IntToVisibilityConverter}}"
+                                                                                Value="Collapsed">
+                                                                                <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                            </DataTrigger>
+                                                                            <DataTrigger
+                                                                                Binding="{Binding IsEditingSubCategory}"
+                                                                                Value="False">
+                                                                                <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
+
+                                                            <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                                                        HorizontalAlignment="Right">
+                                                                <Button Content="Add"
+                                                                        Style="{DynamicResource    SecondaryButtonStyle}"
+                                                                        Command="{Binding AddSubCategoryCommand}"
+                                                                        Margin="2,5"
+                                                                        Width="60"
+                                                                        Visibility="{Binding IsNotEditingSubCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Edit"
+                                                                        Style="{DynamicResource    SecondaryButtonStyle}"
+                                                                        Command="{Binding EditSubCategoryCommand}"
+                                                                        Margin="2,5"
+                                                                        Width="60">
+                                                                    <Button.Visibility>
+                                                                        <MultiBinding
+                                                                            Converter="{StaticResource BooleanAndToVisibilityConverter}">
+                                                                            <Binding Path="CanEditSubCategory" />
+                                                                            <Binding Path="IsNotEditingSubCategory" />
+                                                                        </MultiBinding>
+                                                                    </Button.Visibility>
+                                                                </Button>
+                                                                <Button Content="Save"
+                                                                        Style="{DynamicResource    PrimaryButtonStyle}"
+                                                                        Command="{Binding SaveSubCategoryCommand}"
+                                                                        Margin="2,5"
+                                                                        Width="60"
+                                                                        Visibility="{Binding IsEditingSubCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                                <Button Content="Cancel"
+                                                                        Style="{DynamicResource    SecondaryButtonStyle}"
+                                                                        Command="{Binding CancelSubCategoryCommand}"
+                                                                        Margin="2,5" Width="60"
+                                                                        Visibility="{Binding IsEditingSubCategory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            </StackPanel>
+                                                        </Grid>
+
+                                                        <!-- SubCategory Main View + Edit Area -->
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="*" />
+                                                                <RowDefinition Height="Auto" />
+                                                            </Grid.RowDefinitions>
+
+                                                            <DataGrid Grid.Row="0"
+                                                                      ItemsSource="{Binding SubCategories}"
+                                                                      SelectedItem="{Binding SelectedSubCategory}"
+                                                                      AutoGenerateColumns="False"
+                                                                      CanUserAddRows="False" IsReadOnly="True">
+                                                                <DataGrid.InputBindings>
+                                                                    <MouseBinding MouseAction="LeftDoubleClick"
+                                                                            Command="{Binding EditSubCategoryCommand}" />
+                                                                </DataGrid.InputBindings>
+                                                                <DataGrid.Columns>
+                                                                    <DataGridTextColumn Header="Category"
+                                                                            Binding="{Binding CategoryName}"
+                                                                            Width="120" />
+                                                                    <DataGridTextColumn Header="Subcategory"
+                                                                            Binding="{Binding Name}" Width="*" />
+                                                                    <DataGridTextColumn Header="Default Envelope"
+                                                                            Binding="{Binding DefaultBucketName}"
+                                                                            Width="140" />
+                                                                </DataGrid.Columns>
+                                                            </DataGrid>
+
+                                                            <!-- SubCategory Edit Form -->
+                                                            <StackPanel Grid.Row="1" Margin="5"
+                                                                        Visibility="{Binding IsEditingSubCategory, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                                <TextBlock
+                                                                    Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                                    Text="Edit Subcategory" FontWeight="Bold"
+                                                                    Margin="0,0,0,5" />
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Column="0" Content="Category:" />
+                                                                    <ComboBox Grid.Column="1"
+                                                                              ItemsSource="{Binding Categories}"
+                                                                              SelectedValue="{Binding EditingSubCategoryClone.CategoryId}"
+                                                                              SelectedValuePath="Id"
+                                                                              DisplayMemberPath="Name" Margin="2" />
+
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Column="2" Content="Name:" />
+                                                                    <TextBox Grid.Column="3"
+                                                                             Text="{Binding EditingSubCategoryClone.Name, UpdateSourceTrigger=PropertyChanged}"
+                                                                             Margin="2" />
+                                                                </Grid>
+
+                                                                <Grid Margin="0,5">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Column="0" Content="Default Envelope:" />
+                                                                    <ComboBox Grid.Column="1"
+                                                                              ItemsSource="{Binding BucketsWithNone}"
+                                                                              SelectedValue="{Binding EditingSubCategoryClone.DefaultBucketId}"
+                                                                              SelectedValuePath="Id"
+                                                                              DisplayMemberPath="Name" Margin="2" />
+
+                                                                    <Label Style="{DynamicResource    StyledLabel}"
+                                                                           Grid.Column="2" Content="Sort Order:" />
+                                                                    <controls:NumericTextBox Grid.Column="3"
+                                                                            Text="{Binding EditingSubCategoryClone.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                                                            Margin="2" />
+                                                                </Grid>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </DockPanel>
                                                 </Grid>
+
                                             </Setter.Value>
                                         </Setter>
                                     </DataTrigger>

@@ -415,7 +415,11 @@
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
-
+            
+            <!-- <Style x:Key="StyledCheckBox" TargetType="{x:Type CheckBox}"> -->
+            <!--     <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /> -->
+            <!-- </Style> -->
+            <!-- -->
             <Style x:Key="StyledTextBlock" TargetType="{x:Type TextBlock}">
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
             </Style>

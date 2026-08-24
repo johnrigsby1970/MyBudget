@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using CommunityToolkit.Mvvm.Input;
+using StayOnTarget.Data;
 using StayOnTarget.DataAnnotation;
 using StayOnTarget.Helpers;
 using StayOnTarget.Services;
@@ -116,8 +117,14 @@ public partial class DatabaseNameViewModel : ViewModelBase, IWizardStepViewModel
 
             // In a real app, we might want to let the user pick the path, 
             // but for now we follow the pattern in DatabaseContext.
-
-            var budgetService = new BudgetService(dbPath, Password);
+            
+            var dbContext = new DatabaseContext(dbPath, Password);
+            using (var connection = dbContext.GetConnection()) {
+                connection.Open();
+            }
+            
+            dbContext.InitializeDatabase();
+            var budgetService = new BudgetService(dbContext, Password);
             DatabaseInitializationContext.BudgetService = budgetService;
             
             try {

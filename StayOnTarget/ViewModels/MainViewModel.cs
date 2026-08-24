@@ -2070,7 +2070,7 @@ public class MainViewModel : ViewModelBase {
             EditingBucketOverrides.Add(new OverrideItem 
             { 
                 MonthKey = defaultMonth.Key, 
-                Amount = EditingBillClone?.ExpectedAmount ?? 0m 
+                Amount = EditingBucketClone?.ExpectedAmount ?? 0m 
             });
         }
         catch (Exception ex) {
@@ -2282,6 +2282,7 @@ public class MainViewModel : ViewModelBase {
             target.TargetFrequency = clone.TargetFrequency;
             target.TargetAmount = clone.TargetAmount;
             target.NextDueDate = clone.NextDueDate;
+            target.Overrides = clone.Overrides;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating bucket from clone.");
@@ -4992,7 +4993,8 @@ public class MainViewModel : ViewModelBase {
                 BillId = bill.Id,
                 BucketId = null,
                 SubCategoryId = bill.SubCategoryId,
-                FromAccountIsCleared = false
+                FromAccountIsCleared = false,
+                IsPrincipalOnly = bill.IsPrincipalOnly
             };
 
             if (await _budgetService.UpsertTransactionAsync(transaction)) {
