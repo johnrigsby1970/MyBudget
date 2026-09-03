@@ -5878,6 +5878,8 @@ public class MainViewModel : ViewModelBase {
                 if (periodBill != null) {
                     pb.IsPaid = periodBill.IsPaid;
                     pb.TransactionAmount = periodBill.ActualAmount;
+                    pb.ActualAmount = periodBill.ActualAmount;
+                    pb.Id = periodBill.Id;
                 }
             }
 

@@ -1304,6 +1304,12 @@
                                                                                             Property="Foreground"
                                                                                             Value="{DynamicResource SecondaryTextBrush}" />
                                                                                     </DataTrigger>
+                                                                                    
+                                                                                    <!-- Selection Trigger (Overrides Status Colors) -->
+                                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                                        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
+                                                                                    </Trigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
                                                                         </DataGrid.RowStyle>
@@ -1555,6 +1561,12 @@
                                                                                             Property="Background"
                                                                                             Value="#FFCCCC" />
                                                                                     </DataTrigger>
+                                                                                    
+                                                                                    <!-- Selection Trigger (Overrides Status Colors) -->
+                                                                                    <Trigger Property="IsSelected" Value="True">
+                                                                                        <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                                                                                        <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
+                                                                                    </Trigger>
                                                                                 </Style.Triggers>
                                                                             </Style>
                                                                         </DataGrid.RowStyle>
