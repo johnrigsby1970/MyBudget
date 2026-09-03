@@ -78,6 +78,17 @@ jobs:
         if (Test-Path "Assets") {
           Copy-Item "Assets" "${{ github.workspace }}/publish/Assets" -Recurse -Force
         }
+        
+    - name: Create Sentry Release and Upload Symbols
+      uses: getsentry/action-release@v3
+      env:
+        SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      with:
+        environment: 'production'
+        sourcemaps: '${{ github.workspace }}/publish'
+        ignore_missing: true
 
     - name: Create Standalone Portable Executable Zip
       run: |
