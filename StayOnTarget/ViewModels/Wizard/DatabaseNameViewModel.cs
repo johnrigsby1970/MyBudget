@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.IO;
 using CommunityToolkit.Mvvm.Input;
 using StayOnTarget.Data;
 using StayOnTarget.DataAnnotation;
@@ -266,6 +265,30 @@ public partial class DatabaseNameViewModel : ViewModelBase, IWizardStepViewModel
         ErrorMessage = _errors.Values.SelectMany(x => x).FirstOrDefault() ?? string.Empty;
 
         ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
+    }
+    
+    public bool ValidateAllProperties() {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(this);
+
+        _errors.Clear();
+
+        if (!Validator.TryValidateObject(this, context, results, validateAllProperties: true)) {
+            foreach (var result in results) {
+                foreach (var memberName in result.MemberNames) {
+                    if (!_errors.ContainsKey(memberName)) {
+                        _errors[memberName] = new List<string>();
+                    }
+                    if (!string.IsNullOrEmpty(result.ErrorMessage)) {
+                        _errors[memberName].Add(result.ErrorMessage);
+                    }
+                }
+            }
+        }
+
+        // Raise change notifications for all properties to update UI bindings
+        ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(string.Empty));
+        return !_errors.Any();
     }
     
     #endregion

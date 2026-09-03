@@ -22,7 +22,7 @@ public partial class BillSetupViewModel : ViewModelBase, IWizardStepViewModel
 
     private Bill _editingBill = new()
     {
-        Name = "New Bill",
+        Name = "",
         Frequency = Frequency.Monthly,
         DueDay = 1,
         IsActive = true

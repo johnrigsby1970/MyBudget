@@ -1,5 +1,4 @@
-﻿using System;
-using StayOnTarget.ViewModels;
+﻿using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Models;
 

@@ -10,7 +10,7 @@
            xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
            xmlns:controls="clr-namespace:StayOnTarget.Controls"
            mc:Ignorable="d"
-           Title="Import &amp; Reconcile QFX Transactions" Height="650" Width="900"
+           Title="Import &amp; Reconcile QFX Transactions" Height="700" Width="900"
            WindowStartupLocation="CenterScreen"
            Background="{DynamicResource WindowBackgroundBrush}">
     <i:Interaction.Triggers>
@@ -80,9 +80,9 @@
             <av:Grid Margin="15">
                 <av:Grid.RowDefinitions>
                     <av:RowDefinition Height="Auto" />
-                    <av:RowDefinition Height="*" MinHeight="200" />
+                    <av:RowDefinition Height="*" MinHeight="100" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="200" MinHeight="100" />
+                    <RowDefinition Height="1.2*" MinHeight="230" />
                     <RowDefinition Height="Auto" />
                 </av:Grid.RowDefinitions>
 
@@ -93,13 +93,19 @@
                               SelectedItem="{Binding SelectedImported}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
-                              SelectionMode="Single"
+                              SelectionMode="Extended"
                               RowDetailsVisibilityMode="Collapsed">
+                        <DataGrid.ItemContainerStyle>
+                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </Style>
+                        </DataGrid.ItemContainerStyle>
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Width="70">
                                 <!-- Inherit default background, borders, and hover effects -->
                                 <DataGridTemplateColumn.HeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                                    <Style TargetType="DataGridColumnHeader"
+                                           BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
                                         <Setter Property="HorizontalContentAlignment" Value="Center" />
                                         <Setter Property="VerticalContentAlignment" Value="Center" />
                                     </Style>
@@ -107,9 +113,10 @@
 
                                 <DataGridTemplateColumn.HeaderTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock Text="Import" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-                                            <CheckBox HorizontalAlignment="Center" 
+                                        <StackPanel Orientation="Vertical" HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="Import" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                                            <CheckBox HorizontalAlignment="Center"
                                                       VerticalAlignment="Center"
                                                       Margin="0"
                                                       IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
@@ -119,24 +126,28 @@
 
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <CheckBox HorizontalAlignment="Center" 
+                                        <CheckBox HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   Margin="0"
                                                   IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=d}" Width="80" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Payee (Import)" Binding="{Binding Payee}" Width="*" IsReadOnly="True" />
-                            <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=C}" Width="80" IsReadOnly="True" />
-                            <DataGridComboBoxColumn Header="Bill" 
+                            <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=d}" Width="80"
+                                                IsReadOnly="True" />
+                            <DataGridTextColumn Header="Payee (Import)" Binding="{Binding Payee}" Width="*"
+                                                IsReadOnly="True" />
+                            <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=C}" Width="80"
+                                                IsReadOnly="True" />
+                            <DataGridComboBoxColumn Header="Bill"
                                                     SelectedValueBinding="{Binding BillId}"
                                                     SelectedValuePath="Id"
                                                     DisplayMemberPath="Name"
                                                     Width="120">
                                 <DataGridComboBoxColumn.ElementStyle>
                                     <Style TargetType="ComboBox">
-                                        <Setter Property="ItemsSource" Value="{Binding DataContext.BillsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Setter Property="ItemsSource"
+                                                Value="{Binding DataContext.BillsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
@@ -146,7 +157,8 @@
                                 </DataGridComboBoxColumn.ElementStyle>
                                 <DataGridComboBoxColumn.EditingElementStyle>
                                     <Style TargetType="ComboBox">
-                                        <Setter Property="ItemsSource" Value="{Binding DataContext.BillsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Setter Property="ItemsSource"
+                                                Value="{Binding DataContext.BillsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
@@ -155,14 +167,15 @@
                                     </Style>
                                 </DataGridComboBoxColumn.EditingElementStyle>
                             </DataGridComboBoxColumn>
-                            <DataGridComboBoxColumn Header="Sub Category" 
+                            <DataGridComboBoxColumn Header="Sub Category"
                                                     SelectedValueBinding="{Binding SubCategoryId, UpdateSourceTrigger=PropertyChanged}"
                                                     SelectedValuePath="Id"
                                                     DisplayMemberPath="Name"
                                                     Width="120">
                                 <DataGridComboBoxColumn.ElementStyle>
                                     <Style TargetType="ComboBox">
-                                        <Setter Property="ItemsSource" Value="{Binding DataContext.SubCategoriesWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Setter Property="ItemsSource"
+                                                Value="{Binding DataContext.SubCategoriesWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
@@ -172,7 +185,8 @@
                                 </DataGridComboBoxColumn.ElementStyle>
                                 <DataGridComboBoxColumn.EditingElementStyle>
                                     <Style TargetType="ComboBox">
-                                        <Setter Property="ItemsSource" Value="{Binding DataContext.SubCategoriesWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Setter Property="ItemsSource"
+                                                Value="{Binding DataContext.SubCategoriesWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
@@ -181,14 +195,15 @@
                                     </Style>
                                 </DataGridComboBoxColumn.EditingElementStyle>
                             </DataGridComboBoxColumn>
-                            <DataGridComboBoxColumn Header="Envelope" 
+                            <DataGridComboBoxColumn Header="Envelope"
                                                     SelectedValueBinding="{Binding BucketId}"
                                                     SelectedValuePath="Id"
                                                     DisplayMemberPath="Name"
                                                     Width="120">
                                 <DataGridComboBoxColumn.ElementStyle>
                                     <Style TargetType="ComboBox">
-                                        <Setter Property="ItemsSource" Value="{Binding DataContext.BucketsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Setter Property="ItemsSource"
+                                                Value="{Binding DataContext.BucketsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
@@ -198,7 +213,8 @@
                                 </DataGridComboBoxColumn.ElementStyle>
                                 <DataGridComboBoxColumn.EditingElementStyle>
                                     <Style TargetType="ComboBox">
-                                        <Setter Property="ItemsSource" Value="{Binding DataContext.BucketsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                        <Setter Property="ItemsSource"
+                                                Value="{Binding DataContext.BucketsWithNone, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsMatched}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False" />
@@ -207,7 +223,8 @@
                                     </Style>
                                 </DataGridComboBoxColumn.EditingElementStyle>
                             </DataGridComboBoxColumn>
-                            <DataGridTextColumn Header="Reconciliation Status" Binding="{Binding Status}" Width="150" IsReadOnly="True">
+                            <DataGridTextColumn Header="Reconciliation Status" Binding="{Binding Status}" Width="150"
+                                                IsReadOnly="True">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontWeight" Value="SemiBold" />
@@ -224,7 +241,7 @@
                 <Grid Grid.Row="3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="220" /> <!-- Expanded slightly to prevent horizontal clipping -->
                     </Grid.ColumnDefinitions>
 
                     <GroupBox Grid.Column="0" Header="2. Unreconciled Manual Entries (Match Candidates)">
@@ -237,38 +254,56 @@
                                 <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsMatched}" Value="True">
-                                            <Setter Property="Background" Value="DodgerBlue"/>
-                                            <Setter Property="Foreground" Value="White"/>
+                                            <Setter Property="Background" Value="DodgerBlue" />
+                                            <Setter Property="Foreground" Value="White" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </DataGrid.RowStyle>
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Date" Binding="{Binding TransactionDate, StringFormat=d}" Width="100" />
+                                <DataGridTextColumn Header="Date" Binding="{Binding TransactionDate, StringFormat=d}"
+                                                    Width="90" />
                                 <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
                                 <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=C}"
-                                                    Width="100" />
+                                                    Width="90" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </GroupBox>
 
-                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                        <Button Content="Link Selections" Style="{StaticResource SecondaryButtonStyle}"
+                    <!-- Use Grid inside sidebar to force tight, structured button spacing -->
+                    <Grid Grid.Column="1" Margin="12,0,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Button Grid.Row="0"
+                                Content="{Binding LinkButtonText}"
+                                Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding LinkTransactionsCommand}"
-                                Padding="10,8" Margin="0,0,0,10" />
+                                Padding="8,5" Margin="0,0,0,6" />
 
-                        <Button Content="Import Selected Transaction" Style="{StaticResource SecondaryButtonStyle}"
+                        <Button Grid.Row="1"
+                                Content="Import Selected Transaction"
+                                Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding ImportAsNewCommand}"
-                                Padding="10,8" Margin="0,0,0,15" />
-                        
-                        <Button Content="Clear Match" Style="{StaticResource SecondaryButtonStyle}"
-                                Command="{Binding  ClearMatchCommand}"
-                                Padding="10,8" Margin="0,0,0,15" />
+                                Padding="8,5" Margin="0,0,0,6" />
 
-                        <TextBlock
-                            Text="💡 Tip: Select a bank transaction above, then pair it with your manual entry below and click Link."
-                            TextWrapping="Wrap" FontSize="11" Foreground="#666" />
-                    </StackPanel>
+                        <Button Grid.Row="2"
+                                Content="Clear Match"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding ClearMatchCommand}"
+                                Padding="8,5" Margin="0,0,0,8" />
+
+                        <TextBlock Grid.Row="3"
+                                   Text="💡 Tip: Select a bank transaction above and pair it with a manual entry below. If the bank amount is less than your manual entry, linking will automatically split the entry for you. You can use Ctrl key to select multiple import records to match to a single manual record using 'Link Selected Transaction'."
+                                   TextWrapping="Wrap"
+                                   FontSize="11"
+                                   Foreground="#666"
+                                   VerticalAlignment="Top" />
+                    </Grid>
                 </Grid>
 
                 <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
@@ -277,7 +312,7 @@
                             Padding="10,4"
                             Margin="0,0,10,0"
                             HorizontalAlignment="Right" />
-                    
+
                     <!-- <Button Content="Open QFX File..." -->
                     <!--         Command="{Binding ImportQfxCommand}" -->
                     <!--         Padding="10,4" -->
@@ -290,21 +325,24 @@
                     <!--         Margin="0,0,10,0" -->
                     <!--         HorizontalAlignment="Right" /> -->
 
-                    <Button Content="Update Transactions"  Style="{StaticResource PrimaryButtonStyle}"
+                    <Button Content="Update Transactions" Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding SaveCommand}"
-                            Width="120" Padding="5" IsDefault="True" 
+                            Width="120" Padding="5" IsDefault="True"
                             Margin="0,0,10,0" />
-                    <Button Content="Close" Style="{StaticResource SecondaryButtonStyle}" Width="80" Padding="5" IsCancel="True" />
+                    <Button Content="Close" Style="{StaticResource SecondaryButtonStyle}" Width="80" Padding="5"
+                            IsCancel="True" />
                 </StackPanel>
             </av:Grid>
         </DockPanel>
 
         <!-- CSV Mapping Overlay -->
-        <Grid Background="#80000000" Visibility="{Binding IsMappingVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Border Background="White" Width="600" VerticalAlignment="Center" Padding="20" CornerRadius="8" BorderBrush="Gray" BorderThickness="1">
+        <Grid Background="#80000000"
+              Visibility="{Binding IsMappingVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Background="White" Width="600" VerticalAlignment="Center" Padding="20" CornerRadius="8"
+                    BorderBrush="Gray" BorderThickness="1">
                 <StackPanel>
                     <TextBlock Text="Map CSV Columns" FontSize="16" FontWeight="Bold" Margin="0,0,0,15" />
-        
+
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="150" />
@@ -316,41 +354,50 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-        
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Date Column:" VerticalAlignment="Center" Margin="0,5" />
-                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}" SelectedItem="{Binding CsvMapping.DateHeader}" Margin="0,5" />
-        
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Amount Column:" VerticalAlignment="Center" Margin="0,5" />
-                        <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}" SelectedItem="{Binding CsvMapping.AmountHeader}" Margin="0,5" />
-        
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Payee Column:" VerticalAlignment="Center" Margin="0,5" />
-                        <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}" SelectedItem="{Binding CsvMapping.PayeeHeader}" Margin="0,5" />
-        
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="FITID / Reference:" VerticalAlignment="Center" Margin="0,5" />
-                        <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}" SelectedItem="{Binding CsvMapping.BankIdHeader}" Margin="0,5" />
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Date Column:" VerticalAlignment="Center"
+                                   Margin="0,5" />
+                        <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
+                                  SelectedItem="{Binding CsvMapping.DateHeader}" Margin="0,5" />
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Amount Column:" VerticalAlignment="Center"
+                                   Margin="0,5" />
+                        <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
+                                  SelectedItem="{Binding CsvMapping.AmountHeader}" Margin="0,5" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Payee Column:" VerticalAlignment="Center"
+                                   Margin="0,5" />
+                        <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
+                                  SelectedItem="{Binding CsvMapping.PayeeHeader}" Margin="0,5" />
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="FITID / Reference:" VerticalAlignment="Center"
+                                   Margin="0,5" />
+                        <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
+                                  SelectedItem="{Binding CsvMapping.BankIdHeader}" Margin="0,5" />
                     </Grid>
-        
+
                     <TextBlock Text="Preview (First 5 Rows):" FontWeight="Bold" Margin="0,10,0,5" />
-                    <DataGrid ItemsSource="{Binding CsvMapping.PreviewRows}" Height="150" AutoGenerateColumns="False" IsReadOnly="True">
+                    <DataGrid ItemsSource="{Binding CsvMapping.PreviewRows}" Height="150" AutoGenerateColumns="False"
+                              IsReadOnly="True">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat='{}{0:MM/dd/yyyy}'}"
-                                                IsReadOnly="False" Width="90"  >
+                                                IsReadOnly="False" Width="90">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextAlignment" Value="Center" />
                                         <!-- <Setter Property="Padding" Value="0,0,8,0" />  -->
-                    
+
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
                             <DataGridTextColumn Header="Payee" Binding="{Binding Payee}" Width="*" />
                             <DataGridTextColumn Header="Amount" HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
-                                                
-                                                Binding="{Binding Amount, StringFormat=C}" Width="100" >
+
+                                                Binding="{Binding Amount, StringFormat=C}" Width="100">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextAlignment" Value="Right" />
-                                        <Setter Property="Padding" Value="0,0,8,0" /> 
+                                        <Setter Property="Padding" Value="0,0,8,0" />
                                         <!-- <Setter Property="Foreground"  -->
                                         <!--         Value="{Binding Amount, Converter={StaticResource AmountToBrushConverter}}" /> -->
                                     </Style>
@@ -359,20 +406,22 @@
                             <DataGridTextColumn Header="BankId" Binding="{Binding BankId}" Width="120" />
                         </DataGrid.Columns>
                     </DataGrid>
-        
+
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-                        <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCsvImportCommand}" Width="80" Margin="0,0,10,0" />
-                        <Button Content="Load" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ConfirmCsvImportCommand}" Width="100" FontWeight="Bold" />
+                        <Button Content="Cancel" Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding CancelCsvImportCommand}" Width="80" Margin="0,0,10,0" />
+                        <Button Content="Load" Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding ConfirmCsvImportCommand}" Width="100" FontWeight="Bold" />
                     </StackPanel>
                 </StackPanel>
             </Border>
         </Grid>
-        
+
         <!-- SPINNER OVERLAY: Sitting on top of everything -->
-        <controls:LoadingOverlay 
+        <controls:LoadingOverlay
             Message="Importing records..."
             Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}" />
-        
+
         <ContentControl Content="{Binding ActiveOverlay}" />
     </Grid>
 </av:Window>

@@ -7,7 +7,7 @@ using StayOnTarget.ViewModels;
 namespace StayOnTarget;
 
 public partial class AccountAprHistoryWindow : Window {
-    private readonly AccountAprHistoryViewModel _viewModel;
+    private readonly AccountAprHistoryViewModel _viewModel = null!;
 
     public AccountAprHistoryWindow(Account account, BudgetService budgetService) {
         try {

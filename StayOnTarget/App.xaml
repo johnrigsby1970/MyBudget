@@ -4,7 +4,9 @@
              xmlns:local="clr-namespace:StayOnTarget"
              xmlns:converters="clr-namespace:StayOnTarget.Converters"
              xmlns:controls="clr-namespace:StayOnTarget.Controls"
-             xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework">
+             xmlns:primitives="clr-namespace:System.Windows.Controls.Primitives;assembly=PresentationFramework"
+             xmlns:models="clr-namespace:StayOnTarget.Models"
+             xmlns:helpers="clr-namespace:StayOnTarget.Helpers">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -14,6 +16,38 @@
             </ResourceDictionary.MergedDictionaries>
 
             <converters:EnumToDisplayNameConverter x:Key="EnumToDisplayNameConverter" />
+            <converters:LessThanConverter x:Key="LessThanConverter" />
+            <converters:MultiBooleanToVisibilityConverter x:Key="MultiBooleanToVisibilityConverter" />
+            <converters:MarkBillPaidVisibilityConverter x:Key="MarkBillPaidVisibilityConverter" />
+            <converters:NullOrZeroToVisibilityConverter x:Key="NullOrZeroToVisibilityConverter" />
+            <converters:SetContainsAccountIdConverter x:Key="SetContainsAccountIdConverter" />
+            <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
+            <converters:ProjectionAmountToBrushConverter x:Key="ProjectionAmountToBrushConverter" />
+            <converters:ProjectionYearsLabelConverter x:Key="ProjectionYearsLabelConverter" />
+            <converters:DoubleToDecimalConverter x:Key="DoubleToDecimalConverter" />
+            <converters:AccountTypeToIconConverter x:Key="AccountIconConverter" />
+            <converters:AmountToBrushConverter x:Key="AmountToBrushConverter" />
+            <converters:BooleanAndToVisibilityConverter x:Key="BooleanAndToVisibilityConverter" />
+            <converters:CategoryNameConverter x:Key="CategoryNameConverter" />
+            <converters:NegativeToRedConverter x:Key="NegativeToRedConverter" />
+            <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
+            <converters:DeltaToBrushConverter x:Key="DeltaToBrushConverter" />
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
+            <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
+            <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
+            <converters:VisibleForMortgageTypeConverter x:Key="VisibleForMortgageTypeConverter" />
+            <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" />
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
+            <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
+            
+            <ObjectDataProvider x:Key="EnumFrequency"
+                                MethodName="GetValues"
+                                ObjectType="{x:Type models:Frequency}">
+                <ObjectDataProvider.MethodParameters>
+                    <x:Type TypeName="models:Frequency" />
+                </ObjectDataProvider.MethodParameters>
+            </ObjectDataProvider>
 
             <Style TargetType="{x:Type DataGrid}">
                 <Setter Property="FontWeight" Value="Normal" />
@@ -142,7 +176,7 @@
                                                       ContentSource="Header"
                                                       VerticalAlignment="Center"
                                                       HorizontalAlignment="Center"
-                                                      TextElement.Foreground="{DynamicResource SecondaryTextBrush}"/>
+                                                      TextElement.Foreground="{DynamicResource SecondaryTextBrush}" />
                                 </Border>
                                 <Border x:Name="Underline" Height="2" VerticalAlignment="Bottom"
                                         Background="Transparent" />
@@ -415,7 +449,7 @@
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
-            
+
             <!-- <Style x:Key="StyledCheckBox" TargetType="{x:Type CheckBox}"> -->
             <!--     <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /> -->
             <!-- </Style> -->
@@ -583,7 +617,8 @@
                                          MinHeight="0"
                                          Height="Auto"
                                          Focusable="True"
-                                         Visibility="Collapsed" />
+                                         Visibility="Collapsed">
+                                </TextBox>
 
                                 <!-- Popup Dropdown List -->
                                 <Popup x:Name="PART_Popup"
@@ -620,7 +655,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            
+
             <!-- 3. ENUM COMBOBOX STYLE -->
             <Style x:Key="StyledEnumComboBox" TargetType="{x:Type ComboBox}"
                    BasedOn="{StaticResource {x:Type ComboBox}}">
@@ -634,7 +669,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
-            
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

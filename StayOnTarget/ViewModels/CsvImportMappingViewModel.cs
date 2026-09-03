@@ -9,7 +9,7 @@ using Serilog;
 namespace StayOnTarget.ViewModels;
 
 public class CsvImportMappingViewModel : ViewModelBase {
-    public string FilePath { get; }
+    public string FilePath { get; } = null!;
     public List<string> Headers { get; private set; } = new();
     private List<Dictionary<string, string>> _rawPreviewData = new();
     public RangeObservableCollection<ImportedTransactionViewModel> PreviewRows { get; } = new();

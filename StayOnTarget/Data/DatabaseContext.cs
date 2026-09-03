@@ -1,8 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Data.Sqlite;
 using Serilog;
-using StayOnTarget.Helpers;
-using System;
 using System.Data;
 using System.IO;
 using System.Windows;

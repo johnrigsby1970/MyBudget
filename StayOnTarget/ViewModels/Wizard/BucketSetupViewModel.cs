@@ -18,7 +18,7 @@ public partial class BucketSetupViewModel : ViewModelBase, IWizardStepViewModel
 
     private BudgetBucket _editingBucket = new()
     {
-        Name = "New Envelope",
+        Name = "",
         ExpectedAmount = 0
     };
 

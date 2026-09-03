@@ -1,10 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using StayOnTarget.Models;
+﻿using StayOnTarget.Models;
 using StayOnTarget.Services.Projections;
-using StayOnTarget.ViewModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace StayOnTarget.Tests;
 
@@ -171,17 +166,18 @@ public class SnowballStrategyTests
     }
 
     [TestMethod]
-    public void TestSnowball_PartialPayments_MultipleDebts()
-    {
+    public void TestSnowball_PartialPayments_MultipleDebts() {
+        var startDate = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var endDate = new DateTime(startDate.Year, startDate.Month, DateTime.DaysInMonth(startDate.Year, startDate.Month));
         // Arrange
-        var checking = new Account { Id = 1, Name = "Checking", Balance = 1500m, Type = AccountType.Checking, IsPrimary = true, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1) };
-        var debt1 = new Account { Id = 2, Name = "Debt1", Balance = -1000m, Type = AccountType.PersonalLoan, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1) };
-        var debt2 = new Account { Id = 3, Name = "Debt2", Balance = -1000m, Type = AccountType.PersonalLoan, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 8, 1) };
+        var checking = new Account { Id = 1, Name = "Checking", Balance = 1500m, Type = AccountType.Checking, IsPrimary = true, IncludeInTotal = true, BalanceAsOf = startDate };
+        var debt1 = new Account { Id = 2, Name = "Debt1", Balance = -1000m, Type = AccountType.PersonalLoan, IncludeInTotal = true, BalanceAsOf = startDate };
+        var debt2 = new Account { Id = 3, Name = "Debt2", Balance = -1000m, Type = AccountType.PersonalLoan, IncludeInTotal = true, BalanceAsOf = startDate };
         var accounts = new List<Account> { checking, debt1, debt2 };
 
         var paychecks = new List<Paycheck>
         {
-            new Paycheck { Id = 1, Name = "Next Month Payday", AccountId = 1, ExpectedAmount = 0m, Frequency = Frequency.Monthly, StartDate = new DateTime(2026, 9, 1) }
+            new Paycheck { Id = 1, Name = "Next Month Payday", AccountId = 1, ExpectedAmount = 0m, Frequency = Frequency.Monthly, StartDate = startDate.AddMonths(1) }
         };
 
         var options = new SnowballStrategyOptions
@@ -194,10 +190,7 @@ public class SnowballStrategyTests
         };
         
         var allocations = new List<BucketPaycheckAllocation>(); 
-
-        var startDate = new DateTime(2026, 8, 1);
-        var endDate = new DateTime(2026, 8, 31);
-
+        
         // Act
         var results = _engine.CalculateProjections(
             new(), new(), new(), new(), startDate, endDate, accounts, paychecks, new(), new(), allocations,  new(), new(), new(), null, false, false, true, options, startDate
@@ -208,7 +201,7 @@ public class SnowballStrategyTests
         var sweep2 = results.FirstOrDefault(r => r.Description.Contains("Snowball: Debt2"));
 
         Assert.IsNotNull(sweep1, "Debt1 should be paid off");
-        Assert.AreEqual(-1000m, sweep1.Amount, "Debt1 should be paid in full (1000)");
+        Assert.AreEqual(1000m, sweep1.Amount, "Debt1 should be paid in full (1000)");
         Assert.IsNull(sweep2, "Debt2 should NOT have a sweep entry because pool was exhausted");
     }
 
@@ -285,7 +278,7 @@ public class SnowballStrategyTests
     {
         // Arrange
         var checking = new Account { Id = 1, Name = "Checking", Balance = 10000m, Type = AccountType.Checking, IsPrimary = true, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 12, 1) };
-        var roth = new Account { Id = 2, Name = "My Roth IRA", Balance = 0m, Type = AccountType.Brokerage, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 12, 1) };
+        var roth = new Account { Id = 2, Name = "My Roth IRA", Balance = 0m, Type = AccountType.RothIRA, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 12, 1) };
         var brokerage = new Account { Id = 3, Name = "Taxable Brokerage", Balance = 0m, Type = AccountType.Brokerage, IncludeInTotal = true, BalanceAsOf = new DateTime(2026, 12, 1) };
         var accounts = new List<Account> { checking, roth, brokerage };
 
@@ -319,14 +312,14 @@ public class SnowballStrategyTests
         // First boundary: Dec 31, 2026. 
         // Checking: 10000. Threshold: 2500. Available: 7500. Sweep: 7500. 
         // Roth gets 7000. Limit 7000. 
-        var sweep2026Roth = results.Where(r => r.Description == "Invest (Roth): My Roth IRA" && r.TransactionDate.Year == 2026).ToList();
-        Assert.AreEqual(7000m, sweep2026Roth.Sum(s => -s.Amount), "Should contribute exactly the limit for 2026");
+        var sweep2026Roth = results.Where(r => (r.Description == "Invest (Roth): My Roth IRA" || r.Description == "Invest: My Roth IRA") && r.TransactionDate.Year == 2026).ToList();
+        Assert.AreEqual(7000m, sweep2026Roth.Sum(s => s.Amount), "Should contribute exactly the limit for 2026");
 
         // Second boundary: Jan 31, 2027. 
-        var sweep2027Roth = results.Where(r => r.Description == "Invest (Roth): My Roth IRA" && r.TransactionDate.Year == 2027).ToList();
-        Assert.AreEqual(7000m, sweep2027Roth.Sum(s => -s.Amount), "Should contribute exactly the limit to Roth for 2027");
+        var sweep2027Roth = results.Where(r => (r.Description == "Invest (Roth): My Roth IRA" || r.Description == "Invest: My Roth IRA") && r.TransactionDate.Year == 2027).ToList();
+        Assert.AreEqual(7000m, sweep2027Roth.Sum(s => s.Amount), "Should contribute exactly the limit to Roth for 2027");
 
         var sweep2027Brokerage = results.Where(r => r.Description == "Invest: Taxable Brokerage" && r.TransactionDate.Year == 2027).ToList();
-        Assert.IsTrue(sweep2027Brokerage.Sum(s => -s.Amount) > 0, "Should sweep remainder to general investment for 2027");
+        Assert.IsTrue(sweep2027Brokerage.Sum(s => s.Amount) > 0, "Should sweep remainder to general investment for 2027");
     }
 }

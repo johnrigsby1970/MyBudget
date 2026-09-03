@@ -8,8 +8,8 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
 {
     public class ReassignItem<T> : ViewModelBase
     {
-        public T Item { get; }
-        public string Description { get; }
+        public T Item { get; } = default!;
+        public string Description { get; } = null!;
         private int? _targetAccountId;
 
         public int? TargetAccountId
@@ -47,9 +47,9 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
 
     public class ReassignBillItem : ViewModelBase
     {
-        public Bill Bill { get; }
-        public string Description { get; }
-        
+        public Bill Bill { get; } = null!;
+        public string Description { get; } = null!;
+
         private int? _targetAccountId;
         public int? TargetAccountId
         {
@@ -162,8 +162,8 @@ public class ReassignAccountDependenciesViewModel : ViewModelBase
         }
     }
 
-    public List<Account> AvailableAccounts { get; }
-    public List<Account> AvailableAccountsWithNone { get; }
+    public List<Account> AvailableAccounts { get; } = null!;
+    public List<Account> AvailableAccountsWithNone { get; } = null!;
 
     private static readonly Account NoneAccount = new Account { Id = -1, Name = "None / Unassigned" };
 

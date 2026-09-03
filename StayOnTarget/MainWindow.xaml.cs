@@ -7,9 +7,7 @@ using StayOnTarget.Models;
 using StayOnTarget.ViewModels;
 using StayOnTarget.Converters;
 using System.Windows.Shapes;
-using LiveChartsCore.SkiaSharpView.Painting;
 using Serilog;
-using SkiaSharp;
 using StayOnTarget.Themes;
 
 namespace StayOnTarget;

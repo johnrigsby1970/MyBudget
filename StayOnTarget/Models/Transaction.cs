@@ -1,9 +1,12 @@
-﻿using StayOnTarget.Helpers;
+﻿using System.Collections;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using StayOnTarget.Helpers;
 using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Models;
 
-public class Transaction : ViewModelBase {
+public class Transaction : ViewModelBase, INotifyDataErrorInfo {
     private string _description = string.Empty;
     private string _normalizedDescription = string.Empty;
     private string? _memo = string.Empty;
@@ -31,52 +34,58 @@ public class Transaction : ViewModelBase {
     private bool? _toAccountIsCleared;
 
     private int _id;
-    public int Id 
-    {
+
+    public int Id {
         get => _id;
         set => SetProperty(ref _id, value);
     }
-    
+
     private long? _fromRecordId;
-    public long? FromRecordId 
-    {
+
+    public long? FromRecordId {
         get => _fromRecordId;
         set => SetProperty(ref _fromRecordId, value);
     }
 
     private long? _toRecordId;
-    public long? ToRecordId 
-    {
+
+    public long? ToRecordId {
         get => _toRecordId;
         set => SetProperty(ref _toRecordId, value);
     }
-    
-    
+
+
     private string _toFitId = Guid.NewGuid().ToString();
-    public string ToFitId 
-    {
+
+    public string ToFitId {
         get => _toFitId;
         set => SetProperty(ref _toFitId, value);
     }
-    
+
     private string _fromFitId = Guid.NewGuid().ToString();
-    public string FromFitId 
-    {
+
+    public string FromFitId {
         get => _fromFitId;
         set => SetProperty(ref _fromFitId, value);
     }
 
-        
+
     private Guid _transactionId = Guid.NewGuid();
-    public Guid TransactionId 
-    {
+
+    public Guid TransactionId {
         get => _transactionId;
         set => SetProperty(ref _transactionId, value);
     }
-    
+
+    [MinLength(1)]
+    [Required]
     public string Description {
         get => _description;
-        set => SetProperty(ref _description, value);
+        set {
+            if (SetProperty(ref _description, value)) {
+                ValidateProperty(nameof(Description), value);
+            }
+        }
     }
 
     public string NormalizedDescription {
@@ -92,16 +101,13 @@ public class Transaction : ViewModelBase {
             }
         }
     }
-    
-    public decimal? SignedAmount(Account account)
-    {
-        if (AccountId == account.Id)
-        {
+
+    public decimal? SignedAmount(Account account) {
+        if (AccountId == account.Id) {
             // Outflow: Normal accounts decrease (-), Liability accounts increase debt (+)
             return account.IsLiability ? Amount : -Amount;
         }
-        else if (ToAccountId == account.Id)
-        {
+        else if (ToAccountId == account.Id) {
             // Inflow: Normal accounts increase (+), Liability accounts decrease debt (-)
             return account.IsLiability ? -Amount : Amount;
         }
@@ -153,7 +159,7 @@ public class Transaction : ViewModelBase {
         get => _periodDate;
         set => SetProperty(ref _periodDate, value);
     }
-    
+
     public int? SubCategoryId {
         get => _subCategoryId;
         set => SetProperty(ref _subCategoryId, value);
@@ -206,45 +212,111 @@ public class Transaction : ViewModelBase {
     }
 
     // Helper for UI
-    
+
     private string? _accountName;
-    public string? AccountName 
-    {
+
+    public string? AccountName {
         get => _accountName;
         set => SetProperty(ref _accountName, value);
     }
-    
+
     private string? _toAccountName;
-    public string? ToAccountName 
-    {
+
+    public string? ToAccountName {
         get => _toAccountName;
         set => SetProperty(ref _toAccountName, value);
     }
-    
+
     private string? _billName;
-    public string? BillName 
-    {
+
+    public string? BillName {
         get => _billName;
         set => SetProperty(ref _billName, value);
     }
-    
+
     private string? _bucketName;
-    public string? BucketName 
-    {
+
+    public string? BucketName {
         get => _bucketName;
         set => SetProperty(ref _bucketName, value);
     }
-    
-    public Transaction Clone()
-    {
+
+    public Transaction Clone() {
         return (Transaction)this.MemberwiseClone();
     }
-}
 
+    #region Error Validation
+
+    // --- INotifyDataErrorInfo Implementation ---
+
+    private readonly Dictionary<string, List<string>> _errors = new();
+    public bool HasErrors => _errors.Any();
+    public event EventHandler<DataErrorsChangedEventArgs>? ErrorsChanged;
+
+    public IEnumerable GetErrors(string? propertyName) {
+        if (string.IsNullOrEmpty(propertyName)) {
+            return _errors.Values.SelectMany(e => e);
+        }
+
+        return _errors.TryGetValue(propertyName, out var errors) ? errors : Enumerable.Empty<string>();
+    }
+
+    private void ValidateProperty(string propertyName, object value) {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(this) { MemberName = propertyName };
+
+        Validator.TryValidateProperty(value, context, results);
+
+        if (results.Any()) {
+            _errors[propertyName] = results.Where(r => !string.IsNullOrEmpty(r.ErrorMessage))
+                .Select(r => r.ErrorMessage!).ToList();
+        }
+        else {
+            _errors.Remove(propertyName);
+        }
+
+        ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
+    }
+
+    public bool ValidateAllProperties() {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(this);
+
+        // Track old properties that had errors so we can clear their visual state if now valid
+        var previousPropertiesWithErrors = _errors.Keys.ToList();
+        _errors.Clear();
+
+        if (!Validator.TryValidateObject(this, context, results, validateAllProperties: true)) {
+            foreach (var result in results) {
+                foreach (var memberName in result.MemberNames) {
+                    if (!_errors.ContainsKey(memberName)) {
+                        _errors[memberName] = new List<string>();
+                    }
+
+                    if (!string.IsNullOrEmpty(result.ErrorMessage)) {
+                        _errors[memberName].Add(result.ErrorMessage);
+                    }
+                }
+            }
+        }
+
+        // Combine all modified properties (both new errors and newly cleared errors)
+        var affectedProperties = previousPropertiesWithErrors.Union(_errors.Keys).Distinct();
+
+        // Raise ErrorsChanged for each specific property so WPF updates each TextBox border
+        foreach (var propertyName in affectedProperties) {
+            ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
+        }
+
+        return !_errors.Any();
+    }
+
+    #endregion
+}
 
 public class TransactionViewModel : Transaction {
     private readonly Account? _viewingAccount;
-    
+
     // Default constructor for Newtonsoft.Json / Deserialization
     public TransactionViewModel() { }
 
@@ -253,11 +325,11 @@ public class TransactionViewModel : Transaction {
         PropertyCopier.CopyProperties(source, this);
 
         _viewingAccount = account;
-        
+
         // Trigger SignedAmount notification whenever core transaction amounts/accounts shift
         this.PropertyChanged += (s, e) => {
-            if (e.PropertyName == nameof(Amount) || 
-                e.PropertyName == nameof(AccountId) || 
+            if (e.PropertyName == nameof(Amount) ||
+                e.PropertyName == nameof(AccountId) ||
                 e.PropertyName == nameof(ToAccountId)) {
                 OnPropertyChanged(nameof(SignedAmount));
             }
@@ -287,7 +359,9 @@ public class TransactionViewModel : Transaction {
         get => _isCleared;
         set => SetProperty(ref _isCleared, value);
     }
-
+    
+    public bool WasOriginallyCleared { get; set; }
+    
     private bool _isEnabled = true;
 
     public bool IsEnabled {
@@ -315,26 +389,39 @@ public class Ledger : ViewModelBase {
     private int? _reconciliationId;
     private bool _isCleared;
 
+    private RangeObservableCollection<Ledger> _details = new();
+    public RangeObservableCollection<Ledger> Details {
+        get => _details;
+        set => SetProperty(ref _details, value);
+    }
 
-
+    // Helper to check if this is a split entry
+    public bool IsSplit => Details.Any();
+    
     private int _id;
-    public int Id 
-    {
+
+    public int Id {
         get => _id;
         set => SetProperty(ref _id, value);
     }
-    
+
     private string _fitId = Guid.NewGuid().ToString();
-    public string FitId 
-    {
+
+    public string FitId {
         get => _fitId;
         set => SetProperty(ref _fitId, value);
     }
 
-        
+    private int? _subCategoryId;
+
+    public int? SubCategoryId {
+        get => _subCategoryId;
+        set => SetProperty(ref _subCategoryId, value);
+    }
+
     private Guid _transactionId = Guid.NewGuid();
-    public Guid TransactionId 
-    {
+
+    public Guid TransactionId {
         get => _transactionId;
         set => SetProperty(ref _transactionId, value);
     }

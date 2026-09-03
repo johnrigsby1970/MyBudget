@@ -1,5 +1,4 @@
 using Dapper;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StayOnTarget.Data;
 
 namespace StayOnTarget.Tests;

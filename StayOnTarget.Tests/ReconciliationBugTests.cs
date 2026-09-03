@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StayOnTarget.Models;
 using StayOnTarget.Services.Projections;
 

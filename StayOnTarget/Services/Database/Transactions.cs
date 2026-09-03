@@ -5,10 +5,57 @@ using Microsoft.Data.Sqlite;
 using StayOnTarget.Helpers;
 using StayOnTarget.Models;
 using Serilog;
+using StayOnTarget.ViewModels;
 
 namespace StayOnTarget.Services;
 
 public partial class BudgetService {
+    
+    public async Task ReconcileHistoricalTransactionsAsync(int accountId, List<int> recordIds) {
+        if (!recordIds.Any()) return;
+
+        await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+
+        try {
+            // Find the latest valid reconciliation record for this account to attach the orphan records to
+            var latestReconciliation = await GetLatestValidReconciliationAsync(accountId);
+            int? targetReconciliationId = latestReconciliation?.Id;
+
+            // Fallback: If no account reconciliation exists yet, locate the Opening Balance transaction's ReconciliationId
+            if (!targetReconciliationId.HasValue) {
+                targetReconciliationId = await conn.ExecuteScalarAsync<int?>(@"
+                SELECT ReconciliationId 
+                FROM Transactions 
+                WHERE AccountId = @accountId AND Description = @openingDesc AND ReconciliationId IS NOT NULL 
+                LIMIT 1",
+                    new { accountId, openingDesc = Constants.OpeningBalance }, tx);
+            }
+
+            // Batch update selected transactions
+            const string sql = @"
+            UPDATE Transactions 
+            SET ReconciliationId = @reconciliationId, 
+                IsCleared = 1 
+            WHERE AccountId = @accountId 
+              AND Id IN @recordIds";
+
+            await conn.ExecuteAsync(sql, new {
+                reconciliationId = targetReconciliationId,
+                accountId,
+                recordIds
+            }, tx);
+
+            await tx.CommitAsync();
+        }
+        catch (Exception ex) {
+            await tx.RollbackAsync();
+            Log.Error(ex, "Error reconciling historical transactions for account {AccountId}.", accountId);
+            throw;
+        }
+    }
+    
     public async Task UnreconcileAndResetTransactionAsync(int transactionRecordId) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
@@ -17,15 +64,15 @@ public partial class BudgetService {
         try {
             // 1. Generate a new random GUID to free up the old FitId for future bank imports
             var newFitId = Guid.NewGuid().ToString();
-            
-                await conn.ExecuteAsync(@"
+
+            await conn.ExecuteAsync(@"
                 UPDATE Transactions 
                 SET ReconciliationId = NULL, 
                     IsCleared = 0, 
                     FitId = @NewFitId
                 WHERE Id = @RecordId",
-                    new { NewFitId = newFitId, RecordId = transactionRecordId }, tx);
-            
+                new { NewFitId = newFitId, RecordId = transactionRecordId }, tx);
+
 
             await tx.CommitAsync();
         }
@@ -35,7 +82,7 @@ public partial class BudgetService {
             throw;
         }
     }
-    
+
     public async Task<IEnumerable<Transaction>> GetTransactionsAsync(DateTime periodStart, DateTime periodEnd) {
         try {
             await using var conn = _db.GetConnection();
@@ -59,12 +106,14 @@ public partial class BudgetService {
             return MergeDbRowsToUiTransactions(dbRows);
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error getting transactions between {PeriodStart} and {PeriodEnd}[cite: 25].", periodStart, periodEnd);
+            Log.Error(ex, "Error getting transactions between {PeriodStart} and {PeriodEnd}[cite: 25].", periodStart,
+                periodEnd);
             return Enumerable.Empty<Transaction>();
         }
     }
-    
-    public async Task<IEnumerable<(int billId, decimal amount)>> GetBillsPaidInRange(DateTime periodStart, DateTime periodEnd) {
+
+    public async Task<IEnumerable<(int billId, decimal amount)>> GetBillsPaidInRange(DateTime periodStart,
+        DateTime periodEnd) {
         try {
             await using var conn = _db.GetConnection();
             await conn.OpenAsync();
@@ -81,7 +130,8 @@ public partial class BudgetService {
             return dbRows.Select(x => ((int)x.BillId, (decimal)x.Amount));
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error getting bills paid in range between {PeriodStart} and {PeriodEnd}[cite: 25].", periodStart, periodEnd);
+            Log.Error(ex, "Error getting bills paid in range between {PeriodStart} and {PeriodEnd}[cite: 25].",
+                periodStart, periodEnd);
             return Enumerable.Empty<(int, decimal)>();
         }
     }
@@ -177,7 +227,8 @@ public partial class BudgetService {
             return dbRows;
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error getting account transactions as dynamic for account ID {AccountId}[cite: 25].", accountId);
+            Log.Error(ex, "Error getting account transactions as dynamic for account ID {AccountId}[cite: 25].",
+                accountId);
             return Enumerable.Empty<Ledger>();
         }
     }
@@ -188,7 +239,8 @@ public partial class BudgetService {
             await conn.OpenAsync();
 
             var dbRows = (await conn
-                .QueryAsync<Ledger>("SELECT * FROM Transactions WHERE AccountId=@accountId AND ReconciliationId IS NULL",
+                .QueryAsync<Ledger>(
+                    "SELECT * FROM Transactions WHERE AccountId=@accountId AND ReconciliationId IS NULL",
                     new { accountId })).ToList();
             return dbRows;
         }
@@ -211,7 +263,8 @@ public partial class BudgetService {
                 LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
                 LEFT JOIN Bills ON t.BillId = Bills.Id
                 LEFT JOIN Buckets ON t.BucketId = Buckets.Id
-                LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id WHERE t.PaycheckId IS NOT NULL")).ToList();
+                LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id WHERE t.PaycheckId IS NOT NULL"))
+                .ToList();
 
             return MergeDbRowsToUiTransactions(dbRows);
         }
@@ -303,7 +356,9 @@ public partial class BudgetService {
             return results.ToList();
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error getting already imported bank IDs for account ID {AccountId} with specific bank IDs[cite: 25].", accountId);
+            Log.Error(ex,
+                "Error getting already imported bank IDs for account ID {AccountId} with specific bank IDs[cite: 25].",
+                accountId);
             return new List<string>();
         }
     }
@@ -431,89 +486,189 @@ public partial class BudgetService {
             await conn.OpenAsync();
 
             const string sql = @"
-            WITH AccountMinDate AS (
-                SELECT a.Id AS AccountId, IFNULL(ar.MaxDate, a.BalanceAsOf) AS MinDate 
-                FROM Accounts a
-                LEFT JOIN (
-                    SELECT AccountId, MAX(ReconciledAsOfDate) AS MaxDate
-                    FROM AccountReconciliations
-                    WHERE IsInvalidated IS NULL OR IsInvalidated = 0
-                    GROUP BY AccountId
-                ) AS ar ON ar.AccountId = a.Id 
-                WHERE a.Id = @accountId
-            ),
-            TargetTransactionIds AS (
-                SELECT DISTINCT t.TransactionId
-                FROM Transactions t
-                INNER JOIN AccountMinDate amd ON t.AccountId = amd.AccountId
-                WHERE t.ReconciliationId IS NULL
-                  AND date(t.TransactionDate) >= date(amd.MinDate)
-            )
-            SELECT t.*, 
-                   a1.Name as AccountName, 
-                   Bills.Name as BillName, 
-                   Buckets.Name as BucketName, 
-                   SubCategories.Name as SubCategoryName
-            FROM Transactions t
-            INNER JOIN TargetTransactionIds target ON t.TransactionId = target.TransactionId
-            LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
-            LEFT JOIN Bills ON t.BillId = Bills.Id
-            LEFT JOIN Buckets ON t.BucketId = Buckets.Id
-            LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id;";
+        WITH TargetTransactionIds AS (
+            SELECT DISTINCT TransactionId
+            FROM Transactions
+            WHERE AccountId = @accountId
+              AND ReconciliationId IS NULL
+        )
+        SELECT t.*, 
+               a1.Name as AccountName, 
+               Bills.Name as BillName, 
+               Buckets.Name as BucketName, 
+               SubCategories.Name as SubCategoryName
+        FROM Transactions t
+        INNER JOIN TargetTransactionIds target ON t.TransactionId = target.TransactionId
+        LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+        LEFT JOIN Bills ON t.BillId = Bills.Id
+        LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+        LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id;";
+            
+            // const string sql = @"
+            // WITH AccountMinDate AS (
+            //     SELECT a.Id AS AccountId, IFNULL(ar.MaxDate, a.BalanceAsOf) AS MinDate 
+            //     FROM Accounts a
+            //     LEFT JOIN (
+            //         SELECT AccountId, MAX(ReconciledAsOfDate) AS MaxDate
+            //         FROM AccountReconciliations
+            //         WHERE IsInvalidated IS NULL OR IsInvalidated = 0
+            //         GROUP BY AccountId
+            //     ) AS ar ON ar.AccountId = a.Id 
+            //     WHERE a.Id = @accountId
+            // ),
+            // TargetTransactionIds AS (
+            //     SELECT DISTINCT t.TransactionId
+            //     FROM Transactions t
+            //     INNER JOIN AccountMinDate amd ON t.AccountId = amd.AccountId
+            //     WHERE t.ReconciliationId IS NULL
+            //       AND date(t.TransactionDate) >= date(amd.MinDate)
+            // )
+            // SELECT t.*, 
+            //        a1.Name as AccountName, 
+            //        Bills.Name as BillName, 
+            //        Buckets.Name as BucketName, 
+            //        SubCategories.Name as SubCategoryName
+            // FROM Transactions t
+            // INNER JOIN TargetTransactionIds target ON t.TransactionId = target.TransactionId
+            // LEFT JOIN Accounts a1 ON t.AccountId = a1.Id
+            // LEFT JOIN Bills ON t.BillId = Bills.Id
+            // LEFT JOIN Buckets ON t.BucketId = Buckets.Id
+            // LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id;";
 
             var dbRows = (await conn.QueryAsync<dynamic>(sql, new { accountId })).ToList();
 
             return MergeDbRowsToUiTransactions(dbRows);
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error getting unreconciled transactions since last reconciliation for account ID {AccountId}[cite: 25].", accountId);
+            Log.Error(ex,
+                "Error getting unreconciled transactions since last reconciliation for account ID {AccountId}[cite: 25].",
+                accountId);
             return Enumerable.Empty<Transaction>();
         }
     }
 
-    public async Task<bool> UpdateTransactionForReconciliationAsync(Transaction transaction) {
+    public async Task ProcessMultiMatchSplitAsync(
+        int accountId,
+        string manualTransactionId,
+        List<ImportedTransactionViewModel> bankItems) {
+        await using var conn = _db.GetConnection();
+        await conn.OpenAsync();
+        await using var tx = await conn.BeginTransactionAsync();
+
         try {
-            await using var conn = _db.GetConnection();
-            await conn.OpenAsync();
-            await using var tx = conn.BeginTransaction();
+            // 1. Guard Check: Ensure this is a simple single-legged transaction before splitting
+            int legCount = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM Transactions WHERE TransactionId = @manualTransactionId",
+                new { manualTransactionId }, tx);
 
-            try {
-                if (transaction.AccountId.HasValue) {
-                    await conn.ExecuteAsync(
-                        @"UPDATE Transactions SET ReconciliationId=@ReconciliationId, IsCleared=@IsCleared WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
-                        new {
-                            AccountId = transaction.AccountId, 
-                            ReconciliationId = transaction.FromAccountReconciliationId,
-                            TransactionId = transaction.TransactionId.ToString(),
-                            IsCleared = transaction.FromAccountIsCleared
-                        }, tx);
-                }
-
-                if (transaction.ToAccountId.HasValue) {
-                    await conn.ExecuteAsync(
-                        @"UPDATE Transactions SET ReconciliationId=@ReconciliationId, IsCleared=@IsCleared WHERE AccountId=@AccountId AND TRANSACTIONID=@TransactionId",
-                        new {
-                            AccountId = transaction.ToAccountId, 
-                            ReconciliationId = transaction.ToAccountReconciliationId,
-                            TransactionId = transaction.TransactionId.ToString(),
-                            IsCleared = transaction.ToAccountIsCleared
-                        }, tx);
-                }
-
-                await tx.CommitAsync();
-                return true;
+            if (legCount > 1) {
+                throw new InvalidOperationException(
+                    $"Transaction {manualTransactionId} has multiple legs ({legCount}). Ex. It involves two accounts. Splits are currently only supported on single-legged transactions.");
             }
-            catch {
-                await tx.RollbackAsync();
-                throw;
+
+            // Fetch original manual record from DB
+            var original = (await conn.QueryAsync<Ledger>(
+                "SELECT * FROM Transactions WHERE TransactionId = @manualTransactionId AND AccountId = @accountId",
+                new { manualTransactionId, accountId }, tx)).FirstOrDefault();
+
+            if (original == null) return;
+
+            decimal totalBankAmount = bankItems.Sum(x => Math.Abs(x.Amount));
+            decimal originalAmount = Math.Abs(original.Amount);
+            decimal remainderAmount = originalAmount - totalBankAmount;
+
+            // 2. Process Bank Charges (Update 1st, Insert subsequent N-1)
+            for (int i = 0; i < bankItems.Count; i++) {
+                var item = bankItems[i];
+
+                if (i == 0) {
+                    // Update original record with 1st bank charge amount & Bank FITID
+                    // Keeps original TransactionId
+                    original.Amount = Math.Abs(item.Amount);
+                    original.FitId = item.BankId ?? string.Empty;
+                    original.IsCleared = true;
+
+                    var updateParams = GetUpdateParameters(
+                        original,
+                        accountId,
+                        -Math.Abs(item.Amount),
+                        original.ReconciliationId,
+                        original.Id,
+                        targetIsCleared: true,
+                        targetFitId: item.BankId ?? string.Empty);
+
+                    await conn.ExecuteAsync(GetUpdateSql(), updateParams, tx);
+                }
+                else {
+                    // Spawn new cleared record with its own unique TransactionId
+                    var child = new Ledger {
+                        TransactionId = Guid.NewGuid(), // NEW TransactionId
+                        Description = original.Description,
+                        Memo = original.Memo,
+                        Amount = Math.Abs(item.Amount),
+                        TransactionDate = original.TransactionDate,
+                        AccountId = accountId,
+                        BillId = item.BillId ?? original.BillId,
+                        BucketId = item.BucketId ?? original.BucketId,
+                        SubCategoryId = item.SubCategoryId ?? original.SubCategoryId,
+                        IsCleared = true,
+                        FitId = item.BankId ?? string.Empty
+                    };
+
+                    var insertParams = GetInsertParameters(
+                        child,
+                        accountId,
+                        -Math.Abs(item.Amount),
+                        targetReconciliationId: null,
+                        targetIsCleared: true,
+                        targetFitId: item.BankId ?? string.Empty);
+
+                    await conn.ExecuteAsync(GetInsertSql(), insertParams, tx);
+                }
             }
+
+            // 3. Insert Uncleared Remainder Record with its own unique TransactionId
+            if (remainderAmount > 0) {
+                var remainderChild = new Transaction {
+                    TransactionId = Guid.NewGuid(), // NEW TransactionId
+                    Description = original.Description,
+                    Memo = original.Memo,
+                    Amount = remainderAmount,
+                    TransactionDate = original.TransactionDate,
+                    AccountId = accountId,
+                    BillId = original.BillId,
+                    BucketId = original.BucketId,
+                    SubCategoryId = original.SubCategoryId,
+                    FromAccountIsCleared = false,
+                    FromFitId = Guid.NewGuid().ToString() // Fresh FitID so it stays available for future imports
+                };
+
+                var remainderParams = GetInsertParameters(
+                    remainderChild,
+                    accountId,
+                    -Math.Abs(remainderAmount),
+                    targetReconciliationId: null,
+                    targetIsCleared: false,
+                    targetFitId: remainderChild.FromFitId);
+
+                await conn.ExecuteAsync(GetInsertSql(), remainderParams, tx);
+            }
+
+            // Recalculate envelope balance if assigned to a bucket
+            if (original.BucketId.HasValue) {
+                await RecalculateBucketBalanceAsync(original.BucketId.Value, tx);
+            }
+
+            await tx.CommitAsync();
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error updating transaction for reconciliation[cite: 25].");
+            await tx.RollbackAsync();
+            Log.Error(ex, "Error processing multi-match split for transaction ID {TransactionId}.",
+                manualTransactionId);
             throw;
         }
     }
-
+    
     public async Task<bool> UpdateTransactionForBankFitIdAsync(int accountId, string transactionId,
         string bankFitId, bool isCleared, int id) {
         try {
@@ -590,8 +745,7 @@ public partial class BudgetService {
         }
     }
 
-    public async Task<bool> UpsertTransactionAsync(Transaction t,
-        bool showConfirmationOfImpactToExistingReconciliations = true) {
+    public async Task<bool> UpsertTransactionAsync(Transaction t) {
         try {
             t.Amount = Math.Abs(t.Amount);
 
@@ -638,14 +792,15 @@ public partial class BudgetService {
                 if (t.BucketId.HasValue) {
                     bucketsToRecalculate.Add(t.BucketId.Value);
                 }
-                
+
                 string insertWithIdSql = GetInsertSql() + "; SELECT last_insert_rowid();";
 
                 // --- 1. OUTBOUND / FROM SIDE ---
                 if (t.AccountId.HasValue) {
                     decimal amount = -Math.Abs(t.Amount);
                     if (t.FromRecordId.HasValue && t.FromRecordId > 0) {
-                        var p = GetUpdateParameters(t, t.AccountId, amount, t.FromAccountReconciliationId, t.FromRecordId,
+                        var p = GetUpdateParameters(t, t.AccountId, amount, t.FromAccountReconciliationId,
+                            t.FromRecordId,
                             t.FromAccountIsCleared ?? false, t.FromFitId);
                         await conn.ExecuteAsync(GetUpdateSql(), p, tx);
                     }
@@ -718,7 +873,8 @@ public partial class BudgetService {
                                 end = nextStatementDate.ToString("yyyy-MM-dd")
                             }, tx);
 
-                        if (existingInterestOnStatement == null || existingInterestOnStatement?.TransactionId.ToString() ==
+                        if (existingInterestOnStatement == null ||
+                            existingInterestOnStatement?.TransactionId.ToString() ==
                             t.TransactionId.ToString()) {
                             var interestAmount = await CalculateAccruedInterestAsync(t.TransactionDate,
                                 toAccount.MortgageDetails.InterestRate, statementDay, t.ToAccountId.Value, conn, tx);
@@ -849,7 +1005,8 @@ public partial class BudgetService {
                 if (string.IsNullOrEmpty(group.Key)) continue;
 
                 var list = group.ToList();
-                bool hasInterestOnly = list.Any(r => r.IsInterestOnly != null && Convert.ToInt32(r.IsInterestOnly) == 1);
+                bool hasInterestOnly =
+                    list.Any(r => r.IsInterestOnly != null && Convert.ToInt32(r.IsInterestOnly) == 1);
 
                 if (list.Count() >= 2) {
                     if (hasInterestOnly) {
@@ -912,7 +1069,7 @@ public partial class BudgetService {
         if (outboundSide != null && inboundSide != null) {
             uiTx.FromRecordId = Convert.ToInt64(outboundSide!.Id);
             uiTx.FromFitId = outboundSide!.FitId != null ? Convert.ToString(outboundSide!.FitId) : "";
-                
+
             uiTx.AccountId = (int)outboundSide.AccountId;
             uiTx.FromAccountReconciliationId = outboundSide.ReconciliationId != null
                 ? (int?)outboundSide.ReconciliationId
@@ -1056,8 +1213,57 @@ public partial class BudgetService {
         p.Add("SubCategoryId", t.SubCategoryId);
         return p;
     }
+    
+    private DynamicParameters GetInsertParameters(Ledger t, int? targetAccountId, decimal targetedAmount,
+        int? targetReconciliationId, bool targetIsCleared, string targetFitId) {
+        var p = new DynamicParameters();
+        p.Add("TransactionId", t.TransactionId.ToString());
+        p.Add("Description", t.Description);
+        p.Add("Memo", t.Memo);
+        p.Add("Amount", Math.Round(targetedAmount, 2, MidpointRounding.AwayFromZero));
+        p.Add("TransactionDate", t.TransactionDate.ToString("yyyy-MM-dd"));
+        p.Add("AccountId", targetAccountId);
+        p.Add("BillId", t.BillId);
+        p.Add("BucketId", t.BucketId);
+        p.Add("PeriodDate", "1900-01-01");
+        p.Add("IsPrincipalOnly", t.IsPrincipalOnly ? 1 : 0);
+        p.Add("IsInterestOnly", t.IsInterestOnly ? 1 : 0);
+        p.Add("FitId", targetFitId);
+        p.Add("PaycheckId", t.PaycheckId);
+        p.Add("PaycheckOccurrenceDate", t.PaycheckOccurrenceDate?.ToString("yyyy-MM-dd"));
+        p.Add("ReconciliationId", targetReconciliationId);
+        p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
+        p.Add("IsCleared", targetIsCleared);
+        p.Add("SubCategoryId", t.SubCategoryId);
+        return p;
+    }
 
     private DynamicParameters GetUpdateParameters(Transaction t, int? targetAccountId, decimal targetedAmount,
+        int? targetReconciliationId, long? id, bool targetIsCleared, string targetFitId) {
+        var p = new DynamicParameters();
+        p.Add("TransactionId", t.TransactionId.ToString());
+        p.Add("Description", t.Description);
+        p.Add("Memo", t.Memo);
+        p.Add("Amount", Math.Round(targetedAmount, 2, MidpointRounding.AwayFromZero));
+        p.Add("TransactionDate", t.TransactionDate.ToString("yyyy-MM-dd"));
+        p.Add("AccountId", targetAccountId);
+        p.Add("BillId", t.BillId);
+        p.Add("BucketId", t.BucketId);
+        p.Add("PeriodDate", "1900-01-01");
+        p.Add("IsPrincipalOnly", t.IsPrincipalOnly ? 1 : 0);
+        p.Add("IsInterestOnly", t.IsInterestOnly ? 1 : 0);
+        p.Add("FitId", targetFitId);
+        p.Add("PaycheckId", t.PaycheckId);
+        p.Add("PaycheckOccurrenceDate", t.PaycheckOccurrenceDate?.ToString("yyyy-MM-dd"));
+        p.Add("ReconciliationId", targetReconciliationId);
+        p.Add("Id", id);
+        p.Add("NormalizedDescription", TransactionMatcher.NormalizeName(t.Description));
+        p.Add("IsCleared", targetIsCleared);
+        p.Add("SubCategoryId", t.SubCategoryId);
+        return p;
+    }
+    
+    private DynamicParameters GetUpdateParameters(Ledger t, int? targetAccountId, decimal targetedAmount,
         int? targetReconciliationId, long? id, bool targetIsCleared, string targetFitId) {
         var p = new DynamicParameters();
         p.Add("TransactionId", t.TransactionId.ToString());

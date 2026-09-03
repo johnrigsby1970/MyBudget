@@ -7,7 +7,6 @@ using Newtonsoft.Json;
 using Serilog;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
-using StayOnTarget.Views;
 using StayOnTarget.Views.Wizard;
 
 namespace StayOnTarget.ViewModels.Wizard;

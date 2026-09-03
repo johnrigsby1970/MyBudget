@@ -36,6 +36,7 @@ public class ProjectionItem : ViewModelBase
                 if (SetProperty(ref _paycheckId, value))
                 {
                     OnPropertyChanged(nameof(NeedsAttention));
+                    OnPropertyChanged(nameof(IsPaycheck));
                 }
             }
             catch (Exception ex)
@@ -48,8 +49,28 @@ public class ProjectionItem : ViewModelBase
 
     public int? ToAccountId { get => _toAccountId; set => SetProperty(ref _toAccountId, value); }
     public int? FromAccountId { get => _fromAccountId; set => SetProperty(ref _fromAccountId, value); }
-    public int? BillId { get => _billId; set => SetProperty(ref _billId, value); }
 
+    public int? BillId 
+    {
+        get => _billId; 
+        set
+        {
+            try
+            {
+                if (SetProperty(ref _billId, value))
+                {
+                    OnPropertyChanged(nameof(IsPaycheck));
+                    OnPropertyChanged(nameof(IsBill));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error setting BillId in ProjectionItem.");
+                
+            }
+        }
+    }
+    
     public int? BucketId 
     {
         get => _bucketId; 
@@ -60,6 +81,8 @@ public class ProjectionItem : ViewModelBase
                 if (SetProperty(ref _bucketId, value))
                 {
                     OnPropertyChanged(nameof(CanFundDrawdown));
+                    OnPropertyChanged(nameof(IsPaycheck));
+                    OnPropertyChanged(nameof(IsBucket));
                 }
             }
             catch (Exception ex)
@@ -116,7 +139,11 @@ public class ProjectionItem : ViewModelBase
         set => SetProperty(ref _warningMessage, value); 
     }
 
-    public bool NeedsAttention => _paycheckId.HasValue;
+    public bool NeedsAttention => IsPaycheck; //n
+    
+    public bool IsPaycheck => _paycheckId.HasValue && !IsBucket && !IsSweep && !IsBill;
+    
+    public bool IsBill => Type == ProjectionEngine.ProjectionEventType.Bill;
     
     public bool IsBucket => Type == ProjectionEngine.ProjectionEventType.Bucket || Type == ProjectionEngine.ProjectionEventType.AccumulatingDrawdown;
     

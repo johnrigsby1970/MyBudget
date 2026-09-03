@@ -12,7 +12,7 @@ namespace StayOnTarget.ViewModels;
 
 public class ExportTransactionsViewModel : ViewModelBase
 {
-    private readonly BudgetService _budgetService;
+    private readonly BudgetService _budgetService = null!;
     private bool _includeArchivedAccounts;
     private DateFilterOption _selectedDateFilter = DateFilterOption.AllDates;
     private DateTime _fromDate = DateTime.Today.AddMonths(-1);
@@ -20,7 +20,7 @@ public class ExportTransactionsViewModel : ViewModelBase
     private bool _includeBuckets = true;
     private bool _includeStatus = true;
     private bool _includeMemos = true;
-    private string _exportFilePath;
+    private string _exportFilePath = null!;
     private CsvExportPreset _selectedPreset = CsvExportPreset.Standard;
 
     public ExportTransactionsViewModel(BudgetService budgetService)
@@ -44,7 +44,7 @@ public class ExportTransactionsViewModel : ViewModelBase
         }
     }
 
-    public ObservableCollection<SelectableAccount> Accounts { get; }
+    public ObservableCollection<SelectableAccount> Accounts { get; } = null!;
 
     public bool IncludeArchivedAccounts
     {
@@ -170,11 +170,11 @@ public class ExportTransactionsViewModel : ViewModelBase
         }
     }
 
-    public IRelayCommand SelectAllCommand { get; }
-    public IRelayCommand ClearSelectionCommand { get; }
-    public IRelayCommand BrowseCommand { get; }
-    public IAsyncRelayCommand ExportCommand { get; }
-    public IRelayCommand<Window> CancelCommand { get; }
+    public IRelayCommand SelectAllCommand { get; } = null!;
+    public IRelayCommand ClearSelectionCommand { get; } = null!;
+    public IRelayCommand BrowseCommand { get; } = null!;
+    public IAsyncRelayCommand ExportCommand { get; } = null!;
+    public IRelayCommand<Window> CancelCommand { get; } = null!;
 
     private async void LoadAccountsAsync()
     {

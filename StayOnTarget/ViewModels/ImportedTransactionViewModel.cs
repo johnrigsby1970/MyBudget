@@ -109,6 +109,12 @@ namespace StayOnTarget.ViewModels {
             set => SetProperty(ref _isSelected, value);
         }
         
+        private bool _isSplitMatch;
+        public bool IsSplitMatch {
+            get => _isSplitMatch;
+            set => SetProperty(ref _isSplitMatch, value);
+        }
+        
         private void ApplyDefaultBucket() {
             try {
                 // 1. Skip if already matched (matched transactions maintain their existing mappings)

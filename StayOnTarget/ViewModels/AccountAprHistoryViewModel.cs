@@ -1,6 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
@@ -9,8 +8,8 @@ using Serilog;
 namespace StayOnTarget.ViewModels;
 
 public class AccountAprHistoryViewModel: ViewModelBase {
-    private readonly BudgetService _budgetService;
-    private readonly Account _account;
+    private readonly BudgetService _budgetService = null!;
+    private readonly Account _account = null!;
     
     public AccountAprHistoryViewModel(Account account, BudgetService budgetService) {
         try {
@@ -27,7 +26,7 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         }
     }   
     
-    public IAsyncRelayCommand InitializeDataCommand { get; }
+    public IAsyncRelayCommand InitializeDataCommand { get; } = null!;
     
     private bool _isLoading;
 
@@ -64,8 +63,8 @@ public class AccountAprHistoryViewModel: ViewModelBase {
         }
     }
     
-    public IRelayCommand AddCommand { get; }
-    public IAsyncRelayCommand RemoveCommand { get; }
+    public IRelayCommand AddCommand { get; } = null!;
+    public IAsyncRelayCommand RemoveCommand { get; } = null!;
     
     private void Add()
     {

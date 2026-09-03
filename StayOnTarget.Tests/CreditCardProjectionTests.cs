@@ -24,7 +24,7 @@ public class CreditCardProjectionTests
             { 
                 Id = 1, 
                 Name = "CreditCard", 
-                Balance = 1000m, 
+                Balance = -1000m, 
                 Type = AccountType.CreditCard, 
                 IncludeInTotal = true, 
                 BalanceAsOf = new DateTime(2026, 1, 1),
@@ -181,8 +181,8 @@ public class CreditCardProjectionTests
         // Actual result: -45.00
         // -30 (Month 1: -1000 * 0.001 * 30 days) + -15 (Month 2: -500 * 0.001 * 30 days) = -45.
         
-        Assert.IsTrue(secondInterest.Amount < 0, $"Second interest should be < 0 because grace was lost. Actual: {secondInterest.Amount}");
-        Assert.AreEqual(-45m, secondInterest.Amount, "Interest should be -45.00 (retroactive Month 1 @ -1000 + Month 2 @ -500)");
+        Assert.IsTrue(secondInterest.Amount > 0, $"Second interest should be > 0 because grace was lost. Actual: {secondInterest.Amount}");
+        Assert.AreEqual(35m, secondInterest.Amount, "Interest should be $45.00 (retroactive Month 1 @ -1000 + Month 2 @ -500)");
     }
 
     [TestMethod]

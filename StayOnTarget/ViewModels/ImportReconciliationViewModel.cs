@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using StayOnTarget.Models;
 using StayOnTarget.Services;
 using System.IO;
@@ -25,7 +24,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting ActiveOverlay in ImportReconciliationViewModel.");
-                
             }
         }
     }
@@ -48,7 +46,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedImported in ImportReconciliationViewModel.");
-                
             }
         }
     }
@@ -65,7 +62,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedManual in ImportReconciliationViewModel.");
-                
             }
         }
     }
@@ -80,7 +76,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsBusy in ImportReconciliationViewModel.");
-                
             }
         }
     }
@@ -99,16 +94,16 @@ public class ImportReconciliationViewModel : ViewModelBase {
         set => SetProperty(ref _lastFileName, value);
     }
 
-    public IRelayCommand LinkTransactionsCommand { get; }
-    public IRelayCommand ImportAsNewCommand { get; }
+    public IRelayCommand LinkTransactionsCommand { get; } = null!;
+    public IRelayCommand ImportAsNewCommand { get; } = null!;
 
-    public IRelayCommand ClearMatchCommand { get; }
+    public IRelayCommand ClearMatchCommand { get; } = null!;
 
-    private readonly BudgetService _budgetService;
-    private Account _account;
+    private readonly BudgetService _budgetService = null!;
+    private Account _account = null!;
 
-    public IRelayCommand SaveCommand { get; }
-    public IAsyncRelayCommand ImportFileCommand { get; }
+    public IRelayCommand SaveCommand { get; } = null!;
+    public IAsyncRelayCommand ImportFileCommand { get; } = null!;
 
     private CsvImportMappingViewModel? _csvMapping;
 
@@ -126,7 +121,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting CsvMapping in ImportReconciliationViewModel.");
-                
             }
         }
     }
@@ -138,7 +132,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in OnCsvMappingPropertyChanged.");
-            
         }
     }
 
@@ -157,8 +150,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
     }
 
 
-    public IAsyncRelayCommand ConfirmCsvImportCommand { get; }
-    public IRelayCommand CancelCsvImportCommand { get; }
+    public IAsyncRelayCommand ConfirmCsvImportCommand { get; } = null!;
+    public IRelayCommand CancelCsvImportCommand { get; } = null!;
 
     public RangeObservableCollection<Bill> BillsWithNone { get; } = new();
     public RangeObservableCollection<BudgetBucket> BucketsWithNone { get; } = new();
@@ -175,7 +168,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in Item_PropertyChanged for ImportedTransactionViewModel.");
-            
         }
     }
 
@@ -196,13 +188,13 @@ public class ImportReconciliationViewModel : ViewModelBase {
                         item.IsSelected = targetState;
                         item.PropertyChanged += Item_PropertyChanged;
                     }
+
                     OnPropertyChanged(nameof(CanImport));
                     SaveCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsAllSelected in ImportReconciliationViewModel.");
-                
             }
         }
     }
@@ -228,12 +220,11 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating IsAllSelected state.");
-            
         }
     }
 
     public bool CanImport => ImportedTransactions.Any(x => x.IsSelected);
-    
+
     public ImportReconciliationViewModel(Account account, BudgetService budgetService) {
         try {
             _account = account;
@@ -261,7 +252,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
                         }
                     }
 
-                    if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset || e.NewItems == null) {
+                    if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset ||
+                        e.NewItems == null) {
                         foreach (var item in ImportedTransactions) {
                             item.GetDefaultBucketForSubCategory = (subCatId) => {
                                 return SubCategoriesWithNone
@@ -284,7 +276,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 }
                 catch (Exception ex) {
                     Log.Error(ex, "Error handling ImportedTransactions CollectionChanged.");
-                    
                 }
             };
 
@@ -308,15 +299,51 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Fatal(ex, "Critical error initializing ImportReconciliationViewModel.");
-            
         }
     }
 
-    public IAsyncRelayCommand InitializeDataCommand { get; }
-    
+    public string LinkButtonText {
+        get {
+            if (SelectedImported != null && SelectedManual != null &&
+                Math.Abs(SelectedImported.Amount) < Math.Abs(SelectedManual.Amount)) {
+                return "Split & Link";
+            }
+
+            return "Link Selections";
+        }
+    }
+
+    public IAsyncRelayCommand InitializeDataCommand { get; } = null!;
+
     private async void SaveAsync() {
         if (!ImportedTransactions.Any()) return;
 
+        // Check if user staged bank items AND highlighted a manual record without clicking "Link"
+        var selectedUnmatchedBankItems = ImportedTransactions.Where(x => x.IsSelected && !x.IsMatched).ToList();
+    
+        if (selectedUnmatchedBankItems.Any() && SelectedManual != null && !SelectedManual.IsMatched) {
+            var result = MessageBox.Show(
+                $"You have selected bank transaction(s) and manual entry '{SelectedManual.Description}' below, but haven't linked them yet.\n\n" +
+                "Would you like to LINK these items before updating?\n\n" +
+                "• Yes: Link/Split them and save\n" +
+                "• No: Import bank items as NEW transactions\n" +
+                "• Cancel: Return to editing",
+                "Unlinked Selection Detected",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Cancel) return;
+
+            if (result == MessageBoxResult.Yes) {
+                // Ensure the active/highlighted bank row is flagged if user didn't explicitly check it
+                if (SelectedImported != null && !SelectedImported.IsMatched && !SelectedImported.IsSelected) {
+                    SelectedImported.IsSelected = true;
+                }
+                
+                LinkTransactions(); // Automatically executes your Link/Split logic first
+            }
+        }
+        
         try {
             IsBusy = true;
             await Task.Delay(50);
@@ -337,7 +364,27 @@ public class ImportReconciliationViewModel : ViewModelBase {
                             !string.IsNullOrEmpty(x.Payee))
                 .ToList();
 
-            foreach (var match in matchedToSave) {
+            // --- FIX: Group split matches by target manual transaction ---
+            var splitGroups = matchedToSave
+                .Where(x => x.IsSplitMatch)
+                .GroupBy(x => x.MatchedManualTransactionId);
+
+            foreach (var group in splitGroups) {
+                var bankItems = group.ToList();
+                var manualTxId = group.Key!;
+
+                try {
+                    await _budgetService.ProcessMultiMatchSplitAsync(_account.Id, manualTxId, bankItems);
+                }
+                catch (InvalidOperationException ex) {
+                    MessageBox.Show(ex.Message, "Split Not Allowed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+
+            // --- Process Standard 1:1 Matches ---
+            var standardMatches = matchedToSave.Where(x => !x.IsSplitMatch);
+            foreach (var match in standardMatches) {
                 await _budgetService.UpdateTransactionForBankFitIdAsync(
                     _account.Id,
                     match.MatchedManualTransactionId!,
@@ -347,6 +394,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 );
             }
 
+            // --- Process New Imports ---
             foreach (var newItem in newToSave) {
                 var t = new Transaction {
                     AccountId = newItem.Amount > 0 ? null : _account.Id,
@@ -354,10 +402,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
                     Amount = newItem.Amount,
                     TransactionDate = newItem.Date ?? DateTime.Now,
                     Description = newItem.Payee!,
-
-                    FromFitId = newItem.Amount > 0 ? "" :  newItem.BankId!,
+                    FromFitId = newItem.Amount > 0 ? "" : newItem.BankId!,
                     ToFitId = newItem.Amount > 0 ? newItem.BankId! : "",
-                    
                     BillId = newItem.BillId == 0 ? null : newItem.BillId,
                     BucketId = newItem.BucketId == 0 ? null : newItem.BucketId,
                     SubCategoryId = newItem.SubCategoryId == 0 ? null : newItem.SubCategoryId,
@@ -368,6 +414,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 await _budgetService.UpsertTransactionAsync(t);
             }
 
+            // Reload data from SQLite so remainder records appear on screen
             await LoadDataAsync();
 
             var savedItems = matchedToSave.Concat(newToSave).ToList();
@@ -381,8 +428,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during SaveAsync in ImportReconciliationViewModel.");
-            
-            MessageBox.Show("Failed to save imported transactions. See log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Failed to save imported transactions. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
         finally {
             IsBusy = false;
@@ -406,7 +453,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
                     await ParseAndPopulateQfxAsync(LastFileName);
                 }
                 else {
-                    var mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, $"mapping_{_account.Id}.json");
+                    var mappingPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory,
+                        $"mapping_{_account.Id}.json");
                     CsvMapping = new CsvImportMappingViewModel(LastFileName, mappingPath);
 
                     IsMappingVisible = true;
@@ -415,8 +463,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error prompting for import file.");
-            
-            MessageBox.Show("Failed to open file dialog. See log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            MessageBox.Show("Failed to open file dialog. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -432,8 +481,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error confirming CSV import.");
-            
-            MessageBox.Show("Failed to import CSV file. See log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            MessageBox.Show("Failed to import CSV file. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -500,7 +550,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
                     filteredImports.Add(record);
                 }
             }
-            
+
             foreach (var rec in manualRecordsToRemove) {
                 UnreconciledManualTransactions.Remove(rec);
             }
@@ -516,14 +566,15 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
             AutoMatchTransactions();
             await AutoApplySubCategory();
-            
+
             OnPropertyChanged(nameof(CanImport));
             SaveCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error parsing and populating CSV file.");
-            
-            MessageBox.Show("Failed to parse CSV file. See log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            MessageBox.Show("Failed to parse CSV file. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -610,17 +661,18 @@ public class ImportReconciliationViewModel : ViewModelBase {
 
             AutoMatchTransactions();
             await AutoApplySubCategory();
-            
+
             OnPropertyChanged(nameof(CanImport));
             SaveCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error parsing and populating QFX/OFX file.");
-            
-            MessageBox.Show("Failed to parse QFX/OFX file. See log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            MessageBox.Show("Failed to parse QFX/OFX file. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
-    
+
     private async Task AutoApplySubCategory() {
         try {
             foreach (var x in ImportedTransactions.Where(x => !x.IsMatched)) {
@@ -631,7 +683,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in AutoApplySubCategory.");
-            
         }
     }
 
@@ -650,7 +701,7 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error extracting QFX tag value for tag {Tag}.", tag);
-            
+
             return string.Empty;
         }
     }
@@ -737,7 +788,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in AutoMatchTransactions.");
-            
         }
     }
 
@@ -757,7 +807,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in ApplyMatch.");
-            
         }
     }
 
@@ -767,32 +816,89 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in FilterManualSuggestions.");
-            
         }
     }
 
     private void LinkTransactions() {
         try {
-            if (SelectedImported == null || SelectedManual == null) return;
-            SelectedImported.Id = SelectedManual.Id;
-            SelectedImported.IsMatched = true;
-            SelectedImported.IsCleared = true;
-            SelectedImported.Status = $"Matched to Manual ({SelectedManual.Description} {SelectedManual.Amount:C})";
-            SelectedImported.MatchedManualFitId = SelectedManual.FitId;
-            SelectedImported.MatchedManualTransactionDate = SelectedManual.TransactionDate;
-            SelectedImported.MatchedManualTransactionId = SelectedManual.TransactionId;
-            SelectedImported.BillId = SelectedManual.BillId;
-            SelectedImported.BucketId = SelectedManual.BucketId;
-            SelectedImported.IsSelected = true;
+            // Now evaluates ALL rows highlighted in the top grid
+            var targetedImports = ImportedTransactions
+                .Where(x => x.IsSelected && !x.IsMatched)
+                .ToList();
+
+            if (!targetedImports.Any() || SelectedManual == null) {
+                MessageBox.Show("Please select at least one bank transaction and a manual entry below.",
+                    "Selection Required", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            decimal totalImportedAmount = targetedImports.Sum(x => Math.Abs(x.Amount));
+            decimal manualAmount = Math.Abs(SelectedManual.Amount);
+
+            if (totalImportedAmount > manualAmount) {
+                MessageBox.Show(
+                    $"Selected bank transactions ({totalImportedAmount:C}) exceed the manual entry amount ({manualAmount:C}).",
+                    "Amount Mismatch", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // Handle partial splits if bank total is strictly less than manual entry
+            if (totalImportedAmount < manualAmount) {
+                decimal remainderAmount = manualAmount - totalImportedAmount;
+
+                var confirmResult = MessageBox.Show(
+                    $"The selected bank items ({totalImportedAmount:C}) partially match your manual entry ({manualAmount:C}).\n\n" +
+                    $"Linking will split this entry and leave an uncleared remainder for {remainderAmount:C}.\n\nDo you want to proceed?",
+                    "Confirm Partial Match & Split",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (confirmResult != MessageBoxResult.Yes) return;
+
+                SelectedManual.Amount = totalImportedAmount;
+
+                var remainderVm = new ManualTransactionViewModel {
+                    Id = null,
+                    TransactionId = Guid.NewGuid().ToString(),
+                    TransactionDate = SelectedManual.TransactionDate,
+                    Amount = remainderAmount,
+                    Description = $"{SelectedManual.Description} (Remainder)",
+                    BillId = SelectedManual.BillId,
+                    BucketId = SelectedManual.BucketId,
+                    IsMatched = false
+                };
+
+                UnreconciledManualTransactions.Add(remainderVm);
+            }
+
+            // Apply matched state and check both boxes
+            bool isSplit = targetedImports.Count > 1 || totalImportedAmount < manualAmount;
+
+            foreach (var bankItem in targetedImports) {
+                bankItem.Id = SelectedManual.Id;
+                bankItem.IsMatched = true;
+                bankItem.IsCleared = true;
+                bankItem.IsSelected = true; // Confirms both checked states!
+                bankItem.IsSplitMatch = isSplit;
+                bankItem.Status = isSplit
+                    ? $"Split Matched ({SelectedManual.Description})"
+                    : $"Matched ({SelectedManual.Description})";
+
+                bankItem.MatchedManualFitId = SelectedManual.FitId;
+                bankItem.MatchedManualTransactionDate = SelectedManual.TransactionDate;
+                bankItem.MatchedManualTransactionId = SelectedManual.TransactionId;
+                bankItem.BillId = SelectedManual.BillId;
+                bankItem.BucketId = SelectedManual.BucketId;
+            }
 
             SelectedManual.IsMatched = true;
+
             OnPropertyChanged(nameof(SelectedManual));
-            OnPropertyChanged(nameof(SelectedImported));
+            OnPropertyChanged(nameof(ImportedTransactions));
             OnPropertyChanged(nameof(UnreconciledManualTransactions));
         }
         catch (Exception ex) {
             Log.Error(ex, "Error linking transactions.");
-            
         }
     }
 
@@ -820,7 +926,6 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error clearing transaction match.");
-            
         }
     }
 
@@ -839,22 +944,22 @@ public class ImportReconciliationViewModel : ViewModelBase {
                 return;
             }
 
-            ActiveOverlay = new NewTransactionViewModel(_account, _budgetService, SelectedImported, (childVm, isSaved) => {
-                try {
-                    if (isSaved) {
-                        ImportedTransactions.Remove(SelectedImported);
+            ActiveOverlay = new NewTransactionViewModel(_account, _budgetService, SelectedImported,
+                (childVm, isSaved) => {
+                    try {
+                        if (isSaved) {
+                            ImportedTransactions.Remove(SelectedImported);
+                        }
+
+                        ActiveOverlay = null;
                     }
-                    ActiveOverlay = null;
-                }
-                catch (Exception ex) {
-                    Log.Error(ex, "Error in NewTransactionViewModel callback.");
-                    
-                }
-            });
+                    catch (Exception ex) {
+                        Log.Error(ex, "Error in NewTransactionViewModel callback.");
+                    }
+                });
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in ImportAsNew.");
-            
         }
     }
 
@@ -871,7 +976,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
             var temp = new List<ManualTransactionViewModel>(unreconciledTransactions.Count);
             foreach (var transaction in unreconciledTransactions) {
                 temp.Add(new ManualTransactionViewModel {
-                    Id = (int?)(transaction.AccountId == _account.Id ? transaction.FromRecordId : transaction.ToRecordId),
+                    Id = (int?)(transaction.AccountId == _account.Id
+                        ? transaction.FromRecordId
+                        : transaction.ToRecordId),
                     FitId = (transaction.AccountId == _account.Id ? transaction.FromFitId : transaction.ToFitId),
                     TransactionDate = transaction.TransactionDate,
                     Amount = transaction.Amount,
@@ -918,8 +1025,9 @@ public class ImportReconciliationViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading import reconciliation data.");
-            
-            MessageBox.Show("Failed to load reconciliation data. See log for details.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+            MessageBox.Show("Failed to load reconciliation data. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 }

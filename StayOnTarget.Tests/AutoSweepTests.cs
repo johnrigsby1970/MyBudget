@@ -1,10 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using StayOnTarget.Models;
+﻿using StayOnTarget.Models;
 using StayOnTarget.Services.Projections;
-using StayOnTarget.ViewModels;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace StayOnTarget.Tests;
 
@@ -46,12 +41,12 @@ public class AutoSweepTests
 
         // Act
         var results = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true, null, new DateTime(2026, 8, 1)
         ).ToList();
 
         // Assert
         var sweepDate = new DateTime(2026, 8, 14);
-        var sweepEntry = results.FirstOrDefault(r => r.IsSynthetic && r.Description.Contains("Auto-Sweep: CreditCard") && r.TransactionDate == sweepDate);
+        var sweepEntry = results.FirstOrDefault(r => r.IsSynthetic && r.Description.Contains("Auto-Sweep") && r.TransactionDate == sweepDate);
         
         Assert.IsNotNull(sweepEntry, "Auto-Sweep entry should exist on August 14");
         Assert.AreEqual(1000m, sweepEntry.Amount, "Sweep amount should be 1000 (payment of 1000 debt)");
@@ -94,7 +89,7 @@ public class AutoSweepTests
 
         // Act
         var results = _engine.CalculateProjections(
-            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true
+            allTransactions, new(), new(), allTransactions, startDate, endDate, accounts, paychecks, new(), new(), allocations, new(), new(), allTransactions, null, false, false, true, null, new DateTime(2026, 8, 1)
         ).ToList();
 
         // Assert

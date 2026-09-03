@@ -155,7 +155,7 @@ public class UpsertTransactionSafetyTests
 
             foreach (var t in targets)
             {
-                bool ok = await _service.UpsertTransactionAsync(t, showConfirmationOfImpactToExistingReconciliations: false);
+                bool ok = await _service.UpsertTransactionAsync(t);
                 Assert.IsTrue(ok, $"Round-1 upsert failed for TransactionId={t.TransactionId}");
             }
 
@@ -194,7 +194,7 @@ public class UpsertTransactionSafetyTests
 
             foreach (var t in r2Targets)
             {
-                bool ok = await _service.UpsertTransactionAsync(t, showConfirmationOfImpactToExistingReconciliations: false);
+                bool ok = await _service.UpsertTransactionAsync(t);
                 Assert.IsTrue(ok, $"Round-2 (amount) upsert failed for TransactionId={t.TransactionId}");
             }
 
@@ -235,7 +235,7 @@ public class UpsertTransactionSafetyTests
 
             foreach (var t in r3Targets)
             {
-                bool ok = await _service.UpsertTransactionAsync(t, showConfirmationOfImpactToExistingReconciliations: false);
+                bool ok = await _service.UpsertTransactionAsync(t);
                 Assert.IsTrue(ok, $"Round-3 (amount+date) upsert failed for TransactionId={t.TransactionId}");
             }
 
@@ -270,7 +270,7 @@ public class UpsertTransactionSafetyTests
 
             foreach (var orig in originals)
             {
-                bool ok = await _service.UpsertTransactionAsync(orig, showConfirmationOfImpactToExistingReconciliations: false);
+                bool ok = await _service.UpsertTransactionAsync(orig);
                 Assert.IsTrue(ok, $"Restore upsert failed for TransactionId={orig.TransactionId}");
             }
 
@@ -343,7 +343,7 @@ public class UpsertTransactionSafetyTests
             Console.WriteLine("Test failed — attempting emergency restore of modified transactions.");
             foreach (var orig in originals)
             {
-                try { await _service.UpsertTransactionAsync(orig, false); }
+                try { await _service.UpsertTransactionAsync(orig); }
                 catch (Exception ex) { Console.WriteLine($"  Emergency restore failed for {orig.TransactionId}: {ex.Message}"); }
             }
             throw;

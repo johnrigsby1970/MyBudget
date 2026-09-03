@@ -1,6 +1,5 @@
 ﻿using Serilog;
 using System.IO;
-using System;
 
 namespace StayOnTarget;
 

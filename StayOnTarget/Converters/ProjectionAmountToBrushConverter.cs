@@ -2,7 +2,6 @@
 using System.Windows.Data;
 using System.Windows.Media;
 using StayOnTarget.Models;
-using StayOnTarget.Services.Projections;
 
 namespace StayOnTarget.Converters;
 

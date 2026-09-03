@@ -76,9 +76,8 @@ public class ProjectionEngine : IProjectionEngine {
         DateTime? referenceDate = null) {
         
         try {
-            var bucketBalances = buckets.ToDictionary(b => b.Id, b => b.CurrentBalance);
-
             var today = referenceDate ?? DateTime.Today;
+            var bucketBalances = buckets.ToDictionary(b => b.Id, b => b.CurrentBalance);
 
             var effectiveSnowballOptions = snowballOptions ?? new SnowballStrategyOptions();
             var rothContributionsByYear =
@@ -120,9 +119,9 @@ public class ProjectionEngine : IProjectionEngine {
             #region Prepare events that show in projections
 
             events.AddPaycheckEvents(accounts, paychecks, allPaycheckTransactions, current, endDate);
-            events.AddBillEvents(accounts, bills, allBillTransactions, periodBills, current, endDate);
+            events.AddBillEvents(accounts, bills, allBillTransactions, periodBills, current, endDate, today);
             events.AddBucketEvents(accounts, paychecks, buckets, periodBuckets, allocations, bucketBalances, current,
-                endDate);
+                endDate, today);
             events.AddTransactionEvents(allTransactions);
             events.AddInterestEvents(accounts, allTransactions, startDate, endDate);
             events.AddReconciliationEvents(allValidReconciliations);
@@ -144,7 +143,7 @@ public class ProjectionEngine : IProjectionEngine {
             var ccGraceActive = accounts.Where(a => a.Type == AccountType.CreditCard)
                 .ToDictionary(a => a.Id, a => a.CreditCardDetails?.GraceActive ?? true);
             var ccUnpaidStatementBalance = accounts.Where(a => a.Type == AccountType.CreditCard)
-                .ToDictionary(a => a.Id, a => a.Balance <= 0.01m ? 0m : a.Balance);
+                .ToDictionary(a => a.Id, a => a.Balance <= 0.01m ? a.Balance: 0m);
             var ccPaidThisCycle = accounts.Where(a => a.Type == AccountType.CreditCard)
                 .ToDictionary(a => a.Id, a => 0m);
 
@@ -198,8 +197,9 @@ public class ProjectionEngine : IProjectionEngine {
                 }
 
                 while (nextPay <= endDate) {
-                    if (!paycheckDates.Contains(nextPay.Date))
-                        paycheckDates.Add(nextPay.Date);
+                    var nextPayDate = nextPay.Date;
+                    if (!paycheckDates.Contains(nextPayDate))
+                        paycheckDates.Add(nextPayDate);
 
                     nextPay = pay.Frequency switch {
                         Frequency.Weekly => nextPay.AddDays(7),
@@ -267,7 +267,7 @@ public class ProjectionEngine : IProjectionEngine {
                     while (e.Date >= nextPaycheckDate && nextPaycheckDate != DateTime.MaxValue) {
                         var sweepDate = nextPaycheckDate.AddDays(-1);
 
-                        if (sweepDate >= startDate.Date.AddDays(-1) && nextPaycheckDate >= startDate.Date) {
+                        if (sweepDate >= today && sweepDate >= startDate.Date.AddDays(-1) && nextPaycheckDate >= startDate.Date) {
                             if (primaryChecking.HasValue) {
                                 var ccPeriodNewDebt = new Dictionary<int, decimal>();
 
@@ -544,7 +544,7 @@ public class ProjectionEngine : IProjectionEngine {
             if (useAutoSweep) {
                 while (nextPaycheckDate != DateTime.MaxValue && nextPaycheckDate <= endDate) {
                     var sweepDate = nextPaycheckDate.AddDays(-1);
-                    if (sweepDate >= startDate || sweepDate >= DateTime.Today) {
+                    if (sweepDate >= today) {
                         if (primaryChecking.HasValue) {
                             var ccPeriodNewDebt = new Dictionary<int, decimal>();
 
@@ -647,7 +647,7 @@ public class ProjectionEngine : IProjectionEngine {
                 }
             }
 
-            if (useAutoSweep && endDate >= DateTime.Today) {
+            if (useAutoSweep && endDate >= today) {
                 foreach (var ccId in creditCardAccountIds) {
                     var balance = accountBalances[ccId];
                     if (balance < 0 && primaryChecking.HasValue) {

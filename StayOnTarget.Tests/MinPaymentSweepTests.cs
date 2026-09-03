@@ -1,9 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using StayOnTarget.Models;
+﻿using StayOnTarget.Models;
 using StayOnTarget.Services.Projections;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace StayOnTarget.Tests
 {

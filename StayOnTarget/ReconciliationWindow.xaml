@@ -18,42 +18,12 @@
         </i:EventTrigger>
     </i:Interaction.Triggers>
     <Window.Resources>
-        <!-- <Style TargetType="{x:Type DataGrid}"> -->
-        <!--     <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0" /> -->
-        <!--     <Setter Property="VerticalGridLinesBrush" Value="#E2E8F0" /> -->
-        <!-- -->
-        <!--     <Setter Property="BorderBrush" Value="#CBD5E1" /> -->
-        <!--     <Setter Property="BorderThickness" Value="1" /> -->
-        <!-- -->
-        <!--     <Setter Property="AlternatingRowBackground" Value="#F8FAFC" /> -->
-        <!-- -->
-        <!--     <Setter Property="RowBackground" Value="White" /> -->
-        <!--     <Setter Property="Background" Value="White" /> -->
-        <!--     <Setter Property="GridLinesVisibility" Value="All" /> -->
-        <!-- </Style> -->
-        <!-- <Style TargetType="{x:Type DataGridColumnHeader}"> -->
-        <!--     <Setter Property="Background" Value="#E2E8F0" /> -->
-        <!-- -->
-        <!--     <Setter Property="Foreground" Value="#1E293B" /> -->
-        <!--     <Setter Property="FontWeight" Value="SemiBold" /> -->
-        <!--     <Setter Property="FontSize" Value="12" /> -->
-        <!-- -->
-        <!--     <Setter Property="Padding" Value="8,6,8,6" /> -->
-        <!--     <Setter Property="HorizontalContentAlignment" Value="Left" /> -->
-        <!-- -->
-        <!--     <Setter Property="BorderBrush" Value="#CBD5E1" /> -->
-        <!--     <Setter Property="BorderThickness" Value="0,0,1,1" /> -->
-        <!-- -->
-        <!--     <Setter Property="SeparatorBrush" Value="#CBD5E1" /> -->
-        <!-- </Style> -->
-        
         <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" />
         <converters:AmountToBrushConverter x:Key="AmountToBrushConverter" />
-
     </Window.Resources>
 
     <Grid Margin="10" Background="Transparent" PreviewMouseDown="Window_PreviewMouseDown">
@@ -61,6 +31,7 @@
             <TextBlock DockPanel.Dock="Top" x:Name="HeaderLabel" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                     <RowDefinition Height="Auto" />
@@ -73,9 +44,22 @@
                         Content="{Binding BeginningBalance}"
                         ContentStringFormat="{}{0:C2}"
                         Width="Auto" Margin="0,0" />
-
                 </StackPanel>
-                <DataGrid Grid.Row="1"
+                
+                <Border Grid.Row="1" Margin="0,0,0,8" Padding="8,6" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" CornerRadius="4"
+                        Visibility="{Binding HasHistoricalOrphans, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="Resolve Backdated Items" 
+                                Command="{Binding ShowHistoricalOverlayCommand}" 
+                                Padding="10,2" Style="{StaticResource SecondaryButtonStyle}" />
+                        <TextBlock VerticalAlignment="Center" Foreground="#B78103" FontWeight="SemiBold">
+                            <Run Text="⚠️ Found backdated unreconciled records predating " />
+                            <Run Text="{Binding LastReconciledDate, StringFormat='{}{0:MM/dd/yyyy}'}" />
+                        </TextBlock>
+                    </DockPanel>
+                </Border>
+                
+                <DataGrid Grid.Row="2"
                           ItemsSource="{Binding ReconciliationTransactions}"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
@@ -127,20 +111,9 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <!-- <DataGridTextColumn Header="Balance" -->
-                        <!--                     HeaderStyle="{StaticResource RightAlignedHeaderStyle}" -->
-                        <!--                     Binding="{Binding RunningBalance, StringFormat=C}" -->
-                        <!--                     Width="80" > -->
-                        <!--     <DataGridTextColumn.ElementStyle> -->
-                        <!--         <Style TargetType="TextBlock"> -->
-                        <!--             <Setter Property="TextAlignment" Value="Right" /> -->
-                        <!--             <Setter Property="Padding" Value="0,0,8,0" />  -->
-                        <!--         </Style> -->
-                        <!--     </DataGridTextColumn.ElementStyle> -->
-                        <!-- </DataGridTextColumn> -->
                     </DataGrid.Columns>
                 </DataGrid>
-                <StackPanel Grid.Row="2" Margin="0,5"
+                <StackPanel Grid.Row="3" Margin="0,5"
                             Orientation="Horizontal"
                             VerticalAlignment="Center"
                             Visibility="{Binding NewReconciledBalance, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}">
@@ -182,13 +155,8 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-
-                    <!-- <Label -->
-                    <!--     Content="{Binding NewReconciledDate}" -->
-                    <!--     ContentStringFormat="{}{0:d}" -->
-                    <!--     Width="100" Margin="0,0" /> -->
                 </StackPanel>
-                <StackPanel Grid.Row="3" Margin="0,5"
+                <StackPanel Grid.Row="4" Margin="0,5"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
 
@@ -228,7 +196,7 @@
                             BorderThickness="0"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
-                            Visibility="{Binding Account.Type, ConverterParameter='CreditCard|Checking|Savings|Mortgage|PersonalLoan|HELOC|StudentLoan|Investment|CD|Retirement401k|Brokerage|CollegeFund|Cash|Auto|IRA|RothIRA|Roth401k', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}">
+                            Visibility="{Binding Account.Type, ConverterParameter='CreditCard|Checking|Savings|Mortgage|PersonalLoan|HELOC|StudentLoan|Investment|CD|Retirement401k|Brokerage|CollegeFund|Cash|Auto|IRA|RothIRA|Roth401k|RealEstate', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}">
                         <Path
                             Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
                             Fill="#555555"
@@ -249,7 +217,7 @@
 
                 </StackPanel>
 
-                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+                <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
 
                     <Button Content="Import" Command="{Binding ImportAccountCommand}"
                             Width="80"
@@ -262,15 +230,18 @@
                             Margin="0,0,10,0"
                             Click="OkButton_Click"
                             IsDefault="True"
-                            IsEnabled="{Binding CanSave}" >
+                            IsEnabled="{Binding CanSave}">
                         <Button.Style>
                             <Style TargetType="{x:Type Button}" BasedOn="{StaticResource SecondaryButtonStyle}">
                                 <Style.Triggers>
                                     <!-- Switch visual appearance to Primary when full reconciliation is ready -->
                                     <DataTrigger Binding="{Binding CanExecuteReconcile}" Value="True">
-                                        <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBackgroundBrush}" />
-                                        <Setter Property="Foreground" Value="{DynamicResource ButtonPrimaryForegroundBrush}" />
-                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                        <Setter Property="Background"
+                                                Value="{DynamicResource ButtonPrimaryBackgroundBrush}" />
+                                        <Setter Property="Foreground"
+                                                Value="{DynamicResource ButtonPrimaryForegroundBrush}" />
+                                        <Setter Property="BorderBrush"
+                                                Value="{DynamicResource ButtonPrimaryBorderBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -319,8 +290,7 @@
 
                         <Label Grid.Row="3" Grid.Column="0" Content="Adjustment transaction:" Margin="0,5,0,5"
                                Visibility="{Binding AdjustmentTransactionAmount, Converter={StaticResource NullToVisibilityConverter}}" />
-                        <!-- <Label Grid.Row="3" Grid.Column="1" Content="{Binding AdjustmentTransactionAmount}" ContentStringFormat="C" Margin="0,0" Visibility="{Binding AdjustmentTransactionAmount, Converter={StaticResource NullToVisibilityConverter}}"/> -->
-                        <!-- -->
+
                         <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,5,0,5"
                                    TextWrapping="Wrap"
                                    Visibility="{Binding AdjustmentTransactionAmount, Converter={StaticResource NullToVisibilityConverter}}"
@@ -337,7 +307,6 @@
                                  HorizontalAlignment="Left"
                                  Text="{Binding AdjustmentTransactionMemo, UpdateSourceTrigger=PropertyChanged}"
                                  Width="200" Margin="0,5,0,5" />
-
                     </Grid>
 
                     <TextBlock
@@ -424,6 +393,57 @@
                         HorizontalAlignment="Left" />
             </StackPanel>
         </Border>
+
+        <!-- INSERT AT THE BOTTOM OF ReconciliationWindow.xaml (Above LoadingOverlay) -->
+        <!-- Historical Items Resolution Overlay -->
+        <Grid Background="#80000000"
+              Visibility="{Binding IsHistoricalOverlayVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Background="White" Width="600" Height="380" VerticalAlignment="Center" Padding="20"
+                    CornerRadius="8"
+                    BorderBrush="Gray" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="Resolve Historical / Orphan Records" FontSize="16" FontWeight="Bold"
+                               Margin="0,0,0,4" />
+                    <TextBlock Grid.Row="1"
+                               Text="Select backdated transactions that were already accounted for in past periods to mark them as historically reconciled."
+                               TextWrapping="Wrap" Foreground="#666666" Margin="0,0,0,10" />
+
+                    <DataGrid Grid.Row="2"
+                              ItemsSource="{Binding HistoricalOrphanTransactions}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="Reconcile"
+                                                    Binding="{Binding IsCleared, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    Width="70" />
+                            <DataGridTextColumn Header="Date"
+                                                Binding="{Binding TransactionDate, StringFormat='{}{0:MM/dd/yyyy}'}"
+                                                Width="90" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"
+                                                IsReadOnly="True" />
+                            <DataGridTextColumn Header="Amount" Binding="{Binding SignedAmount, StringFormat=C}"
+                                                Width="90" IsReadOnly="True" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <Button Content="Apply Selected" Width="110"
+                                Command="{Binding ProcessHistoricalReconciliationCommand}"
+                                Margin="0,0,10,0" />
+                        <Button Content="Cancel" Command="{Binding CancelHistoricalOverlayCommand}" Width="80"
+                                Style="{StaticResource SecondaryButtonStyle}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- SPINNER OVERLAY: Sitting on top of everything -->
         <controls:LoadingOverlay

@@ -1,0 +1,423 @@
+﻿<UserControl x:Class="StayOnTarget.ViewModels.UserControls.EditBillsUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:StayOnTarget"
+             xmlns:controls="clr-namespace:StayOnTarget.Controls"
+             xmlns:converters="clr-namespace:StayOnTarget.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="680" d:DesignWidth="680">
+
+    <!-- <UserControl.Resources> -->
+    <!--     <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" /> -->
+    <!--     <converters:VisibleForMortgageTypeConverter x:Key="VisibleForMortgageTypeConverter" /> -->
+    <!--     <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" /> -->
+    <!--     <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" /> -->
+    <!--     <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" /> -->
+    <!-- </UserControl.Resources> -->
+
+    <!-- Semi-transparent Dimmed Backdrop Overlay -->
+    <Grid Background="#99000000">
+        <!-- Centered Floating Dialog Card -->
+        <Border Background="{DynamicResource SurfaceBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderColorBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Width="780"
+                Height="650"
+                Margin="20"
+                Padding="20"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="4" Opacity="0.4" />
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /> <!-- 0: Header -->
+                    <RowDefinition Height="*" />    <!-- 1: Active Form (Takes remaining space) -->
+                    <RowDefinition Height="Auto" /> <!-- 2: Staged Batch List (Capped Height) -->
+                    <RowDefinition Height="Auto" /> <!-- 3: Footer Actions -->
+                </Grid.RowDefinitions>
+
+                <!-- 0: HEADER -->
+                <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                    <TextBlock Text="Edit Bills"
+                               Style="{DynamicResource StyledTextBlock}"
+                               FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
+
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                        <TextBlock
+                            Text="{Binding StagedBills.Count, StringFormat='Pending items: {0}', FallbackValue='Pending items: 0'}"
+                            Style="{DynamicResource StyledSecondaryTextBlock}"
+                            FontSize="12" FontWeight="SemiBold" Margin="0,0,10,0" />
+                        <Button Content="✕"
+                                Command="{Binding CancelBillCommand}"
+                                Style="{DynamicResource SecondaryButtonStyle}"
+                                Width="26" Height="26" Padding="0"
+                                FontWeight="Bold" ToolTip="Close overlay" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- FORM CONTENT (Scrollable for smaller screens) -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <Label Style="{DynamicResource    StyledLabel}"
+                               Grid.Column="0" Grid.Row="0" Content="Name:" />
+                        <TextBox Grid.Column="1" Grid.Row="0"
+                                 x:Name="NameTextBox"
+                                 Text="{Binding EditingBillClone.Name, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                 Margin="5" />
+                        <Label Style="{DynamicResource    StyledLabel}"
+                               Grid.Column="2" Grid.Row="0"
+                               Content="Frequency:" />
+                        <ComboBox Grid.Column="3" Grid.Row="0"
+                                  Style="{DynamicResource    StyledEnumComboBox}"
+                                  ItemsSource="{Binding BillFrequencies}"
+                                  SelectedItem="{Binding EditingBillClone.Frequency}"
+                                  Margin="5" />
+                        <Label Style="{DynamicResource    StyledLabel}"
+                               Grid.Column="0" Grid.Row="1"
+                               Content="Budgeted:" />
+                        <controls:NumericTextBox Grid.Column="1"
+                                                 Grid.Row="1"
+                                                 Text="{Binding EditingBillClone.ExpectedAmount, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                                 Margin="5" />
+
+                        <Label Grid.Column="2" Grid.Row="1"
+                               Content="Due Day:">
+                            <Label.Style>
+                                <Style TargetType="Label"
+                                       BasedOn="{StaticResource StyledLabel}">
+                                    <Setter Property="Visibility"
+                                            Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding EditingBillClone.Frequency}"
+                                            Value="Monthly">
+                                            <Setter Property="Visibility"
+                                                    Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Label.Style>
+                        </Label>
+                        <TextBox Grid.Column="3" Grid.Row="1"
+                                 Text="{Binding EditingBillClone.DueDay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                 Margin="5">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox">
+                                    <Setter Property="Visibility"
+                                            Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding EditingBillClone.Frequency}"
+                                            Value="Monthly">
+                                            <Setter Property="Visibility"
+                                                    Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+
+                        <Label Grid.Column="2" Grid.Row="1"
+                               Content="Next Due Date:">
+                            <Label.Style>
+                                <Style TargetType="Label"
+                                       BasedOn="{StaticResource StyledLabel}">
+                                    <Setter Property="Visibility"
+                                            Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding EditingBillClone.Frequency}"
+                                            Value="Yearly">
+                                            <Setter Property="Visibility"
+                                                    Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Label.Style>
+                        </Label>
+                        <DatePicker Grid.Column="3" Grid.Row="1"
+                                    SelectedDate="{Binding EditingBillClone.NextDueDate}"
+                                    Margin="5">
+                            <DatePicker.Style>
+                                <Style TargetType="DatePicker">
+                                    <Setter Property="Visibility"
+                                            Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger
+                                            Binding="{Binding EditingBillClone.Frequency}"
+                                            Value="Yearly">
+                                            <Setter Property="Visibility"
+                                                    Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DatePicker.Style>
+                        </DatePicker>
+
+                        <Label Style="{DynamicResource    StyledLabel}"
+                               Grid.Column="0" Grid.Row="2"
+                               Content="Paid From:" />
+                        <ComboBox Grid.Column="1" Grid.Row="2"
+                                  ItemsSource="{Binding ActiveAccountsWithNone}"
+                                  x:Name="BillAccountComboBox"
+                                  SelectedValue="{Binding EditingBillClone.AccountId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name" Margin="5" />
+                        <Label Style="{DynamicResource    StyledLabel}"
+                               Grid.Column="2" Grid.Row="2"
+                               Content="Paid To:" />
+                        <ComboBox Grid.Column="3" Grid.Row="2"
+                                  ItemsSource="{Binding ActiveAccountsWithNone}"
+                                  x:Name="BillToAccountComboBox"
+                                  SelectedValue="{Binding EditingBillClone.ToAccountId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name" Margin="5" />
+
+                        <StackPanel Grid.Column="0" Grid.Row="3"
+                                    Grid.ColumnSpan="4"
+                                    Orientation="Horizontal" Margin="5">
+                            <CheckBox
+                                Foreground="{DynamicResource SecondaryTextBrush}"
+                                Content="Principal Only (Mortgage/Loan Extra)"
+                                IsChecked="{Binding EditingBillClone.IsPrincipalOnly}"
+                                VerticalAlignment="Center"
+                                Margin="0,0,10,0">
+                                <CheckBox.Visibility>
+                                    <MultiBinding
+                                        Converter="{StaticResource VisibleForMortgageTypeConverter}">
+                                        <!-- Binding 1: The integer ID of the To Account -->
+                                        <Binding
+                                            Path="EditingBillClone.ToAccountId" />
+                                        <!-- Binding 2: The full list of accounts to look up the type -->
+                                        <Binding Path="Accounts" />
+                                    </MultiBinding>
+                                </CheckBox.Visibility>
+                            </CheckBox>
+                        </StackPanel>
+
+                        <Label Style="{DynamicResource    StyledLabel}"
+                               Grid.Column="0" Grid.Row="4"
+                               Content="Sub Category:" />
+                        <ComboBox Grid.Column="1" Grid.Row="4"
+                                  x:Name="BillSubCategoryComboBox"
+                                  ItemsSource="{Binding SubCategoriesWithNone}"
+                                  SelectedValue="{Binding EditingBillClone.SubCategoryId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name" Margin="5" />
+                        <Label Style="{DynamicResource    StyledLabel}"
+                               Grid.Column="2" Grid.Row="4"
+                               Content="Envelope:" />
+                        <ComboBox Grid.Column="3" Grid.Row="4"
+                                  x:Name="BillBucketComboBox"
+                                  ItemsSource="{Binding BucketsWithNone}"
+                                  SelectedValue="{Binding EditingBillClone.BucketId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name" Margin="5" />
+
+                        <!-- Monthly / Seasonal Overrides Section -->
+                        <StackPanel Grid.Row="5" Grid.Column="0"
+                                    Grid.ColumnSpan="4" Margin="5"
+                                    Visibility="{Binding EditingBillClone.Frequency, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Monthly}">
+
+                            <DockPanel Margin="0,5,0,4">
+                                <TextBlock Text="Monthly / Seasonal Overrides"
+                                           Style="{DynamicResource StyledTextBlock}"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center" />
+
+                                <!-- Add Override Button -->
+                                <Button Content="+ Add Month"
+                                        Command="{Binding AddBillOverrideCommand}"
+                                        Style="{DynamicResource SecondaryButtonStyle}"
+                                        DockPanel.Dock="Right"
+                                        HorizontalAlignment="Right"
+                                        Padding="8,2"
+                                        FontSize="11" />
+                            </DockPanel>
+
+                            <TextBlock
+                                Text="Set explicit override amounts for specific months (e.g. higher utility costs in summer)."
+                                Style="{DynamicResource StyledSecondaryTextBlock}"
+                                FontSize="11" Margin="0,0,0,6" />
+
+                            <DataGrid
+                                ItemsSource="{Binding EditingBillOverrides}"
+                                AutoGenerateColumns="False"
+                                CanUserAddRows="False"
+                                CanUserDeleteRows="False"
+                                MaxHeight="160"
+                                Margin="0,0,0,5">
+                                <DataGrid.Columns>
+                                    <!-- Month Selector -->
+                                    <DataGridTemplateColumn Header="Month"
+                                                            Width="140">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ComboBox
+                                                    ItemsSource="{Binding DataContext.MonthOptions, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    SelectedValuePath="Key"
+                                                    DisplayMemberPath="Name"
+                                                    SelectedValue="{Binding MonthKey, UpdateSourceTrigger=PropertyChanged}"
+                                                    Margin="2" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- Override Amount -->
+                                    <DataGridTemplateColumn
+                                        Header="Override Amount" Width="140">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <controls:NumericTextBox
+                                                    Text="{Binding Amount, UpdateSourceTrigger=PropertyChanged, StringFormat=F2}"
+                                                    Margin="2" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- Delete Row Button -->
+                                    <DataGridTemplateColumn Width="60">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Button Content="✕"
+                                                        Command="{Binding DataContext.RemoveBillOverrideCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{DynamicResource DangerButtonStyle}"
+                                                        Padding="4,1"
+                                                        Margin="2"
+                                                        ToolTip="Remove this override" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- PENDING BATCH STAGING LIST (Visible only when StagedBills has items) -->
+                <Border Grid.Row="2" Grid.Column="0"
+                        Background="{DynamicResource WindowBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderColorBrush}"
+                        BorderThickness="1" CornerRadius="6"
+                        Margin="0,0,0,15" Padding="8"
+                        Visibility="{Binding StagedBills.Count, Converter={StaticResource IntToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Staged for Save:"
+                                   Style="{DynamicResource StyledSecondaryTextBlock}"
+                                   FontWeight="Bold" FontSize="11" Margin="0,0,0,4" />
+
+                        <TextBlock Grid.Row="0" Text="Staged for Save:"
+                                   Style="{DynamicResource StyledSecondaryTextBlock}"
+                                   FontWeight="Bold" FontSize="11" Margin="0,0,0,4" />
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding StagedBills}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="0,2">
+                                            <Button Content="✕"
+                                                    Command="{Binding DataContext.RemoveStagedBillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{DynamicResource DangerButtonStyle}"
+                                                    Width="18" Height="18" Padding="0" Margin="0,0,8,0"
+                                                    ToolTip="Remove from batch" />
+
+                                            <TextBlock Text="{Binding ExpectedAmount, StringFormat=C}"
+                                                       DockPanel.Dock="Right" FontWeight="Bold"
+                                                       Style="{DynamicResource StyledTextBlock}" />
+                                            <TextBlock Text="{Binding Name}" Style="{DynamicResource StyledTextBlock}"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+                <!-- FOOTER ACTIONS -->
+                <Grid Grid.Row="3" Margin="0,5,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0"
+                            Content="Clear Form"
+                            Command="{Binding ClearCurrentDraftCommand}"
+                            Style="{DynamicResource SecondaryButtonStyle}"
+                            Width="90" />
+
+                    <!-- Batch Controls (Right side) -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Add Another"
+                                x:Name="AddAnotherBillButton"
+                                IsDefault="True"
+                                Command="{Binding AddAnotherBillCommand}"
+                                Click="AddAnotherButton_Click"
+                                Style="{DynamicResource SecondaryButtonStyle}"
+                                Width="100" Margin="4,0" />
+
+                        <Button Command="{Binding SaveBillCommand}"
+                                IsEnabled="{Binding CanSaveBill}"
+                                MinWidth="100" Padding="12,6"
+                                Margin="4,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                    <!-- Bind to the integer value -->
+                                    <Setter Property="Content" Value="{Binding TotalBillItemsToSaveCount}" />
+                                    <!-- Default template for multiple staged items -->
+                                    <Setter Property="ContentStringFormat" Value="Save All ({0})" />
+                                    <Style.Triggers>
+                                        <!-- Hide count when saving only 1 item (active draft or 1 staged item) -->
+                                        <DataTrigger Binding="{Binding TotalBillItemsToSaveCount}" Value="1">
+                                            <Setter Property="Content" Value="Save" />
+                                            <Setter Property="ContentStringFormat" Value="{x:Null}" />
+                                        </DataTrigger>
+                                        <!-- Default label when 0 -->
+                                        <DataTrigger Binding="{Binding TotalBillItemsToSaveCount}" Value="0">
+                                            <Setter Property="Content" Value="Save" />
+                                            <Setter Property="ContentStringFormat" Value="{x:Null}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Cancel"
+                                Command="{Binding CancelBillCommand}"
+                                Style="{DynamicResource SecondaryButtonStyle}"
+                                Width="80" Margin="4,0" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

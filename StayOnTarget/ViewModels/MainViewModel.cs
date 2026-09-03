@@ -12,16 +12,18 @@ using System.Windows.Data;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
+using StayOnTarget.Extensions;
 using StayOnTarget.Helpers;
 using StayOnTarget.Themes;
 using StayOnTarget.Views;
+#pragma warning disable CS0414 // Field is assigned but its value is never used
 
 namespace StayOnTarget.ViewModels;
 
 public class MainViewModel : ViewModelBase {
-    private readonly BudgetService _budgetService;
-    private readonly ReconciliationService _reconciliationService;
-    private readonly IProjectionEngine _projectionEngine;
+    private readonly BudgetService _budgetService = null!;
+    private readonly ReconciliationService _reconciliationService = null!;
+    private readonly IProjectionEngine _projectionEngine = null!;
     private RangeObservableCollection<PeriodBill> _currentPeriodBills = new();
     private RangeObservableCollection<PeriodBucket> _currentPeriodBuckets = new();
     private int _pastDueCount;
@@ -48,7 +50,6 @@ public class MainViewModel : ViewModelBase {
     private PeriodBucket? _editingPeriodBucketClone;
     private Account? _editingAccountClone;
     private Transaction? _editingTransactionClone;
-    private bool _isEditingTransactionEnabled = true;
     private Paycheck? _editingPaycheckClone;
     private DateTime _currentPeriodDate = DateTime.MinValue;
     private bool _showByMonth;
@@ -66,18 +67,96 @@ public class MainViewModel : ViewModelBase {
     private NavigationItemViewModel? _selectedNavigationItem;
 
     #region Properties
-    
+
+    #region Overlay Staged Collections
+
+    public RangeObservableCollection<Transaction> StagedTransactions { get; } = new();
+
+    public IRelayCommand AddAnotherTransactionCommand { get; } = null!;
+    public IAsyncRelayCommand DeleteSelectedTransactionCommand { get; } = null!;
+    public IRelayCommand<Transaction> RemoveStagedTransactionCommand { get; } = null!;
+    public IRelayCommand ClearCurrentTransactionDraftCommand { get; } = null!;
+
+    public RangeObservableCollection<Account> StagedAccounts { get; } = new();
+
+    public IRelayCommand AddAnotherAccountCommand { get; } = null!;
+    public IAsyncRelayCommand DeleteSelectedAccountCommand { get; } = null!;
+    public IRelayCommand<Account> RemoveStagedAccountCommand { get; } = null!;
+    public IRelayCommand ClearCurrentAccountDraftCommand { get; } = null!;
+
+    public RangeObservableCollection<Bill> StagedBills { get; } = new();
+
+    public IRelayCommand AddAnotherBillCommand { get; } = null!;
+    public IAsyncRelayCommand DeleteSelectedBillCommand { get; } = null!;
+    public IRelayCommand<Bill> RemoveStagedBillCommand { get; } = null!;
+    public IRelayCommand ClearCurrentBillDraftCommand { get; } = null!;
+
+    public RangeObservableCollection<BudgetBucket> StagedBuckets { get; } = new();
+
+    public IRelayCommand AddAnotherBucketCommand { get; } = null!;
+    public IAsyncRelayCommand DeleteSelectedBucketCommand { get; } = null!;
+    public IRelayCommand<BudgetBucket> RemoveStagedBucketCommand { get; } = null!;
+    public IRelayCommand ClearCurrentBucketDraftCommand { get; } = null!;
+
+    public RangeObservableCollection<Paycheck> StagedPaychecks { get; } = new();
+
+    public IRelayCommand AddAnotherPaycheckCommand { get; } = null!;
+    public IAsyncRelayCommand DeleteSelectedPaycheckCommand { get; } = null!;
+    public IRelayCommand<Paycheck> RemoveStagedPaycheckCommand { get; } = null!;
+    public IRelayCommand ClearCurrentPaycheckDraftCommand { get; } = null!;
+
+    public RangeObservableCollection<Category> StagedCategories { get; } = new();
+
+    public IRelayCommand AddAnotherCategoryCommand { get; } = null!;
+    public IAsyncRelayCommand DeleteSelectedCategoryCommand { get; } = null!;
+    public IRelayCommand<Category> RemoveStagedCategoryCommand { get; } = null!;
+    public IRelayCommand ClearCurrentCategoryDraftCommand { get; } = null!;
+
+    public RangeObservableCollection<SubCategory> StagedSubCategories { get; } = new();
+
+    public IRelayCommand<SubCategory> RemoveStagedSubCategoryCommand { get; } = null!;
+
+    public bool HasStagedCategoryItems => (StagedCategories?.Count > 0) || (StagedSubCategories?.Count > 0);
+
+    public IEnumerable<Category> AvailableParentCategories {
+        get {
+            var list = CategoriesWithNone.ToList();
+
+            // Include active category clone if present and not already in the list
+            if (EditingCategoryClone != null) {
+                var displayName = string.IsNullOrWhiteSpace(EditingCategoryClone.Name) 
+                    ? "(New Category)" 
+                    : EditingCategoryClone.Name;
+
+                if (!list.Any(c => c.Name.Equals(displayName, StringComparison.OrdinalIgnoreCase))) {
+                    list.Add(new Category { Id = 0, Name = displayName });
+                }
+            }
+
+            // Add staged categories if not already present
+            foreach (var staged in StagedCategories) {
+                if (!string.IsNullOrWhiteSpace(staged.Name) &&
+                    !list.Any(c => c.Name.Equals(staged.Name, StringComparison.OrdinalIgnoreCase))) {
+                    list.Add(new Category { Id = staged.Id, Name = staged.Name });
+                }
+            }
+
+            return list;
+        }
+    }
+
+    #endregion
+
     #region Reconciliation Sub-Panel Fields & Properties
 
     private int? _originalFromAccountReconciledId;
     private int? _originalToAccountReconciledId;
 
     public ObservableCollection<TransactionStatusItemViewModel> EditingTransactionStatusItems { get; } = new();
-    
+
     #endregion
 
-    public List<MonthOption> MonthOptions { get; } = new()
-    {
+    public List<MonthOption> MonthOptions { get; } = new() {
         new MonthOption { Key = "01", Name = "January" },
         new MonthOption { Key = "02", Name = "February" },
         new MonthOption { Key = "03", Name = "March" },
@@ -91,33 +170,31 @@ public class MainViewModel : ViewModelBase {
         new MonthOption { Key = "11", Name = "November" },
         new MonthOption { Key = "12", Name = "December" }
     };
-    
+
     // Commands
-    public IRelayCommand AddBucketOverrideCommand { get; }
-    public IRelayCommand<OverrideItem> RemoveBucketOverrideCommand { get; }
-    
+    public IRelayCommand AddBucketOverrideCommand { get; } = null!;
+    public IRelayCommand<OverrideItem> RemoveBucketOverrideCommand { get; } = null!;
+
     // Commands
-    public IRelayCommand AddBillOverrideCommand { get; }
-    public IRelayCommand<OverrideItem> RemoveBillOverrideCommand { get; }
-    
+    public IRelayCommand AddBillOverrideCommand { get; } = null!;
+    public IRelayCommand<OverrideItem> RemoveBillOverrideCommand { get; } = null!;
+
     private bool _isFlyoutOpen;
-    public bool IsFlyoutOpen
-    {
+
+    public bool IsFlyoutOpen {
         get => _isFlyoutOpen;
         set => SetProperty(ref _isFlyoutOpen, value);
     }
-    
-    private void ToggleFlyout()
-    {
+
+    private void ToggleFlyout() {
         try {
             IsFlyoutOpen = !IsFlyoutOpen;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error toggling flyout in MainViewModel.");
-            
         }
     }
-    
+
     public ObservableCollection<NavigationItemViewModel> NavigationItems { get; } = new();
 
     public NavigationItemViewModel? SelectedNavigationItem {
@@ -130,7 +207,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedNavigationItem in MainViewModel.");
-                
             }
         }
     }
@@ -158,7 +234,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SnowballOptions in MainViewModel.");
-                
             }
         }
     }
@@ -177,7 +252,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to save SnowballOptions setting.");
-            
         }
     }
 
@@ -217,8 +291,56 @@ public class MainViewModel : ViewModelBase {
             _reconciliationService = reconciliationService;
             _projectionEngine = new ProjectionEngine();
 
+            AddAnotherTransactionCommand = new RelayCommand(AddAnotherTransaction,
+                () => IsEditingTransaction && IsEditingTransactionEnabled);
+
+            DeleteSelectedTransactionCommand =
+                new AsyncRelayCommand(DeleteSelectedTransactionAsync, () => CanEditTransaction);
+            RemoveStagedTransactionCommand = new RelayCommand<Transaction>(RemoveStagedTransaction);
+            ClearCurrentTransactionDraftCommand = new RelayCommand(ClearCurrentTransactionDraft);
+
+            AddAnotherAccountCommand = new RelayCommand(AddAnotherAccount,
+                () => IsEditingAccount && IsEditingAccountEnabled);
+
+            DeleteSelectedAccountCommand = new AsyncRelayCommand(DeleteSelectedAccountAsync, () => CanEditAccount);
+            RemoveStagedAccountCommand = new RelayCommand<Account>(RemoveStagedAccount);
+            ClearCurrentAccountDraftCommand = new RelayCommand(ClearCurrentAccountDraft);
+
+            AddAnotherBillCommand = new RelayCommand(AddAnotherBill,
+                () => IsEditingBill && IsEditingBillEnabled);
+
+            DeleteSelectedBillCommand = new AsyncRelayCommand(DeleteSelectedBillAsync, () => CanEditBill);
+            RemoveStagedBillCommand = new RelayCommand<Bill>(RemoveStagedBill);
+            ClearCurrentBillDraftCommand = new RelayCommand(ClearCurrentBillDraft);
+
+            AddAnotherBucketCommand = new RelayCommand(AddAnotherBucket,
+                () => IsEditingBucket && IsEditingBucketEnabled);
+
+            DeleteSelectedBucketCommand = new AsyncRelayCommand(DeleteSelectedBucketAsync, () => CanEditBucket);
+            RemoveStagedBucketCommand = new RelayCommand<BudgetBucket>(RemoveStagedBucket);
+            ClearCurrentBucketDraftCommand = new RelayCommand(ClearCurrentBucketDraft);
+
+            AddAnotherPaycheckCommand = new RelayCommand(AddAnotherPaycheck,
+                () => IsEditingPaycheck && IsEditingPaycheckEnabled);
+
+            DeleteSelectedPaycheckCommand = new AsyncRelayCommand(DeleteSelectedPaycheckAsync, () => CanEditPaycheck);
+            RemoveStagedPaycheckCommand = new RelayCommand<Paycheck>(RemoveStagedPaycheck);
+            ClearCurrentPaycheckDraftCommand = new RelayCommand(ClearCurrentPaycheckDraft);
+
+            AddAnotherCategoryCommand = new RelayCommand(
+                AddAnotherCategory,
+                () => IsEditingCategory &&
+                      IsEditingCategoryEnabled &&
+                      ((EditingCategoryClone != null && !string.IsNullOrWhiteSpace(EditingCategoryClone.Name)) ||
+                       (EditingSubCategoryClone != null && !string.IsNullOrWhiteSpace(EditingSubCategoryClone.Name)))
+            );
+
+            DeleteSelectedCategoryCommand = new AsyncRelayCommand(DeleteSelectedCategoryAsync, () => CanEditCategory);
+            RemoveStagedCategoryCommand = new RelayCommand<Category>(RemoveStagedCategory);
+            ClearCurrentCategoryDraftCommand = new RelayCommand(ClearCurrentCategoryDraft);
+
             ToggleFlyoutCommand = new RelayCommand(ToggleFlyout);
-            
+
             ImportAccountCommand = new AsyncRelayCommand(ImportAccountAsync, () => CanEditAccount);
             ReconcileAccountCommand =
                 new AsyncRelayCommand(ReconcileAccountAsync, () => CanEditAccount);
@@ -235,6 +357,12 @@ public class MainViewModel : ViewModelBase {
             SaveBillCommand = new AsyncRelayCommand(SaveBillAsync, () => IsEditingBill);
             DeleteBillCommand = new AsyncRelayCommand(DeleteBillAsync, () => IsEditingBill);
 
+            StagedBills.CollectionChanged += (s, e) => {
+                OnPropertyChanged(nameof(TotalBillItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveBill));
+                SaveBillCommand.NotifyCanExecuteChanged();
+            };
+
             EditPeriodBillCommand = new RelayCommand(EditPeriodBill, () => CanEditPeriodBill);
             CancelPeriodBillCommand = new RelayCommand(CancelPeriodBill, () => IsEditingPeriodBill);
             SavePeriodBillCommand =
@@ -248,17 +376,41 @@ public class MainViewModel : ViewModelBase {
             SaveBucketCommand = new AsyncRelayCommand(SaveBucketAsync, () => IsEditingBucket);
             DeleteBucketCommand = new AsyncRelayCommand(DeleteBucketAsync);
 
+            StagedBuckets.CollectionChanged += (s, e) => {
+                OnPropertyChanged(nameof(TotalBucketItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveBucket));
+                SaveBucketCommand.NotifyCanExecuteChanged();
+            };
+
             AddSubCategoryCommand = new RelayCommand(AddSubCategory, () => IsNotEditingSubCategory);
             EditSubCategoryCommand = new RelayCommand(EditSubCategory, () => CanEditSubCategory);
             CancelSubCategoryCommand = new RelayCommand(CancelSubCategory, () => IsEditingSubCategory);
             SaveSubCategoryCommand = new AsyncRelayCommand(SaveSubCategoryAsync, () => IsEditingSubCategory);
-            DeleteSubCategoryCommand = new AsyncRelayCommand(DeleteSubCategoryAsync);
+            DeleteSubCategoryCommand = new AsyncRelayCommand(DeleteSubCategoryAsync, () => CanEditSubCategory);
 
+            DeleteSelectedSubCategoryCommand = new AsyncRelayCommand(DeleteSelectedSubCategoryAsync, () => CanEditSubCategory);
+            
             AddCategoryCommand = new RelayCommand(AddCategory, () => IsNotEditingCategory);
             EditCategoryCommand = new RelayCommand(EditCategory, () => CanEditCategory);
             CancelCategoryCommand = new RelayCommand(CancelCategory, () => IsEditingCategory);
             SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => IsEditingCategory);
             DeleteCategoryCommand = new AsyncRelayCommand(DeleteCategoryAsync);
+
+            RemoveStagedSubCategoryCommand = new RelayCommand<SubCategory>(RemoveStagedSubCategory);
+
+            StagedSubCategories.CollectionChanged += (s, e) => {
+                OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveCategory));
+                OnPropertyChanged(nameof(HasStagedCategoryItems));
+                SaveCategoryCommand.NotifyCanExecuteChanged();
+            };
+
+            StagedCategories.CollectionChanged += (s, e) => {
+                OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveCategory));
+                OnPropertyChanged(nameof(HasStagedCategoryItems));
+                SaveCategoryCommand.NotifyCanExecuteChanged();
+            };
 
             EditPeriodBucketCommand = new RelayCommand(EditPeriodBucket, () => CanEditPeriodBucket);
             CancelPeriodBucketCommand =
@@ -273,9 +425,18 @@ public class MainViewModel : ViewModelBase {
             CancelTransactionCommand = new RelayCommand(CancelTransaction, () => IsEditingTransaction);
             SaveTransactionCommand =
                 new AsyncRelayCommand(_ => SaveTransactionAsync(), () => IsEditingTransaction);
+            // DeleteTransactionCommand =
+            //     new AsyncRelayCommand(DeleteTransactionAsync, () => IsEditingTransaction);
+
             DeleteTransactionCommand =
-                new AsyncRelayCommand(DeleteTransactionAsync, () => IsEditingTransaction);
-            
+                new AsyncRelayCommand(DeleteTransactionAsync, () => SelectedTransaction != null);
+
+            StagedTransactions.CollectionChanged += (s, e) => {
+                OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveTransaction));
+                SaveTransactionCommand.NotifyCanExecuteChanged();
+            };
+
             AddPaycheckCommand = new RelayCommand(AddPaycheck);
             EditPaycheckCommand = new RelayCommand(EditPaycheck, () => CanEditPaycheck);
             CancelPaycheckCommand = new RelayCommand(CancelPaycheck, () => IsEditingPaycheck);
@@ -283,11 +444,23 @@ public class MainViewModel : ViewModelBase {
             DeletePaycheckCommand =
                 new AsyncRelayCommand(DeletePaycheckAsync, () => IsEditingPaycheck);
 
+            StagedPaychecks.CollectionChanged += (s, e) => {
+                OnPropertyChanged(nameof(TotalPaycheckItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSavePaycheck));
+                SavePaycheckCommand.NotifyCanExecuteChanged();
+            };
+
             AddAccountCommand = new RelayCommand(AddAccount, () => IsNotEditingAccount);
             EditAccountCommand = new RelayCommand(EditAccount, () => CanEditAccount);
             CancelAccountCommand = new RelayCommand(CancelAccount, () => IsEditingAccount);
             SaveAccountCommand = new AsyncRelayCommand(SaveAccountAsync, () => IsEditingAccount);
             DeleteAccountCommand = new AsyncRelayCommand(DeleteAccountAsync, () => IsEditingAccount);
+
+            StagedAccounts.CollectionChanged += (s, e) => {
+                OnPropertyChanged(nameof(TotalAccountItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveAccount));
+                SaveAccountCommand.NotifyCanExecuteChanged();
+            };
 
             ShowAmortizationCommand =
                 new RelayCommand<Account>(a => ShowAmortization(a as Account ?? throw new InvalidOperationException()));
@@ -326,10 +499,10 @@ public class MainViewModel : ViewModelBase {
 
             AddBillOverrideCommand = new RelayCommand(AddBillOverride);
             RemoveBillOverrideCommand = new RelayCommand<OverrideItem>(RemoveBillOverride);
-            
+
             AddBucketOverrideCommand = new RelayCommand(AddBucketOverride);
             RemoveBucketOverrideCommand = new RelayCommand<OverrideItem>(RemoveBucketOverride);
-            
+
             InitializeNavigationMenu();
 
             OpenManageExcludedAccountsCommand = new RelayCommand(OpenManageExcludedAccounts);
@@ -342,7 +515,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Fatal(ex, "Critical error initializing MainViewModel.");
-            
         }
     }
 
@@ -353,7 +525,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error toggling theme in MainViewModel.");
-            
         }
     }
 
@@ -374,7 +545,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error requesting projection recalculation in MainViewModel.");
-            
         }
     }
 
@@ -386,23 +556,21 @@ public class MainViewModel : ViewModelBase {
 
             await CalculateProjectionsAsync(cancellationToken);
         }
-        catch (OperationCanceledException) {
-        }
+        catch (OperationCanceledException) { }
         catch (Exception ex) {
             Log.Error(ex, "Error running debounced projections.");
-            
         }
     }
 
 
-    public IRelayCommand InitializeDataCommand { get; }
-    public IRelayCommand ExportTransactionsCommand { get; }
+    public IRelayCommand InitializeDataCommand { get; } = null!;
+    public IRelayCommand ExportTransactionsCommand { get; } = null!;
 
-    public IAsyncRelayCommand<ProjectionItem> PayBillCommand { get; }
-    public IAsyncRelayCommand<ProjectionItem> FundEnvelopeCommand { get; }
-    public IAsyncRelayCommand<ProjectionItem> SkipFundEnvelopeCommand { get; }
+    public IAsyncRelayCommand<ProjectionItem> PayBillCommand { get; } = null!;
+    public IAsyncRelayCommand<ProjectionItem> FundEnvelopeCommand { get; } = null!;
+    public IAsyncRelayCommand<ProjectionItem> SkipFundEnvelopeCommand { get; } = null!;
 
-    public IAsyncRelayCommand<PeriodBill> PayPeriodBillCommand { get; }
+    public IAsyncRelayCommand<PeriodBill> PayPeriodBillCommand { get; } = null!;
 
     private async Task InitializeDataAsync() {
         await Task.Yield();
@@ -437,7 +605,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing data in MainViewModel.");
-            
         }
         finally {
             IsLoading = false;
@@ -462,7 +629,6 @@ public class MainViewModel : ViewModelBase {
                 }
                 catch (Exception ex) {
                     Log.Error(ex, "Failed to deserialize SnowballOptions setting.");
-                    
                 }
             }
 
@@ -472,7 +638,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading snowball options.");
-            
         }
     }
 
@@ -489,7 +654,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting UseAutoSweep in MainViewModel.");
-                
             }
         }
     }
@@ -610,7 +774,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting Accounts collection in MainViewModel.");
-                
             }
         }
     }
@@ -647,39 +810,47 @@ public class MainViewModel : ViewModelBase {
         set {
             try {
                 if (SetProperty(ref _selectedSubCategory, value)) {
+                    if(_selectedCategory!=null) IsEditingSubCategory = true;
+                    // Add these lines to notify WPF controls bound to SubCategory commands:
                     OnPropertyChanged(nameof(CanEditSubCategory));
                     EditSubCategoryCommand.NotifyCanExecuteChanged();
+                    //DeleteSubCategoryCommand.NotifyCanExecuteChanged();
+                    SaveSubCategoryCommand.NotifyCanExecuteChanged();
+                    CancelSubCategoryCommand.NotifyCanExecuteChanged();
+                    DeleteSelectedSubCategoryCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedSubCategory in MainViewModel.");
-                
             }
         }
     }
 
     public SubCategory? EditingSubCategoryClone {
         get => _editingSubCategoryClone;
-        set => SetProperty(ref _editingSubCategoryClone, value);
+        set {
+            if (_editingSubCategoryClone != null) {
+                _editingSubCategoryClone.PropertyChanged -= EditingSubCategoryClone_PropertyChanged;
+            }
+
+            if (SetProperty(ref _editingSubCategoryClone, value)) {
+                if (_editingSubCategoryClone != null) {
+                    _editingSubCategoryClone.PropertyChanged += EditingSubCategoryClone_PropertyChanged;
+                }
+                SaveSubCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     public bool IsEditingSubCategory {
         get => _isEditingSubCategory;
         set {
-            try {
-                if (SetProperty(ref _isEditingSubCategory, value)) {
-                    OnPropertyChanged(nameof(IsNotEditingSubCategory));
-                    OnPropertyChanged(nameof(CanEditSubCategory));
-                    AddSubCategoryCommand.NotifyCanExecuteChanged();
-                    EditSubCategoryCommand.NotifyCanExecuteChanged();
-                    CancelSubCategoryCommand.NotifyCanExecuteChanged();
-                    SaveSubCategoryCommand.NotifyCanExecuteChanged();
-                    DeleteSubCategoryCommand.NotifyCanExecuteChanged();
-                }
-            }
-            catch (Exception ex) {
-                Log.Error(ex, "Error setting IsEditingSubCategory in MainViewModel.");
-                
+            if (SetProperty(ref _isEditingSubCategory, value)) {
+                // EditSubCategoryCommand might still depend on whether an edit session is active,
+                // but DeleteSubCategoryCommand is no longer tied to this state.
+                EditSubCategoryCommand.NotifyCanExecuteChanged(); 
+                SaveSubCategoryCommand.NotifyCanExecuteChanged();
+                CancelSubCategoryCommand.NotifyCanExecuteChanged();
             }
         }
     }
@@ -687,13 +858,14 @@ public class MainViewModel : ViewModelBase {
     public bool IsNotEditingSubCategory => !IsEditingSubCategory;
     public bool CanEditSubCategory => SelectedSubCategory != null;
 
-    public IRelayCommand AddSubCategoryCommand { get; }
-    public IRelayCommand EditSubCategoryCommand { get; }
-    public IRelayCommand SaveSubCategoryCommand { get; }
-    public IRelayCommand CancelSubCategoryCommand { get; }
-    public IRelayCommand DeleteSubCategoryCommand { get; }
-
-
+    public IRelayCommand AddSubCategoryCommand { get; } = null!;
+    public IRelayCommand EditSubCategoryCommand { get; } = null!;
+    public IRelayCommand SaveSubCategoryCommand { get; } = null!;
+    public IRelayCommand CancelSubCategoryCommand { get; } = null!;
+    public IAsyncRelayCommand DeleteSubCategoryCommand { get; } = null!;
+    
+    public IAsyncRelayCommand DeleteSelectedSubCategoryCommand { get; } = null!;
+    
     public Category? SelectedCategory {
         get => _selectedCategory;
         set {
@@ -701,11 +873,11 @@ public class MainViewModel : ViewModelBase {
                 if (SetProperty(ref _selectedCategory, value)) {
                     OnPropertyChanged(nameof(CanEditCategory));
                     EditCategoryCommand.NotifyCanExecuteChanged();
+                    DeleteSelectedCategoryCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedCategory in MainViewModel.");
-                
             }
         }
     }
@@ -731,7 +903,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingCategory in MainViewModel.");
-                
             }
         }
     }
@@ -739,11 +910,11 @@ public class MainViewModel : ViewModelBase {
     public bool IsNotEditingCategory => !IsEditingCategory;
     public bool CanEditCategory => SelectedCategory != null;
 
-    public IRelayCommand AddCategoryCommand { get; }
-    public IRelayCommand EditCategoryCommand { get; }
-    public IRelayCommand SaveCategoryCommand { get; }
-    public IRelayCommand CancelCategoryCommand { get; }
-    public IRelayCommand DeleteCategoryCommand { get; }
+    public IRelayCommand AddCategoryCommand { get; } = null!;
+    public IRelayCommand EditCategoryCommand { get; } = null!;
+    public IRelayCommand SaveCategoryCommand { get; } = null!;
+    public IRelayCommand CancelCategoryCommand { get; } = null!;
+    public IRelayCommand DeleteCategoryCommand { get; } = null!;
 
     public RangeObservableCollection<SubCategory> SubCategoriesWithNone { get; } = new();
 
@@ -759,7 +930,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting CurrentPeriodBills in MainViewModel.");
-                
             }
         }
     }
@@ -784,7 +954,7 @@ public class MainViewModel : ViewModelBase {
             var pastDue = CurrentPeriodBills.Where(pb =>
                     !pb.HasActualAmount && pb.DueDate < today && pb.ActualAmount != 0 && pb.TransactionAmount == 0)
                 .ToList();
-            
+
             var upcoming = CurrentPeriodBills.Where(pb =>
                 !pb.HasActualAmount && pb.DueDate >= today && pb.DueDate <= upcomingLimit && pb.ActualAmount != 0 &&
                 pb.TransactionAmount == 0).ToList();
@@ -804,7 +974,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating warning metrics in MainViewModel.");
-            
         }
     }
 
@@ -861,7 +1030,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating bucket warning metrics in MainViewModel.");
-            
         }
     }
 
@@ -881,7 +1049,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting CurrentPeriodBuckets in MainViewModel.");
-                
             }
         }
     }
@@ -914,11 +1081,9 @@ public class MainViewModel : ViewModelBase {
 
             await CalculateProjectionsAsync(token);
         }
-        catch (OperationCanceledException) {
-        }
+        catch (OperationCanceledException) { }
         catch (Exception ex) {
             Log.Error(ex, "Failed to calculate projections.");
-            
         }
     }
 
@@ -933,20 +1098,18 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting ShowByMonth in MainViewModel.");
-                
             }
         }
     }
 
     private async void OnShowByMonthChanged() {
         try {
-            if(IsGatheringData)
+            if (IsGatheringData)
                 return;
             await LoadPeriodDataAsync();
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load period data for month");
-            
         }
     }
 
@@ -962,7 +1125,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedPeriodPaycheckId in MainViewModel.");
-                
             }
         }
     }
@@ -982,7 +1144,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error formatting PeriodDisplay in MainViewModel.");
-                
+
                 return string.Empty;
             }
         }
@@ -999,7 +1161,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting ProjectionEndDate in MainViewModel.");
-                
             }
         }
     }
@@ -1015,7 +1176,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting ProjectionStartDate in MainViewModel.");
-                
             }
         }
     }
@@ -1034,7 +1194,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedOuterTabIndex in MainViewModel.");
-                
             }
         }
     }
@@ -1059,12 +1218,12 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting CurrentPeriodDate in MainViewModel.");
-                
             }
         }
     }
-    
+
     private DateTime _nextPeriodDate;
+
     public DateTime NextPeriodDate {
         get => _nextPeriodDate;
         set => SetProperty(ref _nextPeriodDate, value);
@@ -1082,11 +1241,11 @@ public class MainViewModel : ViewModelBase {
                 if (SetProperty(ref _selectedBill, value)) {
                     OnPropertyChanged(nameof(CanEditBill));
                     EditBillCommand.NotifyCanExecuteChanged();
+                    DeleteSelectedBillCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedBill in MainViewModel.");
-                
             }
         }
     }
@@ -1107,7 +1266,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedPeriodBill in MainViewModel.");
-                
             }
         }
     }
@@ -1124,11 +1282,11 @@ public class MainViewModel : ViewModelBase {
                 if (SetProperty(ref _selectedBucket, value)) {
                     OnPropertyChanged(nameof(CanEditBucket));
                     EditBucketCommand.NotifyCanExecuteChanged();
+                    DeleteSelectedBucketCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedBucket in MainViewModel.");
-                
             }
         }
     }
@@ -1149,7 +1307,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedPeriodBucket in MainViewModel.");
-                
             }
         }
     }
@@ -1169,11 +1326,11 @@ public class MainViewModel : ViewModelBase {
                     EditAccountCommand.NotifyCanExecuteChanged();
                     ImportAccountCommand.NotifyCanExecuteChanged();
                     ReconcileAccountCommand.NotifyCanExecuteChanged();
+                    DeleteSelectedAccountCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedAccount in MainViewModel.");
-                
             }
         }
     }
@@ -1190,11 +1347,11 @@ public class MainViewModel : ViewModelBase {
                 if (SetProperty(ref _selectedTransaction, value)) {
                     OnPropertyChanged(nameof(CanEditTransaction));
                     EditTransactionCommand.NotifyCanExecuteChanged();
+                    DeleteSelectedTransactionCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedTransaction in MainViewModel.");
-                
             }
         }
     }
@@ -1211,11 +1368,11 @@ public class MainViewModel : ViewModelBase {
                 if (SetProperty(ref _selectedPaycheck, value)) {
                     OnPropertyChanged(nameof(CanEditPaycheck));
                     EditPaycheckCommand.NotifyCanExecuteChanged();
+                    DeleteSelectedPaycheckCommand.NotifyCanExecuteChanged();
                 }
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting SelectedPaycheck in MainViewModel.");
-                
             }
         }
     }
@@ -1236,7 +1393,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingBill in MainViewModel.");
-                
             }
         }
     }
@@ -1259,7 +1415,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingPaycheck in MainViewModel.");
-                
             }
         }
     }
@@ -1283,7 +1438,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingPeriodBucket in MainViewModel.");
-                
             }
         }
     }
@@ -1304,7 +1458,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingBucket in MainViewModel.");
-                
             }
         }
     }
@@ -1330,7 +1483,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingPeriodBill in MainViewModel.");
-                
             }
         }
     }
@@ -1360,7 +1512,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingAccount in MainViewModel.");
-                
             }
         }
     }
@@ -1384,7 +1535,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting IsEditingTransaction in MainViewModel.");
-                
             }
         }
     }
@@ -1404,7 +1554,6 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error setting EditingBillClone in MainViewModel.");
-                
             }
         }
     }
@@ -1414,19 +1563,18 @@ public class MainViewModel : ViewModelBase {
             EditingBillOverrides.Clear();
             if (bill?.Overrides != null) {
                 foreach (var kvp in bill.Overrides) {
-                    EditingBillOverrides.Add(new OverrideItem { 
-                        MonthKey = kvp.Key, 
-                        Amount = kvp.Value 
+                    EditingBillOverrides.Add(new OverrideItem {
+                        MonthKey = kvp.Key,
+                        Amount = kvp.Value
                     });
                 }
             }
         }
         catch (Exception ex) {
             Log.Error(ex, "Error syncing editing bill overrides.");
-            
         }
     }
-    
+
     public PeriodBill? EditingPeriodBillClone {
         get => _editingPeriodBillClone;
         set => SetProperty(ref _editingPeriodBillClone, value);
@@ -1452,10 +1600,48 @@ public class MainViewModel : ViewModelBase {
         set => SetProperty(ref _editingTransactionClone, value);
     }
 
+    private bool _isEditingTransactionEnabled = true;
+
     public bool IsEditingTransactionEnabled {
         get => _isEditingTransactionEnabled;
         private set => SetProperty(ref _isEditingTransactionEnabled, value);
     }
+
+    private bool _isEditingAccountEnabled;
+
+    public bool IsEditingAccountEnabled {
+        get => _isEditingAccountEnabled;
+        private set => SetProperty(ref _isEditingAccountEnabled, value);
+    }
+
+    private bool _isEditingBillEnabled;
+
+    public bool IsEditingBillEnabled {
+        get => _isEditingBillEnabled;
+        private set => SetProperty(ref _isEditingBillEnabled, value);
+    }
+
+    private bool _isEditingBucketEnabled;
+
+    public bool IsEditingBucketEnabled {
+        get => _isEditingBucketEnabled;
+        private set => SetProperty(ref _isEditingBucketEnabled, value);
+    }
+
+    private bool _isEditingPaycheckEnabled;
+
+    public bool IsEditingPaycheckEnabled {
+        get => _isEditingPaycheckEnabled;
+        private set => SetProperty(ref _isEditingPaycheckEnabled, value);
+    }
+
+    private bool _isEditingCategoryEnabled;
+
+    public bool IsEditingCategoryEnabled {
+        get => _isEditingCategoryEnabled;
+        private set => SetProperty(ref _isEditingCategoryEnabled, value);
+    }
+
 
     public RangeObservableCollection<Account> TransactionAccounts { get; } = new();
 
@@ -1470,105 +1656,105 @@ public class MainViewModel : ViewModelBase {
 
     #region Commands
 
-    public IRelayCommand ToggleFlyoutCommand { get; }
-    public IRelayCommand AddBillCommand { get; }
+    public IRelayCommand ToggleFlyoutCommand { get; } = null!;
+    public IRelayCommand AddBillCommand { get; } = null!;
 
-    public IRelayCommand EditBillCommand { get; }
-    public IAsyncRelayCommand SaveBillCommand { get; }
+    public IRelayCommand EditBillCommand { get; } = null!;
+    public IAsyncRelayCommand SaveBillCommand { get; } = null!;
 
-    public IRelayCommand CancelBillCommand { get; }
+    public IRelayCommand CancelBillCommand { get; } = null!;
 
-    public IAsyncRelayCommand DeleteBillCommand { get; }
+    public IAsyncRelayCommand DeleteBillCommand { get; } = null!;
 
-    public IRelayCommand EditPeriodBillCommand { get; }
+    public IRelayCommand EditPeriodBillCommand { get; } = null!;
 
-    public IAsyncRelayCommand SavePeriodBillCommand { get; }
+    public IAsyncRelayCommand SavePeriodBillCommand { get; } = null!;
 
-    public IRelayCommand CancelPeriodBillCommand { get; }
+    public IRelayCommand CancelPeriodBillCommand { get; } = null!;
 
-    public IAsyncRelayCommand DeletePeriodBillCommand { get; }
+    public IAsyncRelayCommand DeletePeriodBillCommand { get; } = null!;
 
-    public IRelayCommand AddBucketCommand { get; }
+    public IRelayCommand AddBucketCommand { get; } = null!;
 
-    public IRelayCommand EditBucketCommand { get; }
-    public IAsyncRelayCommand SaveBucketCommand { get; }
+    public IRelayCommand EditBucketCommand { get; } = null!;
+    public IAsyncRelayCommand SaveBucketCommand { get; } = null!;
 
-    public IRelayCommand CancelBucketCommand { get; }
+    public IRelayCommand CancelBucketCommand { get; } = null!;
 
-    public IAsyncRelayCommand DeleteBucketCommand { get; }
+    public IAsyncRelayCommand DeleteBucketCommand { get; } = null!;
 
-    public IRelayCommand EditPeriodBucketCommand { get; }
+    public IRelayCommand EditPeriodBucketCommand { get; } = null!;
 
-    public IAsyncRelayCommand SavePeriodBucketCommand { get; }
+    public IAsyncRelayCommand SavePeriodBucketCommand { get; } = null!;
 
-    public IRelayCommand CancelPeriodBucketCommand { get; }
+    public IRelayCommand CancelPeriodBucketCommand { get; } = null!;
 
-    public IAsyncRelayCommand DeletePeriodBucketCommand { get; }
+    public IAsyncRelayCommand DeletePeriodBucketCommand { get; } = null!;
 
-    public IRelayCommand AddTransactionCommand { get; }
+    public IRelayCommand AddTransactionCommand { get; } = null!;
 
-    public IRelayCommand EditTransactionCommand { get; }
+    public IRelayCommand EditTransactionCommand { get; } = null!;
 
-    public IAsyncRelayCommand SaveTransactionCommand { get; }
+    public IAsyncRelayCommand SaveTransactionCommand { get; } = null!;
 
-    public IRelayCommand CancelTransactionCommand { get; }
+    public IRelayCommand CancelTransactionCommand { get; } = null!;
 
-    public IAsyncRelayCommand DeleteTransactionCommand { get; }
+    public IAsyncRelayCommand DeleteTransactionCommand { get; } = null!;
 
-    public IRelayCommand AddPaycheckCommand { get; }
+    public IRelayCommand AddPaycheckCommand { get; } = null!;
 
-    public IRelayCommand EditPaycheckCommand { get; }
-    public IAsyncRelayCommand SavePaycheckCommand { get; }
+    public IRelayCommand EditPaycheckCommand { get; } = null!;
+    public IAsyncRelayCommand SavePaycheckCommand { get; } = null!;
 
-    public IRelayCommand CancelPaycheckCommand { get; }
+    public IRelayCommand CancelPaycheckCommand { get; } = null!;
 
-    public IAsyncRelayCommand DeletePaycheckCommand { get; }
+    public IAsyncRelayCommand DeletePaycheckCommand { get; } = null!;
 
-    public IRelayCommand AddAccountCommand { get; }
+    public IRelayCommand AddAccountCommand { get; } = null!;
 
-    public IRelayCommand EditAccountCommand { get; }
+    public IRelayCommand EditAccountCommand { get; } = null!;
 
-    public IAsyncRelayCommand ReconcileAccountCommand { get; }
+    public IAsyncRelayCommand ReconcileAccountCommand { get; } = null!;
 
-    public IAsyncRelayCommand ImportAccountCommand { get; }
+    public IAsyncRelayCommand ImportAccountCommand { get; } = null!;
 
-    public IAsyncRelayCommand SetAccountAprRatesCommand { get; }
+    public IAsyncRelayCommand SetAccountAprRatesCommand { get; } = null!;
 
-    public IAsyncRelayCommand SaveAccountCommand { get; }
+    public IAsyncRelayCommand SaveAccountCommand { get; } = null!;
 
-    public IRelayCommand CancelAccountCommand { get; }
+    public IRelayCommand CancelAccountCommand { get; } = null!;
 
-    public IAsyncRelayCommand DeleteAccountCommand { get; }
+    public IAsyncRelayCommand DeleteAccountCommand { get; } = null!;
 
-    public IAsyncRelayCommand NextPeriodCommand { get; }
+    public IAsyncRelayCommand NextPeriodCommand { get; } = null!;
 
-    public IAsyncRelayCommand PrevPeriodCommand { get; }
+    public IAsyncRelayCommand PrevPeriodCommand { get; } = null!;
 
-    public IRelayCommand ShowAmortizationCommand { get; }
+    public IRelayCommand ShowAmortizationCommand { get; } = null!;
 
-    public IRelayCommand ShowAboutCommand { get; }
+    public IRelayCommand ShowAboutCommand { get; } = null!;
 
-    public IRelayCommand SetThemeCommand { get; }
+    public IRelayCommand SetThemeCommand { get; } = null!;
 
-    public IRelayCommand ExitCommand { get; }
+    public IRelayCommand ExitCommand { get; } = null!;
 
-    public IRelayCommand BackupCommand { get; }
+    public IRelayCommand BackupCommand { get; } = null!;
 
-    public IRelayCommand SetOneYearCommand { get; }
+    public IRelayCommand SetOneYearCommand { get; } = null!;
 
-    public IRelayCommand SetFiveYearCommand { get; }
+    public IRelayCommand SetFiveYearCommand { get; } = null!;
 
-    public IRelayCommand SetTenYearCommand { get; }
+    public IRelayCommand SetTenYearCommand { get; } = null!;
 
-    public IRelayCommand SetThirtyYearCommand { get; }
+    public IRelayCommand SetThirtyYearCommand { get; } = null!;
 
-    public IRelayCommand MapsToBillCommand { get; }
+    public IRelayCommand MapsToBillCommand { get; } = null!;
 
-    public IRelayCommand MapsToBucketCommand { get; }
+    public IRelayCommand MapsToBucketCommand { get; } = null!;
 
-    public IRelayCommand ToggleBucketDescriptionCommand { get; }
+    public IRelayCommand ToggleBucketDescriptionCommand { get; } = null!;
 
-    public IRelayCommand ToggleBillDescriptionCommand { get; }
+    public IRelayCommand ToggleBillDescriptionCommand { get; } = null!;
 
     private void SetProjectionEndDate(int years) {
         try {
@@ -1577,7 +1763,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error setting projection end date.");
-            
         }
     }
 
@@ -1600,7 +1785,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error handling OnAccountsCollectionChanged.");
-            
         }
     }
 
@@ -1625,13 +1809,12 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error refreshing excludable accounts.");
-            
         }
     }
 
-    public IRelayCommand OpenManageExcludedAccountsCommand { get; }
-    public IRelayCommand CloseManageExcludedAccountsCommand { get; }
-    public IRelayCommand ToggleAccountExclusionCommand { get; }
+    public IRelayCommand OpenManageExcludedAccountsCommand { get; } = null!;
+    public IRelayCommand CloseManageExcludedAccountsCommand { get; } = null!;
+    public IRelayCommand ToggleAccountExclusionCommand { get; } = null!;
 
     private void OpenManageExcludedAccounts() {
         try {
@@ -1640,7 +1823,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error opening manage excluded accounts dialog.");
-            
         }
     }
 
@@ -1651,7 +1833,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error closing manage excluded accounts dialog.");
-            
         }
     }
 
@@ -1676,7 +1857,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error toggling account exclusion.");
-            
         }
     }
 
@@ -1723,7 +1903,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in Item_PropertyChanged for {SenderType}.", sender?.GetType().Name);
-            
         }
     }
 
@@ -1732,37 +1911,34 @@ public class MainViewModel : ViewModelBase {
     #region Bill CRUD
 
     #region Overrides
-    
+
     public ObservableCollection<OverrideItem> EditingBillOverrides { get; } = new();
-    
+
     private void SyncBillOverridesToClone() {
         try {
             if (EditingBillClone == null) return;
-        
+
             EditingBillClone.Overrides = EditingBillOverrides
                 .Where(x => !string.IsNullOrWhiteSpace(x.MonthKey))
                 .ToDictionary(x => x.MonthKey.Trim(), x => x.Amount);
         }
         catch (Exception ex) {
             Log.Error(ex, "Error syncing bill overrides to clone.");
-            
         }
     }
-    
+
     private void AddBillOverride() {
         try {
             var existingKeys = EditingBillOverrides.Select(x => x.MonthKey).ToHashSet();
             var defaultMonth = MonthOptions.FirstOrDefault(m => !existingKeys.Contains(m.Key)) ?? MonthOptions.First();
 
-            EditingBillOverrides.Add(new OverrideItem 
-            { 
-                MonthKey = defaultMonth.Key, 
-                Amount = EditingBillClone?.ExpectedAmount ?? 0m 
+            EditingBillOverrides.Add(new OverrideItem {
+                MonthKey = defaultMonth.Key,
+                Amount = EditingBillClone?.ExpectedAmount ?? 0m
             });
         }
         catch (Exception ex) {
             Log.Error(ex, "Error adding bill override.");
-            
         }
     }
 
@@ -1774,21 +1950,94 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error removing bill override.");
-            
         }
     }
-    
+
     #endregion
-    
+
+    private void AddAnotherBill() {
+        if (EditingBillClone == null) return;
+
+        // Validate current item before staging
+        bool isValid = EditingBillClone.ValidateAllProperties();
+        List<string> errors = EditingBillClone.GetValidationErrors();
+        if (!isValid || errors.Any()) {
+            // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
+            OnPropertyChanged(nameof(EditingBillClone));
+
+            MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(EditingBillClone.Name)) {
+            MessageBox.Show("Please enter a name for the bill.", "Validation Error", MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // Clean zero IDs
+        if (EditingBillClone.AccountId == 0) EditingBillClone.AccountId = null;
+        if (EditingBillClone.ToAccountId == 0) EditingBillClone.ToAccountId = null;
+        if (EditingBillClone.BucketId == 0) EditingBillClone.BucketId = null;
+        if (EditingBillClone.SubCategoryId == 0) EditingBillClone.SubCategoryId = null;
+
+        // Stage a clone of the filled form
+        StagedBills.Add(EditingBillClone.Clone());
+
+        // Prepare a clean fresh instance for the next entry
+        if (EditingBillClone != null) {
+            EditingBillClone.PropertyChanged -= EditingBillClone_PropertyChanged;
+        }
+
+        var nextTrans = new Bill { Name = "", ExpectedAmount = 0, DueDay = 1, IsActive = true };
+
+        EditingBillClone = nextTrans;
+        EditingBillClone.PropertyChanged += EditingBillClone_PropertyChanged;
+
+        OnPropertyChanged(nameof(TotalBillItemsToSaveCount));
+        OnPropertyChanged(nameof(CanSaveBill));
+        SaveBillCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RemoveStagedBill(Bill? item) {
+        if (item != null && StagedBills.Contains(item)) {
+            StagedBills.Remove(item);
+
+            OnPropertyChanged(nameof(TotalBillItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveBill));
+            SaveBillCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void ClearCurrentBillDraft() {
+        if (EditingBillClone == null) return;
+
+        // Reset fields on the current active edit form without closing overlay
+        EditingBillClone.Name = string.Empty;
+        EditingBillClone.ExpectedAmount = 0;
+        EditingBillClone.BucketId = null;
+        EditingBillClone.SubCategoryId = null;
+    }
+
     private void AddBill() {
         try {
-            EditingBillClone = new Bill { Name = "New Bill", ExpectedAmount = 0, DueDay = 1, IsActive = true };
+            if (EditingBillClone != null) {
+                EditingBillClone.PropertyChanged -= EditingBillClone_PropertyChanged;
+            }
+
+            EditingBillClone = new Bill { Name = "", ExpectedAmount = 0, DueDay = 1, IsActive = true };
+
+            EditingBillClone.PropertyChanged += EditingBillClone_PropertyChanged;
+
             SelectedBill = null;
             IsEditingBill = true;
+            IsEditingBillEnabled = true;
+
+            AddAnotherBillCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing new bill.");
-            
         }
     }
 
@@ -1796,6 +2045,10 @@ public class MainViewModel : ViewModelBase {
         try {
             CancelBill();
             if (SelectedBill == null) return;
+            if (EditingBillClone != null) {
+                EditingBillClone.PropertyChanged -= EditingBillClone_PropertyChanged;
+            }
+
             EditingBillClone = new Bill {
                 Id = SelectedBill.Id, Name = SelectedBill.Name, ExpectedAmount = SelectedBill.ExpectedAmount,
                 Frequency = SelectedBill.Frequency, DueDay = SelectedBill.DueDay, AccountId = SelectedBill.AccountId,
@@ -1807,68 +2060,119 @@ public class MainViewModel : ViewModelBase {
                 SubCategoryId = SelectedBill.SubCategoryId,
                 Overrides = new Dictionary<string, decimal>(SelectedBill.Overrides)
             };
+            EditingBillClone.PropertyChanged += EditingBillClone_PropertyChanged;
+
             IsEditingBill = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for bill.");
-            
         }
     }
 
+    public int TotalBillItemsToSaveCount {
+        get {
+            int stagedCount = StagedBills?.Count ?? 0;
+            bool hasActiveDraft = EditingBillClone != null &&
+                                  !string.IsNullOrWhiteSpace(EditingBillClone.Name);
+            return stagedCount + (hasActiveDraft ? 1 : 0);
+        }
+    }
+
+    public bool CanSaveBill => IsEditingBill &&
+                               IsEditingBillEnabled &&
+                               TotalBillItemsToSaveCount > 0;
+
     private async Task SaveBillAsync() {
-        if (EditingBillClone == null) return;
+        if (EditingBillClone == null && !StagedBills.Any()) return;
 
         try {
-            if (EditingBillClone.Frequency == Frequency.Monthly) {
-                if (EditingBillClone.DueDay < 1 || EditingBillClone.DueDay > 31) {
-                    MessageBox.Show("Due Day must be between 1 and 31 for Monthly bills.", "Validation Error",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
+            // 1. Stage current draft if valid
+            if (EditingBillClone != null) {
+                bool isValid = EditingBillClone.ValidateAllProperties();
+
+                List<string> errors = EditingBillClone.GetValidationErrors();
+                if (!isValid || errors.Any()) {
+                    // Force WPF to re-evaluate all bindings hanging off EditingBillClone
+                    OnPropertyChanged(nameof(EditingBillClone));
+
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                        , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
-                EditingBillClone.NextDueDate = null;
-            }
-            else if (EditingBillClone.Frequency == Frequency.Yearly) {
-                if (EditingBillClone.NextDueDate == null) {
-                    MessageBox.Show("Next Due Date is required for Yearly bills.", "Validation Error",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                if (EditingBillClone.Frequency == Frequency.Monthly) {
+                    if (EditingBillClone.DueDay < 1 || EditingBillClone.DueDay > 31) {
+                        MessageBox.Show("Due Day must be between 1 and 31 for Monthly bills.", "Validation Error",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    EditingBillClone.NextDueDate = null;
+                }
+                else if (EditingBillClone.Frequency == Frequency.Yearly) {
+                    if (EditingBillClone.NextDueDate == null) {
+                        MessageBox.Show("Next Due Date is required for Yearly bills.", "Validation Error",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+
+                    EditingBillClone.DueDay = 0;
                 }
 
-                EditingBillClone.DueDay = 0;
+                if (EditingBillClone.AccountId == 0) EditingBillClone.AccountId = null;
+                if (EditingBillClone.ToAccountId == 0) EditingBillClone.ToAccountId = null;
+
+                SyncBillOverridesToClone();
+                StagedBills.Add(EditingBillClone);
+
+                OnPropertyChanged(nameof(TotalBillItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveBill));
+                SaveBillCommand.NotifyCanExecuteChanged();
             }
 
-            if (EditingBillClone.AccountId == 0) EditingBillClone.AccountId = null;
-            if (EditingBillClone.ToAccountId == 0) EditingBillClone.ToAccountId = null;
-
-            SyncBillOverridesToClone();
-            
-            if (SelectedBill != null) {
-                UpdateBillFromClone(SelectedBill, EditingBillClone);
-                await _budgetService.UpsertBillAsync(SelectedBill);
-            }
-            else {
-                await _budgetService.UpsertBillAsync(EditingBillClone);
+            if (!StagedBills.Any()) {
+                MessageBox.Show("Please enter a name for the bill.", "Validation Error", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
             }
 
-            var selectedBillId = SelectedBill?.Id;
+            // 2. Persist all staged items
+            foreach (var item in StagedBills) {
+                if (SelectedBill != null && item.Id == SelectedBill.Id) {
+                    UpdateBillFromClone(SelectedBill, item);
+                    await _budgetService.UpsertBillAsync(SelectedBill);
+                }
+                else {
+                    await _budgetService.UpsertBillAsync(item);
+                }
+            }
+
+            int countSaved = StagedBills.Count;
+
+            // 3. Reset editor state & clear staged collection
+            if (EditingBillClone != null) {
+                EditingBillClone.PropertyChanged -= EditingBillClone_PropertyChanged;
+            }
 
             IsEditingBill = false;
             EditingBillClone = null;
+            IsEditingBillEnabled = false;
+            StagedBills.Clear();
 
+            OnPropertyChanged(nameof(TotalBillItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveBill));
+            SaveBillCommand.NotifyCanExecuteChanged();
+
+            // 4. Refresh UI once
             await LoadBillDataAsync();
-
-            if (selectedBillId.HasValue) {
-                SelectedBill = Bills.FirstOrDefault(a => a.Id == selectedBillId);
-            }
-
             await LoadPeriodDataAsync();
             RequestProjectionRecalculation();
+
+            ShowSuccessToast($"Successfully saved {countSaved} bill{(countSaved > 1 ? "s" : "")}.");
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error saving bill.");
-            
-            MessageBox.Show("Failed to save bill. See log for details.", "Error", MessageBoxButton.OK,
+            Log.Error(ex, "Error saving batch bills.");
+            MessageBox.Show("Failed to save bills. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -1891,18 +2195,21 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating bill from clone.");
-            
         }
     }
 
     private void CancelBill() {
         try {
+            if (EditingBillClone != null) {
+                EditingBillClone.PropertyChanged -= EditingBillClone_PropertyChanged;
+            }
+
             IsEditingBill = false;
+            IsEditingBillEnabled = false;
             EditingBillClone = null;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling bill edit.");
-            
         }
     }
 
@@ -1925,7 +2232,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting period bill.");
-                
+
                 MessageBox.Show("Failed to delete period bill. See log for details.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -1951,7 +2258,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for period bill.");
-            
         }
     }
 
@@ -1982,7 +2288,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving period bill.");
-            
+
             MessageBox.Show("Failed to save period bill. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -1995,7 +2301,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling period bill edit.");
-            
         }
     }
 
@@ -2009,7 +2314,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating period bill from clone.");
-            
         }
     }
 
@@ -2026,6 +2330,7 @@ public class MainViewModel : ViewModelBase {
             try {
                 await _budgetService.DeleteBillAsync(EditingBillClone.Id);
                 IsEditingBill = false;
+                IsEditingBillEnabled = false;
                 EditingBillClone = null;
                 await LoadBillDataAsync();
                 await LoadPeriodDataAsync();
@@ -2033,7 +2338,35 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting bill.");
-                
+
+                MessageBox.Show("Failed to delete bill. See log for details.", "Error", MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+    }
+
+    private async Task DeleteSelectedBillAsync() {
+        if (SelectedBill == null) return;
+        var messageBoxResult = MessageBox.Show(
+            $"Are you sure you want to delete this bill?\r\n\r\n{SelectedBill!.Name}",
+            "Delete Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
+        );
+
+        if (messageBoxResult == MessageBoxResult.Yes) {
+            try {
+                await _budgetService.DeleteBillAsync(SelectedBill.Id);
+                IsEditingBill = false;
+                IsEditingBillEnabled = false;
+                SelectedBill = null;
+                await LoadBillDataAsync();
+                await LoadPeriodDataAsync();
+                RequestProjectionRecalculation();
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error deleting bill.");
+
                 MessageBox.Show("Failed to delete bill. See log for details.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -2045,37 +2378,34 @@ public class MainViewModel : ViewModelBase {
     #region Bucket CRUD
 
     #region Overrides
-    
+
     public ObservableCollection<OverrideItem> EditingBucketOverrides { get; } = new();
-    
+
     private void SyncBucketOverridesToClone() {
         try {
             if (EditingBucketClone == null) return;
-        
+
             EditingBucketClone.Overrides = EditingBucketOverrides
                 .Where(x => !string.IsNullOrWhiteSpace(x.MonthKey))
                 .ToDictionary(x => x.MonthKey.Trim(), x => x.Amount);
         }
         catch (Exception ex) {
             Log.Error(ex, "Error syncing bucket overrides to clone.");
-            
         }
     }
-    
+
     private void AddBucketOverride() {
         try {
             var existingKeys = EditingBucketOverrides.Select(x => x.MonthKey).ToHashSet();
             var defaultMonth = MonthOptions.FirstOrDefault(m => !existingKeys.Contains(m.Key)) ?? MonthOptions.First();
 
-            EditingBucketOverrides.Add(new OverrideItem 
-            { 
-                MonthKey = defaultMonth.Key, 
-                Amount = EditingBucketClone?.ExpectedAmount ?? 0m 
+            EditingBucketOverrides.Add(new OverrideItem {
+                MonthKey = defaultMonth.Key,
+                Amount = EditingBucketClone?.ExpectedAmount ?? 0m
             });
         }
         catch (Exception ex) {
             Log.Error(ex, "Error adding bucket override.");
-            
         }
     }
 
@@ -2087,16 +2417,89 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error removing bucket override.");
-            
         }
     }
-    
+
     #endregion
-    
+
+    private void AddAnotherBucket() {
+        if (EditingBucketClone == null) return;
+
+        // Validate current item before staging
+        bool isValid = EditingBucketClone.ValidateAllProperties();
+        List<string> errors = EditingBucketClone.GetValidationErrors();
+        if (!isValid || errors.Any()) {
+            // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
+            OnPropertyChanged(nameof(EditingBucketClone));
+
+            MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(EditingBucketClone.Name)) {
+            MessageBox.Show("Please enter a name for the envelope.", "Validation Error", MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // Clean zero IDs
+        if (EditingBucketClone.AccountId == 0) EditingBucketClone.AccountId = null;
+
+        // Stage a clone of the filled form
+        StagedBuckets.Add(EditingBucketClone.Clone());
+
+        // Prepare a clean fresh instance for the next entry
+        if (EditingBucketClone != null) {
+            EditingBucketClone.PropertyChanged -= EditingBucketClone_PropertyChanged;
+        }
+
+        var nextTrans = new BudgetBucket {
+            Name = "",
+            Type = BucketType.Standard,
+            ExpectedAmount = 0,
+            TargetBalance = 0,
+            CurrentBalance = 0,
+            TargetFrequency = TargetFrequencyType.PaycheckFrequency,
+            TargetAmount = 0,
+            NextDueDate = null
+        };
+
+        EditingBucketClone = nextTrans;
+
+        EditingBucketClone.PropertyChanged += EditingBucketClone_PropertyChanged;
+
+        OnPropertyChanged(nameof(TotalBucketItemsToSaveCount));
+        OnPropertyChanged(nameof(CanSaveBucket));
+        SaveBucketCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RemoveStagedBucket(BudgetBucket? item) {
+        if (item != null && StagedBuckets.Contains(item)) {
+            StagedBuckets.Remove(item);
+
+            OnPropertyChanged(nameof(TotalBucketItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveBucket));
+            SaveBucketCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void ClearCurrentBucketDraft() {
+        if (EditingBucketClone == null) return;
+
+        // Reset fields on the current active edit form without closing overlay
+        EditingBucketClone.Name = string.Empty;
+        EditingBucketClone.ExpectedAmount = 0;
+    }
+
     private void AddBucket() {
         try {
+            if (EditingBucketClone != null) {
+                EditingBucketClone.PropertyChanged -= EditingBucketClone_PropertyChanged;
+            }
+
             EditingBucketClone = new BudgetBucket {
-                Name = "New Bucket",
+                Name = "",
                 Type = BucketType.Standard,
                 ExpectedAmount = 0,
                 TargetBalance = 0,
@@ -2106,14 +2509,17 @@ public class MainViewModel : ViewModelBase {
                 NextDueDate = null
             };
 
+            EditingBucketClone.PropertyChanged += EditingBucketClone_PropertyChanged;
+
             EditableAllocations.Clear();
             SelectedBucket = null;
             PopulateEditableSubCategories(bucketId: null);
             IsEditingBucket = true;
+            IsEditingBucketEnabled = true;
+            AddAnotherBucketCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing new bucket.");
-            
         }
     }
 
@@ -2121,6 +2527,9 @@ public class MainViewModel : ViewModelBase {
         try {
             CancelBucket();
             if (SelectedBucket == null) return;
+            if (EditingBucketClone != null) {
+                EditingBucketClone.PropertyChanged -= EditingBucketClone_PropertyChanged;
+            }
 
             EditingBucketClone = new BudgetBucket {
                 Id = SelectedBucket.Id,
@@ -2141,11 +2550,12 @@ public class MainViewModel : ViewModelBase {
             EditableAllocations.ReplaceRange(allocations);
             PopulateEditableSubCategories(SelectedBucket.Id);
 
+            EditingBucketClone.PropertyChanged += EditingBucketClone_PropertyChanged;
+
             IsEditingBucket = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for bucket.");
-            
         }
     }
 
@@ -2180,63 +2590,111 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error populating editable subcategories.");
-            
         }
     }
 
+    public int TotalBucketItemsToSaveCount {
+        get {
+            int stagedCount = StagedBuckets?.Count ?? 0;
+            bool hasActiveDraft = EditingBucketClone != null &&
+                                  !string.IsNullOrWhiteSpace(EditingBucketClone.Name);
+            return stagedCount + (hasActiveDraft ? 1 : 0);
+        }
+    }
+
+    public bool CanSaveBucket => IsEditingBucket &&
+                                 IsEditingBucketEnabled &&
+                                 TotalBucketItemsToSaveCount > 0;
+
     private async Task SaveBucketAsync() {
-        if (EditingBucketClone == null) return;
+        if (EditingBucketClone == null && !StagedBuckets.Any()) return;
 
         try {
-            if (EditingBucketClone.AccountId == 0) EditingBucketClone.AccountId = null;
+            // 1. Stage current draft if valid
+            if (EditingBucketClone != null && !string.IsNullOrWhiteSpace(EditingBucketClone.Name)) {
+                bool isValid = EditingBucketClone.ValidateAllProperties();
 
-            NormalizeBucketTypeRules(EditingBucketClone);
+                List<string> errors = EditingBucketClone.GetValidationErrors();
+                if (!isValid || errors.Any()) {
+                    // Force WPF to re-evaluate all bindings hanging off EditingBucketClone
+                    OnPropertyChanged(nameof(EditingBucketClone));
+
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                        , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (EditingBucketClone.AccountId == 0) EditingBucketClone.AccountId = null;
+
+                NormalizeBucketTypeRules(EditingBucketClone);
+                SyncBucketOverridesToClone();
+                StagedBuckets.Add(EditingBucketClone);
+
+                OnPropertyChanged(nameof(TotalBucketItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveBucket));
+                SaveBucketCommand.NotifyCanExecuteChanged();
+            }
+
+            if (!StagedBuckets.Any()) {
+                MessageBox.Show("Please enter a name for the envelope.", "Validation Error", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
 
             var selectedSubCategoryIds = EditableSubCategories
                 .Where(x => x.IsSelected)
                 .Select(x => x.Id)
                 .ToList();
 
-            SyncBucketOverridesToClone();
-            
-            if (SelectedBucket != null) {
-                UpdateBucketFromClone(SelectedBucket, EditingBucketClone);
-                SelectedBucket.InitialBalance = SelectedBucket.CurrentBalance;
-                await _budgetService.UpsertBucketAsync(SelectedBucket, selectedSubCategoryIds);
-            }
-            else {
-                await _budgetService.UpsertBucketAsync(EditingBucketClone, selectedSubCategoryIds);
+            // 2. Persist all staged items
+            foreach (var item in StagedBuckets) {
+                int savedBucketId;
+                if (SelectedBucket != null && item.Id == SelectedBucket.Id) {
+                    UpdateBucketFromClone(SelectedBucket, item);
+                    SelectedBucket.InitialBalance = SelectedBucket.CurrentBalance;
+                    await _budgetService.UpsertBucketAsync(SelectedBucket, selectedSubCategoryIds);
+                    savedBucketId = SelectedBucket.Id;
+                }
+                else {
+                    await _budgetService.UpsertBucketAsync(item, selectedSubCategoryIds);
+                    savedBucketId = item.Id;
+                }
+
+                if (item.Type != BucketType.UpfrontFloor) {
+                    await _budgetService.SaveBucketPaycheckAllocationsAsync(savedBucketId, item.Type,
+                        EditableAllocations);
+                }
+
+                await _budgetService.RecalculateBucketBalanceAsync(savedBucketId);
             }
 
-            var selectedBucketId = SelectedBucket?.Id ?? EditingBucketClone.Id;
+            int countSaved = StagedBuckets.Count;
 
-            if (EditingBucketClone.Type != BucketType.UpfrontFloor) {
-                await _budgetService.SaveBucketPaycheckAllocationsAsync(
-                    selectedBucketId,
-                    EditingBucketClone.Type,
-                    EditableAllocations
-                );
+            // 3. Reset editor state & clear staged collection
+            if (EditingBucketClone != null) {
+                EditingBucketClone.PropertyChanged -= EditingBucketClone_PropertyChanged;
             }
-
-            await _budgetService.RecalculateBucketBalanceAsync(selectedBucketId);
 
             IsEditingBucket = false;
+            IsEditingBucketEnabled = false;
             EditingBucketClone = null;
             EditableAllocations.Clear();
+            StagedBuckets.Clear();
 
+            OnPropertyChanged(nameof(TotalBucketItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveBucket));
+            SaveBucketCommand.NotifyCanExecuteChanged();
+
+            // 4. Refresh UI once
             await LoadBucketDataAsync();
-
-            if (selectedBucketId > 0) {
-                SelectedBucket = Buckets.FirstOrDefault(a => a.Id == selectedBucketId);
-            }
-
             await LoadPeriodDataAsync();
             RequestProjectionRecalculation();
+
+            ShowSuccessToast($"Successfully saved {countSaved} envelope{(countSaved > 1 ? "s" : "")}.");
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error saving bucket.");
-            
-            MessageBox.Show("Failed to save bucket. See log for details.", "Error", MessageBoxButton.OK,
+            Log.Error(ex, "Error saving batch buckets.");
+            MessageBox.Show("Failed to save envelopes. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -2267,7 +2725,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error normalizing bucket type rules.");
-            
         }
     }
 
@@ -2286,19 +2743,22 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating bucket from clone.");
-            
         }
     }
 
     private void CancelBucket() {
         try {
+            if (EditingBucketClone != null) {
+                EditingBucketClone.PropertyChanged -= EditingBucketClone_PropertyChanged;
+            }
+
             IsEditingBucket = false;
+            IsEditingBucketEnabled = false;
             EditingBucketClone = null;
             EditableAllocations.Clear();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling bucket edit.");
-            
         }
     }
 
@@ -2315,6 +2775,7 @@ public class MainViewModel : ViewModelBase {
             try {
                 await _budgetService.DeleteBucketAsync(EditingBucketClone.Id);
                 IsEditingBucket = false;
+                IsEditingBucketEnabled = false;
                 EditingBucketClone = null;
                 EditableAllocations.Clear();
 
@@ -2326,7 +2787,39 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting bucket.");
-                
+
+                MessageBox.Show("Failed to delete bucket. See log for details.", "Error", MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+    }
+
+    private async Task DeleteSelectedBucketAsync() {
+        if (SelectedBucket == null) return;
+        var messageBoxResult = MessageBox.Show(
+            $"Are you sure you want to delete this envelope?\r\n\r\n{SelectedBucket!.Name}",
+            "Delete Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
+        );
+
+        if (messageBoxResult == MessageBoxResult.Yes) {
+            try {
+                await _budgetService.DeleteBucketAsync(SelectedBucket.Id);
+                IsEditingBucket = false;
+                IsEditingBucketEnabled = false;
+                SelectedBucket = null;
+                EditableAllocations.Clear();
+
+                await LoadBucketDataAsync();
+                await LoadPeriodDataAsync();
+                await LoadSubCategoryDataAsync();
+                await LoadCategoryDataAsync();
+                RequestProjectionRecalculation();
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error deleting bucket.");
+
                 MessageBox.Show("Failed to delete bucket. See log for details.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -2351,7 +2844,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for period bucket.");
-            
         }
     }
 
@@ -2385,7 +2877,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving period bucket.");
-            
+
             MessageBox.Show("Failed to save period bucket. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -2404,7 +2896,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating period bucket from clone.");
-            
         }
     }
 
@@ -2415,7 +2906,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling period bucket edit.");
-            
         }
     }
 
@@ -2441,7 +2931,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting period bucket.");
-                
+
                 MessageBox.Show("Failed to delete period bucket. See log for details.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -2452,16 +2942,141 @@ public class MainViewModel : ViewModelBase {
 
     #region Category CRUD
 
+    private void AddAnotherCategory() {
+        bool stagedAny = false;
+
+        // Stage Category draft
+        if (EditingCategoryClone != null && !string.IsNullOrWhiteSpace(EditingCategoryClone.Name)) {
+            bool isValid = EditingCategoryClone.ValidateAllProperties();
+            List<string> errors = EditingCategoryClone.GetValidationErrors();
+            if (!isValid || errors.Any()) {
+                OnPropertyChanged(nameof(EditingCategoryClone));
+                MessageBox.Show(errors.FirstOrDefault() ?? "Please correct category validation errors.",
+                    "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            StagedCategories.Add(EditingCategoryClone.Clone());
+            stagedAny = true;
+        }
+
+        // Stage Subcategory draft
+        if (EditingSubCategoryClone != null && !string.IsNullOrWhiteSpace(EditingSubCategoryClone.Name)) {
+            bool isValid = EditingSubCategoryClone.ValidateAllProperties();
+            List<string> errors = EditingSubCategoryClone.GetValidationErrors();
+            if (!isValid || errors.Any()) {
+                OnPropertyChanged(nameof(EditingSubCategoryClone));
+                MessageBox.Show(errors.FirstOrDefault() ?? "Please correct subcategory validation errors.",
+                    "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            StageSubCategoryDraft();
+            stagedAny = true;
+        }
+
+        if (!stagedAny) return;
+
+        // Refresh dropdown choices & reset drafts
+        if (EditingCategoryClone != null) EditingCategoryClone.PropertyChanged -= EditingCategoryClone_PropertyChanged;
+        if (EditingSubCategoryClone != null)
+            EditingSubCategoryClone.PropertyChanged -= EditingSubCategoryClone_PropertyChanged;
+
+        EditingCategoryClone = new Category { Name = "", SortOrder = 0 };
+        EditingSubCategoryClone = new SubCategory { CategoryId = 0, Name = "", SortOrder = 0 };
+
+        EditingCategoryClone.PropertyChanged += EditingCategoryClone_PropertyChanged;
+        EditingSubCategoryClone.PropertyChanged += EditingSubCategoryClone_PropertyChanged;
+
+        OnPropertyChanged(nameof(AvailableParentCategories));
+        OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+        OnPropertyChanged(nameof(CanSaveCategory));
+        OnPropertyChanged(nameof(HasStagedCategoryItems));
+        SaveCategoryCommand.NotifyCanExecuteChanged();
+        AddAnotherCategoryCommand.NotifyCanExecuteChanged();
+    }
+
+    private void StageSubCategoryDraft() {
+        if (EditingSubCategoryClone == null || string.IsNullOrWhiteSpace(EditingSubCategoryClone.Name)) return;
+
+        // Resolve Category Name for UI display
+        string parentName = string.Empty;
+
+        if (EditingSubCategoryClone.CategoryId > 0) {
+            parentName = CategoriesWithNone.FirstOrDefault(c => c.Id == EditingSubCategoryClone.CategoryId)?.Name ??
+                         string.Empty;
+        }
+        else if (EditingCategoryClone != null && !string.IsNullOrWhiteSpace(EditingCategoryClone.Name)) {
+            parentName = EditingCategoryClone.Name;
+        }
+
+        EditingSubCategoryClone.CategoryName = parentName;
+
+        if (EditingSubCategoryClone.DefaultBucketId == 0) {
+            EditingSubCategoryClone.DefaultBucketId = null;
+        }
+
+        StagedSubCategories.Add(EditingSubCategoryClone.Clone());
+    }
+
+    private void RemoveStagedCategory(Category? item) {
+        if (item != null && StagedCategories.Contains(item)) {
+            if (item.Id == 0) {
+                //remove related subcategories
+                foreach (var subCategory in StagedSubCategories.Where(s => s.CategoryId == item.Id)) {
+                    StagedSubCategories.Remove(subCategory);
+                }
+            }
+            StagedCategories.Remove(item);
+
+            OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveCategory));
+            SaveCategoryCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void ClearCurrentCategoryDraft() {
+        if (EditingCategoryClone != null) {
+            EditingCategoryClone.Name = string.Empty;
+            EditingCategoryClone.Subcategories.Clear();
+        }
+
+        if (EditingSubCategoryClone != null) {
+            EditingSubCategoryClone.Name = string.Empty;
+            EditingSubCategoryClone.DefaultBucketId = null;
+        }
+
+        OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+        OnPropertyChanged(nameof(CanSaveCategory));
+        SaveCategoryCommand.NotifyCanExecuteChanged();
+        AddAnotherCategoryCommand.NotifyCanExecuteChanged();
+    }
+
     private void AddCategory() {
         try {
             CancelCategory();
-            EditingCategoryClone = new Category { Name = "New Category", SortOrder = 0 };
+
+            // Initialize Category Clone
+            EditingCategoryClone = new Category { Name = "", SortOrder = 0 };
+            EditingCategoryClone.PropertyChanged += EditingCategoryClone_PropertyChanged;
+
+            // Initialize SubCategory Clone for the new overlay
+            EditingSubCategoryClone = new SubCategory { CategoryId = 0, Name = "", SortOrder = 0 };
+
+            // In AddCategory() and EditCategory():
+            if (EditingSubCategoryClone != null) {
+                EditingSubCategoryClone.PropertyChanged += EditingSubCategoryClone_PropertyChanged;
+            }
+
             SelectedCategory = null;
             IsEditingCategory = true;
+            IsEditingCategoryEnabled = true;
+            
+            // Force ComboBox binding to refresh immediately
+            OnPropertyChanged(nameof(AvailableParentCategories));
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing new category.");
-            
         }
     }
 
@@ -2477,45 +3092,214 @@ public class MainViewModel : ViewModelBase {
                 SortOrder = SelectedCategory.SortOrder,
                 IsArchived = SelectedCategory.IsArchived
             };
+            EditingCategoryClone.PropertyChanged += EditingCategoryClone_PropertyChanged;
+
+            // Initialize a clean draft subcategory assigned to this category
+            // instead of picking only the first matching subcategory
+            EditingSubCategoryClone = new SubCategory {
+                CategoryId = SelectedCategory.Id,
+                Name = "",
+                SortOrder = 0
+            };
+
+            if (EditingSubCategoryClone != null) {
+                EditingSubCategoryClone.PropertyChanged += EditingSubCategoryClone_PropertyChanged;
+            }
 
             IsEditingCategory = true;
+            IsEditingCategoryEnabled = true;
+        
+            OnPropertyChanged(nameof(AvailableParentCategories));
+            OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveCategory));
+            SaveCategoryCommand.NotifyCanExecuteChanged();
+            AddAnotherCategoryCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for category.");
-            
+        }
+    }
+
+    // private async Task SaveCategoryAsync() {
+    //     if (EditingCategoryClone == null) return;
+    //
+    //     try {
+    //         List<string> errors = EditingCategoryClone.GetValidationErrors();
+    //         if (errors.Any()) {
+    //             MessageBox.Show(errors.First(), "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+    //             return;
+    //         }
+    //         
+    //         if (SelectedCategory != null) {
+    //             UpdateCategoryFromClone(SelectedCategory, EditingCategoryClone);
+    //             await _budgetService.UpsertCategoryAsync(SelectedCategory);
+    //         }
+    //         else {
+    //             await _budgetService.UpsertCategoryAsync(EditingCategoryClone);
+    //         }
+    //
+    //         var selectedId = SelectedCategory?.Id ?? EditingCategoryClone.Id;
+    //
+    //         IsEditingCategory = false;
+    //         EditingCategoryClone = null;
+    //
+    //         await LoadCategoryDataAsync();
+    //         await LoadSubCategoryDataAsync();
+    //
+    //         if (selectedId > 0) {
+    //             SelectedCategory = Categories.FirstOrDefault(c => c.Id == selectedId);
+    //         }
+    //
+    //         RequestProjectionRecalculation();
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error saving category.");
+    //
+    //         MessageBox.Show("Failed to save category. See log for details.", "Error", MessageBoxButton.OK,
+    //             MessageBoxImage.Error);
+    //     }
+    // }
+
+    public int TotalCategoryItemsToSaveCount {
+        get {
+            int stagedCount = (StagedCategories?.Count ?? 0) + (StagedSubCategories?.Count ?? 0);
+            bool hasActiveCategoryDraft =
+                EditingCategoryClone != null && !string.IsNullOrWhiteSpace(EditingCategoryClone.Name);
+            bool hasActiveSubCategoryDraft = EditingSubCategoryClone != null &&
+                                             !string.IsNullOrWhiteSpace(EditingSubCategoryClone.Name);
+
+            return stagedCount + (hasActiveCategoryDraft ? 1 : 0) + (hasActiveSubCategoryDraft ? 1 : 0);
+        }
+    }
+
+    public bool CanSaveCategory => IsEditingCategory &&
+                                   IsEditingCategoryEnabled &&
+                                   TotalCategoryItemsToSaveCount > 0;
+
+    private void EditingSubCategoryClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        try {
+            if (e.PropertyName == nameof(SubCategory.Name)) {
+                OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveCategory));
+                SaveCategoryCommand.NotifyCanExecuteChanged();
+                AddAnotherCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error in EditingSubCategoryClone_PropertyChanged.");
         }
     }
 
     private async Task SaveCategoryAsync() {
-        if (EditingCategoryClone == null) return;
+        bool hasCategoryDraft = EditingCategoryClone != null && !string.IsNullOrWhiteSpace(EditingCategoryClone.Name);
+        bool hasSubCategoryDraft =
+            EditingSubCategoryClone != null && !string.IsNullOrWhiteSpace(EditingSubCategoryClone.Name);
+
+        if (!hasCategoryDraft && !hasSubCategoryDraft && !StagedCategories.Any() && !StagedSubCategories.Any()) {
+            MessageBox.Show("Please enter a name for either the category or the subcategory before saving.",
+                "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
         try {
-            if (SelectedCategory != null) {
-                UpdateCategoryFromClone(SelectedCategory, EditingCategoryClone);
-                await _budgetService.UpsertCategoryAsync(SelectedCategory);
-            }
-            else {
-                await _budgetService.UpsertCategoryAsync(EditingCategoryClone);
+            // 1. Validate Category draft ONLY if populated
+            if (hasCategoryDraft) {
+                bool isValid = EditingCategoryClone!.ValidateAllProperties();
+                List<string> errors = EditingCategoryClone.GetValidationErrors();
+
+                if (!isValid || errors.Any()) {
+                    OnPropertyChanged(nameof(EditingCategoryClone));
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the category errors before saving.",
+                        "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                StagedCategories.Add(EditingCategoryClone);
             }
 
-            var selectedId = SelectedCategory?.Id ?? EditingCategoryClone.Id;
+            // 2. Validate SubCategory draft ONLY if populated
+            if (hasSubCategoryDraft) {
+                bool isValid = EditingSubCategoryClone!.ValidateAllProperties();
+                List<string> errors = EditingSubCategoryClone.GetValidationErrors();
 
-            IsEditingCategory = false;
-            EditingCategoryClone = null;
+                if (!isValid || errors.Any()) {
+                    OnPropertyChanged(nameof(EditingSubCategoryClone));
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the subcategory errors before saving.",
+                        "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (EditingSubCategoryClone.DefaultBucketId == 0)
+                    EditingSubCategoryClone.DefaultBucketId = null;
+
+                StagedSubCategories.Add(EditingSubCategoryClone);
+            }
+
+            // Dictionary to track Category Name -> New Auto-Generated ID mapping
+            var categoryNameToIdMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            // 3. Save All Categories First
+            foreach (var item in StagedCategories) {
+                int categoryId;
+                if (SelectedCategory != null && item.Id == SelectedCategory.Id) {
+                    UpdateCategoryFromClone(SelectedCategory, item);
+                    await _budgetService.UpsertCategoryAsync(SelectedCategory);
+                    categoryId = SelectedCategory.Id;
+                }
+                else {
+                    // Returns newly generated database ID
+                    await _budgetService.UpsertCategoryAsync(item);
+                    categoryId = item.Id;
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.Name) && categoryId > 0) {
+                    categoryNameToIdMap[item.Name.Trim()] = categoryId;
+                }
+            }
+
+            // 4. Resolve Parent Category IDs for Subcategories by Matching Name or SelectedCategory
+            foreach (var subItem in StagedSubCategories) {
+                // If CategoryId is not set, attempt name matching against new categories
+                if (subItem.CategoryId == 0) {
+                    // Check if a parent category name was stored on the subcategory draft/clone
+                    if (!string.IsNullOrWhiteSpace(subItem.CategoryName) &&
+                        categoryNameToIdMap.TryGetValue(subItem.CategoryName.Trim(), out int matchedId)) {
+                        subItem.CategoryId = matchedId;
+                    }
+                    else if (categoryNameToIdMap.Count == 1) {
+                        // If only one category was created in this batch, fall back to linking to it automatically
+                        subItem.CategoryId = categoryNameToIdMap.Values.First();
+                    }
+                    else if (SelectedCategory != null && SelectedCategory.Id > 0) {
+                        subItem.CategoryId = SelectedCategory.Id;
+                    }
+                }
+
+                if (subItem.CategoryId == 0) {
+                    MessageBox.Show($"Please select a valid Parent Category for subcategory '{subItem.Name}'.",
+                        "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (subItem.DefaultBucketId == 0)
+                    subItem.DefaultBucketId = null;
+
+                await _budgetService.UpsertSubCategoryAsync(subItem);
+            }
+
+            int countSaved = StagedCategories.Count + StagedSubCategories.Count;
+
+            // 5. Reset Overlay State & Refresh
+            CancelCategory();
 
             await LoadCategoryDataAsync();
             await LoadSubCategoryDataAsync();
 
-            if (selectedId > 0) {
-                SelectedCategory = Categories.FirstOrDefault(c => c.Id == selectedId);
-            }
-
-            RequestProjectionRecalculation();
+            ShowSuccessToast($"Successfully saved {countSaved} item{(countSaved > 1 ? "s" : "")}.");
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error saving category.");
-            
-            MessageBox.Show("Failed to save category. See log for details.", "Error", MessageBoxButton.OK,
+            Log.Error(ex, "Error saving categories/subcategories.");
+            MessageBox.Show("Failed to save changes. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -2528,18 +3312,27 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating category from clone.");
-            
         }
     }
 
     private void CancelCategory() {
         try {
+            if (EditingCategoryClone != null)
+                EditingCategoryClone.PropertyChanged -= EditingCategoryClone_PropertyChanged;
+            if (EditingSubCategoryClone != null)
+                EditingSubCategoryClone.PropertyChanged -= EditingSubCategoryClone_PropertyChanged;
+
             IsEditingCategory = false;
+            IsEditingCategoryEnabled = false;
             EditingCategoryClone = null;
+            EditingSubCategoryClone = null;
+            StagedCategories.Clear();
+            StagedSubCategories.Clear();
+
+            OnPropertyChanged(nameof(HasStagedCategoryItems));
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling category edit.");
-            
         }
     }
 
@@ -2561,6 +3354,7 @@ public class MainViewModel : ViewModelBase {
             if (result == MessageBoxResult.Yes) {
                 await _budgetService.DeleteCategoryAsync(EditingCategoryClone.Id);
                 IsEditingCategory = false;
+                IsEditingCategoryEnabled = false;
                 EditingCategoryClone = null;
                 await LoadCategoryDataAsync();
                 RequestProjectionRecalculation();
@@ -2568,7 +3362,39 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error deleting category.");
-            
+
+            MessageBox.Show("Failed to delete category.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task DeleteSelectedCategoryAsync() {
+        if (SelectedCategory == null) return;
+
+        try {
+            bool inUse = await _budgetService.IsCategoryInUseAsync(SelectedCategory.Id);
+            if (inUse) {
+                MessageBox.Show(
+                    "This category currently has subcategories assigned to it. Delete or reassign those subcategories first.",
+                    "Cannot Delete Category", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete this category?\r\n\r\n{SelectedCategory.Name}",
+                "Delete Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes) {
+                await _budgetService.DeleteCategoryAsync(SelectedCategory.Id);
+                IsEditingCategory = false;
+                IsEditingCategoryEnabled = false;
+                SelectedCategory = null;
+                await LoadCategoryDataAsync();
+                RequestProjectionRecalculation();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error deleting category.");
+
             MessageBox.Show("Failed to delete category.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -2582,7 +3408,7 @@ public class MainViewModel : ViewModelBase {
             CancelSubCategory();
             EditingSubCategoryClone = new SubCategory {
                 CategoryId = Categories.FirstOrDefault()?.Id ?? 0,
-                Name = "New Subcategory",
+                Name = "",
                 SortOrder = 0
             };
             SelectedSubCategory = null;
@@ -2590,7 +3416,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing new subcategory.");
-            
         }
     }
 
@@ -2612,14 +3437,38 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for subcategory.");
-            
         }
     }
+
+    // public int TotalSubCategoryItemsToSaveCount {
+    //     get {
+    //         int stagedCount = StagedSubCategories?.Count ?? 0;
+    //         bool hasActiveDraft = EditingSubCategoryClone != null && 
+    //                               !string.IsNullOrWhiteSpace(EditingSubCategoryClone.Name);
+    //         return stagedCount + (hasActiveDraft ? 1 : 0);
+    //     }
+    // }
+    //
+    // public bool CanSaveSubCategory => IsEditingSubCategory && 
+    //                                   IsEditingSubCategoryEnabled && 
+    //                                   TotalSubCategoryItemsToSaveCount > 0;
 
     private async Task SaveSubCategoryAsync() {
         if (EditingSubCategoryClone == null) return;
 
         try {
+            bool isValid = EditingSubCategoryClone.ValidateAllProperties();
+
+            List<string> errors = EditingSubCategoryClone.GetValidationErrors();
+            if (!isValid || errors.Any()) {
+                // Force WPF to re-evaluate all bindings hanging off EditingSubCategoryClone
+                OnPropertyChanged(nameof(EditingSubCategoryClone));
+
+                MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                    , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             if (EditingSubCategoryClone.DefaultBucketId == 0)
                 EditingSubCategoryClone.DefaultBucketId = null;
 
@@ -2643,13 +3492,23 @@ public class MainViewModel : ViewModelBase {
                 SelectedSubCategory = SubCategories.FirstOrDefault(s => s.Id == selectedId);
             }
 
-            RequestProjectionRecalculation();
+            //RequestProjectionRecalculation();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error saving subcategory.");
-            
+
             MessageBox.Show("Failed to save subcategory. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
+        }
+    }
+
+    private void RemoveStagedSubCategory(SubCategory? item) {
+        if (item != null && StagedSubCategories.Contains(item)) {
+            StagedSubCategories.Remove(item);
+            OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveCategory));
+            OnPropertyChanged(nameof(HasStagedCategoryItems));
+            SaveCategoryCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -2662,7 +3521,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating subcategory from clone.");
-            
         }
     }
 
@@ -2673,7 +3531,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling subcategory edit.");
-            
         }
     }
 
@@ -2683,7 +3540,8 @@ public class MainViewModel : ViewModelBase {
         try {
             bool inUse = await _budgetService.IsSubCategoryInUseAsync(EditingSubCategoryClone.Id);
             if (inUse) {
-                MessageBox.Show("This subcategory is currently assigned to existing transactions and cannot be deleted.",
+                MessageBox.Show(
+                    "This subcategory is currently assigned to existing transactions and cannot be deleted.",
                     "Cannot Delete", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -2702,18 +3560,125 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error deleting subcategory.");
-            
+
             MessageBox.Show("Failed to delete subcategory.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
+    private async Task DeleteSelectedSubCategoryAsync() {
+        if (SelectedSubCategory == null) return;
+
+        try {
+            bool inUse = await _budgetService.IsSubCategoryInUseAsync(SelectedSubCategory.Id);
+            if (inUse) {
+                MessageBox.Show(
+                    "This subcategory is currently assigned to existing transactions and cannot be deleted.",
+                    "Cannot Delete", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var result = MessageBox.Show($"Are you sure you want to delete this subcategory {SelectedSubCategory.Name}?",
+                "Delete Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes) {
+                await _budgetService.DeleteSubCategoryAsync(SelectedSubCategory.Id);
+                SelectedSubCategory = null;
+                IsEditingSubCategory = false;
+                EditingSubCategoryClone = null;
+                await LoadCategoryDataAsync();
+                await LoadSubCategoryDataAsync();
+                RequestProjectionRecalculation();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error deleting subcategory.");
+
+            MessageBox.Show("Failed to delete subcategory.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    
     #endregion
 
     #region Transaction CRUD
 
+    private void AddAnotherTransaction() {
+        if (EditingTransactionClone == null) return;
+
+        // Validate current item before staging
+        bool isValid = EditingTransactionClone.ValidateAllProperties();
+        List<string> errors = EditingTransactionClone.GetValidationErrors();
+        if (!isValid || errors.Any()) {
+            // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
+            OnPropertyChanged(nameof(EditingTransactionClone));
+
+            MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(EditingTransactionClone.Description)) {
+            MessageBox.Show("Please enter a description for the transaction.", "Validation Error", MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // Clean zero IDs
+        if (EditingTransactionClone.AccountId == 0) EditingTransactionClone.AccountId = null;
+        if (EditingTransactionClone.ToAccountId == 0) EditingTransactionClone.ToAccountId = null;
+        if (EditingTransactionClone.BillId == 0) EditingTransactionClone.BillId = null;
+        if (EditingTransactionClone.BucketId == 0) EditingTransactionClone.BucketId = null;
+        if (EditingTransactionClone.SubCategoryId == 0) EditingTransactionClone.SubCategoryId = null;
+
+        // Stage a clone of the filled form
+        StagedTransactions.Add(EditingTransactionClone.Clone());
+
+        // Prepare a clean fresh instance for the next entry
+        if (EditingTransactionClone != null) {
+            EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
+        }
+
+        var nextTrans = new Transaction {
+            Description = "",
+            Memo = "",
+            Amount = 0,
+            TransactionDate = EditingTransactionClone?.TransactionDate ?? DateTime.Today,
+            ToFitId = Guid.NewGuid().ToString(),
+            FromFitId = Guid.NewGuid().ToString()
+        };
+
+        RefreshTransactionEditState(nextTrans);
+        EditingTransactionClone = nextTrans;
+        EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
+
+        OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+        OnPropertyChanged(nameof(CanSaveTransaction));
+        SaveTransactionCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RemoveStagedTransaction(Transaction? item) {
+        if (item != null && StagedTransactions.Contains(item)) {
+            StagedTransactions.Remove(item);
+
+            OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveTransaction));
+            SaveTransactionCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void ClearCurrentTransactionDraft() {
+        if (EditingTransactionClone == null) return;
+
+        // Reset fields on the current active edit form without closing overlay
+        EditingTransactionClone.Description = string.Empty;
+        EditingTransactionClone.Memo = string.Empty;
+        EditingTransactionClone.Amount = 0;
+        EditingTransactionClone.BillId = null;
+        EditingTransactionClone.BucketId = null;
+        EditingTransactionClone.SubCategoryId = null;
+    }
+
     private void AddTransaction() {
         try {
-
             if (EditingTransactionClone != null) {
                 EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
             }
@@ -2722,6 +3687,7 @@ public class MainViewModel : ViewModelBase {
                 Description = "", Memo = "", Amount = 0, TransactionDate = DateTime.Today,
                 ToFitId = Guid.NewGuid().ToString(), FromFitId = Guid.NewGuid().ToString()
             };
+            IsEditingTransactionEnabled = true;
             RefreshTransactionEditState(editTrans);
 
             EditingTransactionClone = editTrans;
@@ -2729,10 +3695,11 @@ public class MainViewModel : ViewModelBase {
 
             SelectedTransaction = null;
             IsEditingTransaction = true;
+
+            AddAnotherTransactionCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing new transaction.");
-            
         }
     }
 
@@ -2752,16 +3719,19 @@ public class MainViewModel : ViewModelBase {
             EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
 
             IsEditingTransaction = true;
+
+            OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveTransaction));
+            SaveTransactionCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for transaction.");
-            
         }
     }
-    
+
     private string? _originalFromFitId;
     private string? _originalToFitId;
-    
+
     private void RefreshTransactionEditState(Transaction? source) {
         try {
             if (source == null) return;
@@ -2788,7 +3758,8 @@ public class MainViewModel : ViewModelBase {
                 ? Accounts.Where(a => !a.IsArchived || a.Id == source.AccountId).ToList()
                 : Accounts.ToList();
 
-            if (source.AccountId != null && source.AccountId != 0 && filteredAccounts.All(a => a.Id != source.AccountId)) {
+            if (source.AccountId != null && source.AccountId != 0 &&
+                filteredAccounts.All(a => a.Id != source.AccountId)) {
                 var missingAccount = fromAccount;
                 if (missingAccount != null) {
                     filteredAccounts.Add(missingAccount);
@@ -2818,7 +3789,7 @@ public class MainViewModel : ViewModelBase {
 
             TransactionToAccounts.Clear();
             TransactionToAccounts.AddRange(toAccountsWithNone);
-            
+
             // Snapshot original reconciliation IDs and FitIds for undo/revert functionality
             _originalFromAccountReconciledId = source.FromAccountReconciliationId;
             _originalToAccountReconciledId = source.ToAccountReconciliationId;
@@ -2835,10 +3806,14 @@ public class MainViewModel : ViewModelBase {
                         AccountId = fromAcc.Id,
                         AccountName = $"From: {fromAcc.Name}",
                         Side = TransactionSide.From,
-                        CurrentStatus = source.FromAccountReconciliationId.HasValue 
-                            ? ReconciliationStatus.Reconciled 
-                            : ((source.FromAccountIsCleared ?? false) ? ReconciliationStatus.Cleared : ReconciliationStatus.Uncleared),
-                        StatusDetailsText = source.FromAccountReconciliationId.HasValue ? $"Reconciled ID: {source.FromAccountReconciliationId.Value}" : "Not Reconciled",
+                        CurrentStatus = source.FromAccountReconciliationId.HasValue
+                            ? ReconciliationStatus.Reconciled
+                            : ((source.FromAccountIsCleared ?? false)
+                                ? ReconciliationStatus.Cleared
+                                : ReconciliationStatus.Uncleared),
+                        StatusDetailsText = source.FromAccountReconciliationId.HasValue
+                            ? $"Reconciled ID: {source.FromAccountReconciliationId.Value}"
+                            : "Not Reconciled",
                         StatusChangedCallback = HandleTransactionStatusChanged
                     });
                 }
@@ -2851,10 +3826,14 @@ public class MainViewModel : ViewModelBase {
                         AccountId = toAcc.Id,
                         AccountName = $"To: {toAcc.Name}",
                         Side = TransactionSide.To,
-                        CurrentStatus = source.ToAccountReconciliationId.HasValue 
-                            ? ReconciliationStatus.Reconciled 
-                            : ((source.ToAccountIsCleared ?? false) ? ReconciliationStatus.Cleared : ReconciliationStatus.Uncleared),
-                        StatusDetailsText = source.ToAccountReconciliationId.HasValue ? $"Reconciled ID: {source.ToAccountReconciliationId.Value}" : "Not Reconciled",
+                        CurrentStatus = source.ToAccountReconciliationId.HasValue
+                            ? ReconciliationStatus.Reconciled
+                            : ((source.ToAccountIsCleared ?? false)
+                                ? ReconciliationStatus.Cleared
+                                : ReconciliationStatus.Uncleared),
+                        StatusDetailsText = source.ToAccountReconciliationId.HasValue
+                            ? $"Reconciled ID: {source.ToAccountReconciliationId.Value}"
+                            : "Not Reconciled",
                         StatusChangedCallback = HandleTransactionStatusChanged
                     });
                 }
@@ -2862,93 +3841,146 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error refreshing transaction edit state.");
-            
         }
     }
-    
-    private void HandleTransactionStatusChanged(TransactionStatusItemViewModel item, ReconciliationStatus newStatus) {
-    if (EditingTransactionClone == null) return;
 
-    if (item.Side == TransactionSide.From) {
-        switch (newStatus) {
-            case ReconciliationStatus.Uncleared:
-                EditingTransactionClone.FromAccountReconciliationId = null;
-                EditingTransactionClone.FromAccountIsCleared = false;
-                // Only assign a new FitId if we haven't already generated one, or generate one provisionally 
-                // but allow it to revert if changed back.
-                if (string.IsNullOrEmpty(EditingTransactionClone.FromFitId) || EditingTransactionClone.FromFitId == _originalFromFitId) {
-                    EditingTransactionClone.FromFitId = Guid.NewGuid().ToString();
-                }
-                break;
-            case ReconciliationStatus.Cleared:
-                EditingTransactionClone.FromAccountReconciliationId = null;
-                EditingTransactionClone.FromAccountIsCleared = true;
-                // Revert to original FitId if turning it back to cleared/reconciled
-                EditingTransactionClone.FromFitId = _originalFromFitId;
-                break;
-            case ReconciliationStatus.Reconciled:
-                EditingTransactionClone.FromAccountIsCleared = true;
-                EditingTransactionClone.FromFitId = _originalFromFitId;
-                break;
-        }
-    }
-    else if (item.Side == TransactionSide.To) {
-        switch (newStatus) {
-            case ReconciliationStatus.Uncleared:
-                EditingTransactionClone.ToAccountReconciliationId = null;
-                EditingTransactionClone.ToAccountIsCleared = false;
-                if (string.IsNullOrEmpty(EditingTransactionClone.ToFitId) || EditingTransactionClone.ToFitId == _originalToFitId) {
-                    EditingTransactionClone.ToFitId = Guid.NewGuid().ToString();
-                }
-                break;
-            case ReconciliationStatus.Cleared:
-                EditingTransactionClone.ToAccountReconciliationId = null;
-                EditingTransactionClone.ToAccountIsCleared = true;
-                EditingTransactionClone.ToFitId = _originalToFitId;
-                break;
-            case ReconciliationStatus.Reconciled:
-                EditingTransactionClone.ToAccountIsCleared = true;
-                EditingTransactionClone.ToFitId = _originalToFitId;
-                break;
-        }
-    }
-}
-    
-    private async Task SaveTransactionAsync() {
+    private void HandleTransactionStatusChanged(TransactionStatusItemViewModel item, ReconciliationStatus newStatus) {
         if (EditingTransactionClone == null) return;
 
+        if (item.Side == TransactionSide.From) {
+            switch (newStatus) {
+                case ReconciliationStatus.Uncleared:
+                    EditingTransactionClone.FromAccountReconciliationId = null;
+                    EditingTransactionClone.FromAccountIsCleared = false;
+                    // Only assign a new FitId if we haven't already generated one, or generate one provisionally 
+                    // but allow it to revert if changed back.
+                    if (string.IsNullOrEmpty(EditingTransactionClone.FromFitId) ||
+                        EditingTransactionClone.FromFitId == _originalFromFitId) {
+                        EditingTransactionClone.FromFitId = Guid.NewGuid().ToString();
+                    }
+
+                    break;
+                case ReconciliationStatus.Cleared:
+                    EditingTransactionClone.FromAccountReconciliationId = null;
+                    EditingTransactionClone.FromAccountIsCleared = true;
+                    // Revert to original FitId if turning it back to cleared/reconciled
+                    EditingTransactionClone.FromFitId = _originalFromFitId??"";
+                    break;
+                case ReconciliationStatus.Reconciled:
+                    EditingTransactionClone.FromAccountIsCleared = true;
+                    EditingTransactionClone.FromFitId = _originalFromFitId??"";
+                    break;
+            }
+        }
+        else if (item.Side == TransactionSide.To) {
+            switch (newStatus) {
+                case ReconciliationStatus.Uncleared:
+                    EditingTransactionClone.ToAccountReconciliationId = null;
+                    EditingTransactionClone.ToAccountIsCleared = false;
+                    if (string.IsNullOrEmpty(EditingTransactionClone.ToFitId) ||
+                        EditingTransactionClone.ToFitId == _originalToFitId) {
+                        EditingTransactionClone.ToFitId = Guid.NewGuid().ToString();
+                    }
+
+                    break;
+                case ReconciliationStatus.Cleared:
+                    EditingTransactionClone.ToAccountReconciliationId = null;
+                    EditingTransactionClone.ToAccountIsCleared = true;
+                    EditingTransactionClone.ToFitId = _originalToFitId??"";
+                    break;
+                case ReconciliationStatus.Reconciled:
+                    EditingTransactionClone.ToAccountIsCleared = true;
+                    EditingTransactionClone.ToFitId = _originalToFitId??"";
+                    break;
+            }
+        }
+    }
+
+    public int TotalTransactionItemsToSaveCount {
+        get {
+            int stagedCount = StagedTransactions?.Count ?? 0;
+            bool hasActiveDraft = EditingTransactionClone != null &&
+                                  !string.IsNullOrWhiteSpace(EditingTransactionClone.Description);
+            return stagedCount + (hasActiveDraft ? 1 : 0);
+        }
+    }
+
+    public bool CanSaveTransaction => IsEditingTransaction &&
+                                      IsEditingTransactionEnabled &&
+                                      TotalTransactionItemsToSaveCount > 0;
+
+    private async Task SaveTransactionAsync() {
+        if (EditingTransactionClone == null && !StagedTransactions.Any()) return;
+
         try {
-            if (EditingTransactionClone.AccountId == 0) EditingTransactionClone.AccountId = null;
-            if (EditingTransactionClone.ToAccountId == 0) EditingTransactionClone.ToAccountId = null;
-            if (EditingTransactionClone.BillId == 0) EditingTransactionClone.BillId = null;
-            if (EditingTransactionClone.BucketId == 0) EditingTransactionClone.BucketId = null;
-            if (EditingTransactionClone.SubCategoryId == 0) EditingTransactionClone.SubCategoryId = null;
+            // 1. Stage the currently visible item if it has valid input
+            if (EditingTransactionClone != null && !string.IsNullOrWhiteSpace(EditingTransactionClone.Description)) {
+                if (EditingTransactionClone.AccountId == 0) EditingTransactionClone.AccountId = null;
+                if (EditingTransactionClone.ToAccountId == 0) EditingTransactionClone.ToAccountId = null;
+                if (EditingTransactionClone.BillId == 0) EditingTransactionClone.BillId = null;
+                if (EditingTransactionClone.BucketId == 0) EditingTransactionClone.BucketId = null;
+                if (EditingTransactionClone.SubCategoryId == 0) EditingTransactionClone.SubCategoryId = null;
 
-            if (SelectedTransaction != null) {
-                UpdateTransactionFromClone(SelectedTransaction, EditingTransactionClone);
-                await _budgetService.UpsertTransactionAsync(SelectedTransaction);
+                bool isValid = EditingTransactionClone.ValidateAllProperties();
+                List<string> errors = EditingTransactionClone.GetValidationErrors();
+                if (!isValid || errors.Any()) {
+                    // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
+                    OnPropertyChanged(nameof(EditingTransactionClone));
+
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                        , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                StagedTransactions.Add(EditingTransactionClone);
+
+                OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveTransaction));
+                SaveTransactionCommand.NotifyCanExecuteChanged();
             }
-            else {
-                await _budgetService.UpsertTransactionAsync(EditingTransactionClone);
+
+            if (!StagedTransactions.Any()) {
+                MessageBox.Show("Please enter a description for the transaction.", "Validation Error",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
-            var selectedTransactionId = SelectedTransaction?.Id;
+            // 2. Persist all staged items to database without triggering projections intermediate
+            foreach (var item in StagedTransactions) {
+                if (SelectedTransaction != null && item.TransactionId == SelectedTransaction.TransactionId) {
+                    UpdateTransactionFromClone(SelectedTransaction, item);
+                    await _budgetService.UpsertTransactionAsync(SelectedTransaction);
+                }
+                else {
+                    await _budgetService.UpsertTransactionAsync(item);
+                }
+            }
 
+            int countSaved = StagedTransactions.Count;
+
+            // 3. Reset editor state and clear staging list
+            if (EditingTransactionClone != null) {
+                EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
+            }
+
+            IsEditingTransactionEnabled = false;
             IsEditingTransaction = false;
             EditingTransactionClone = null;
+            StagedTransactions.Clear();
 
+            OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveTransaction));
+            SaveTransactionCommand.NotifyCanExecuteChanged();
+
+            // 4. Single refresh pass for UI & Projections
             await LoadPeriodDataAsync();
-
-            if (selectedTransactionId.HasValue) {
-                SelectedTransaction = CurrentPeriodTransactions.FirstOrDefault(a => a.Id == selectedTransactionId);
-            }
-
             RequestProjectionRecalculation();
+
+            ShowSuccessToast($"Successfully saved {countSaved} transaction{(countSaved > 1 ? "s" : "")}.");
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error saving transaction.");
-            
-            MessageBox.Show("Failed to save transaction. See log for details.", "Error", MessageBoxButton.OK,
+            Log.Error(ex, "Error saving batch transactions.");
+            MessageBox.Show("Failed to save transactions. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -2979,22 +4011,44 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating transaction from clone.");
-            
         }
     }
 
+    // private void CancelTransaction() {
+    //     try {
+    //         if (SelectedTransaction != null && SelectedTransaction.TransactionId == Guid.Empty) {
+    //             CurrentPeriodTransactions.Remove(SelectedTransaction);
+    //         }
+    //
+    //         IsEditingTransaction = false;
+    //         EditingTransactionClone = null;
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error cancelling transaction edit.");
+    //     }
+    // }
+
     private void CancelTransaction() {
         try {
+            if (EditingTransactionClone != null) {
+                EditingTransactionClone.PropertyChanged -= EditingTransactionClone_PropertyChanged;
+            }
+
             if (SelectedTransaction != null && SelectedTransaction.TransactionId == Guid.Empty) {
                 CurrentPeriodTransactions.Remove(SelectedTransaction);
             }
 
+            StagedTransactions.Clear();
             IsEditingTransaction = false;
             EditingTransactionClone = null;
+            IsEditingTransactionEnabled = false;
+
+            OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveTransaction));
+            SaveTransactionCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling transaction edit.");
-            
         }
     }
 
@@ -3011,15 +4065,44 @@ public class MainViewModel : ViewModelBase {
             try {
                 await _budgetService.DeleteTransactionAsync(EditingTransactionClone.TransactionId);
                 IsEditingTransaction = false;
+                IsEditingTransactionEnabled = false;
                 EditingTransactionClone = null;
                 await LoadPeriodDataAsync();
                 RequestProjectionRecalculation();
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting transaction.");
-                
+
                 MessageBox.Show("Failed to delete transaction. See log for details.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
+            }
+        }
+    }
+
+
+    private async Task DeleteSelectedTransactionAsync() {
+        if (SelectedTransaction == null || SelectedTransaction.TransactionId == Guid.Empty) return;
+
+        var result = MessageBox.Show(
+            $"Are you sure you want to delete this transaction?\r\n\r\n{SelectedTransaction!.Description} {SelectedTransaction.Amount:C} {SelectedTransaction.TransactionDate:MM/dd/yyyy} ",
+            "Delete Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
+        );
+
+        if (result == MessageBoxResult.Yes) {
+            try {
+                await _budgetService.DeleteTransactionAsync(SelectedTransaction.TransactionId);
+                SelectedTransaction = null;
+
+                await LoadPeriodDataAsync();
+                RequestProjectionRecalculation();
+
+                ShowSuccessToast("Transaction deleted.");
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error deleting selected transaction.");
+                MessageBox.Show("Failed to delete transaction.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -3028,17 +4111,90 @@ public class MainViewModel : ViewModelBase {
 
     #region Paycheck CRUD
 
+    private void AddAnotherPaycheck() {
+        if (EditingPaycheckClone == null) return;
+
+        // Validate current item before staging
+        bool isValid = EditingPaycheckClone.ValidateAllProperties();
+        List<string> errors = EditingPaycheckClone.GetValidationErrors();
+        if (!isValid || errors.Any()) {
+            // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
+            OnPropertyChanged(nameof(EditingPaycheckClone));
+
+            MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(EditingPaycheckClone.Name)) {
+            MessageBox.Show("Please enter a name for the paycheck.", "Validation Error", MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // Clean zero IDs
+        if (EditingPaycheckClone.AccountId == 0) EditingPaycheckClone.AccountId = null;
+
+        // Stage a clone of the filled form
+        StagedPaychecks.Add(EditingPaycheckClone.Clone());
+
+        // Prepare a clean fresh instance for the next entry
+        if (EditingPaycheckClone != null) {
+            EditingPaycheckClone.PropertyChanged -= EditingPaycheckClone_PropertyChanged;
+        }
+
+        var nextTrans = new Paycheck {
+            Name = "", ExpectedAmount = 0, StartDate = DateTime.Today, Frequency = Frequency.BiWeekly
+        };
+
+        EditingPaycheckClone = nextTrans;
+
+        EditingPaycheckClone.PropertyChanged += EditingPaycheckClone_PropertyChanged;
+
+        OnPropertyChanged(nameof(TotalPaycheckItemsToSaveCount));
+        OnPropertyChanged(nameof(CanSavePaycheck));
+        SavePaycheckCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RemoveStagedPaycheck(Paycheck? item) {
+        if (item != null && StagedPaychecks.Contains(item)) {
+            StagedPaychecks.Remove(item);
+
+            OnPropertyChanged(nameof(TotalPaycheckItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSavePaycheck));
+            SavePaycheckCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void ClearCurrentPaycheckDraft() {
+        if (EditingPaycheckClone == null) return;
+
+        // Reset fields on the current active edit form without closing overlay
+        EditingPaycheckClone.Name = string.Empty;
+        EditingPaycheckClone.ExpectedAmount = 0;
+        EditingPaycheckClone.StartDate = DateTime.Today;
+        EditingPaycheckClone.Frequency = Frequency.BiWeekly;
+    }
+
     private void AddPaycheck() {
         try {
+            if (EditingPaycheckClone != null) {
+                EditingPaycheckClone.PropertyChanged -= EditingPaycheckClone_PropertyChanged;
+            }
+
             EditingPaycheckClone = new Paycheck {
-                Name = "New Paycheck", ExpectedAmount = 0, StartDate = DateTime.Today, Frequency = Frequency.BiWeekly
+                Name = "", ExpectedAmount = 0, StartDate = DateTime.Today, Frequency = Frequency.BiWeekly
             };
+
+            EditingPaycheckClone.PropertyChanged += EditingPaycheckClone_PropertyChanged;
+
             SelectedPaycheck = null;
             IsEditingPaycheck = true;
+            IsEditingPaycheckEnabled = true;
+            AddAnotherPaycheckCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing new paycheck.");
-            
         }
     }
 
@@ -3046,6 +4202,10 @@ public class MainViewModel : ViewModelBase {
         try {
             CancelPaycheck();
             if (SelectedPaycheck == null) return;
+            if (EditingPaycheckClone != null) {
+                EditingPaycheckClone.PropertyChanged -= EditingPaycheckClone_PropertyChanged;
+            }
+
             EditingPaycheckClone = new Paycheck {
                 Id = SelectedPaycheck.Id,
                 Name = SelectedPaycheck.Name,
@@ -3056,45 +4216,100 @@ public class MainViewModel : ViewModelBase {
                 AccountId = SelectedPaycheck.AccountId,
                 IsBalanced = SelectedPaycheck.IsBalanced
             };
+
+            EditingPaycheckClone.PropertyChanged += EditingPaycheckClone_PropertyChanged;
+
             IsEditingPaycheck = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for paycheck.");
-            
         }
     }
 
+    public int TotalPaycheckItemsToSaveCount {
+        get {
+            int stagedCount = StagedPaychecks?.Count ?? 0;
+            bool hasActiveDraft = EditingPaycheckClone != null &&
+                                  !string.IsNullOrWhiteSpace(EditingPaycheckClone.Name);
+            return stagedCount + (hasActiveDraft ? 1 : 0);
+        }
+    }
+
+    public bool CanSavePaycheck => IsEditingPaycheck &&
+                                   IsEditingPaycheckEnabled &&
+                                   TotalPaycheckItemsToSaveCount > 0;
+
     private async Task SavePaycheckAsync() {
-        if (EditingPaycheckClone == null) return;
+        if (EditingPaycheckClone == null && !StagedPaychecks.Any()) return;
+
         try {
-            if (SelectedPaycheck != null) {
-                UpdatePaycheckFromClone(SelectedPaycheck, EditingPaycheckClone);
-                await _budgetService.UpsertPaycheckAsync(SelectedPaycheck);
-            }
-            else {
-                await _budgetService.UpsertPaycheckAsync(EditingPaycheckClone);
+            // 1. Stage current draft if valid
+            if (EditingPaycheckClone != null && !string.IsNullOrWhiteSpace(EditingPaycheckClone.Name)) {
+                bool isValid = EditingPaycheckClone.ValidateAllProperties();
+
+                List<string> errors = EditingPaycheckClone.GetValidationErrors();
+                if (!isValid || errors.Any()) {
+                    // Force WPF to re-evaluate all bindings hanging off EditingPaycheckClone
+                    OnPropertyChanged(nameof(EditingPaycheckClone));
+
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                        , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (EditingPaycheckClone.AccountId == 0) EditingPaycheckClone.AccountId = null;
+                StagedPaychecks.Add(EditingPaycheckClone);
+
+                OnPropertyChanged(nameof(TotalPaycheckItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSavePaycheck));
+                SavePaycheckCommand.NotifyCanExecuteChanged();
             }
 
-            var selectedPaycheckId = SelectedPaycheck?.Id;
+            if (!StagedPaychecks.Any()) {
+                MessageBox.Show("Please enter a name for the paycheck.", "Validation Error", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // 2. Persist all staged items
+            foreach (var item in StagedPaychecks) {
+                if (SelectedPaycheck != null && item.Id == SelectedPaycheck.Id) {
+                    UpdatePaycheckFromClone(SelectedPaycheck, item);
+                    await _budgetService.UpsertPaycheckAsync(SelectedPaycheck);
+                }
+                else {
+                    await _budgetService.UpsertPaycheckAsync(item);
+                }
+            }
+
+            int countSaved = StagedPaychecks.Count;
+
+            // 3. Reset editor state & clear staged collection
+            if (EditingPaycheckClone != null) {
+                EditingPaycheckClone.PropertyChanged -= EditingPaycheckClone_PropertyChanged;
+            }
 
             IsEditingPaycheck = false;
+            IsEditingPaycheckEnabled = false;
             EditingPaycheckClone = null;
+            StagedPaychecks.Clear();
 
+            OnPropertyChanged(nameof(TotalPaycheckItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSavePaycheck));
+            SavePaycheckCommand.NotifyCanExecuteChanged();
+
+            // 4. Refresh UI once
             await LoadPaycheckDataAsync();
-
-            if (selectedPaycheckId.HasValue) {
-                SelectedPaycheck = Paychecks.FirstOrDefault(a => a.Id == selectedPaycheckId);
-            }
-
             await LoadPeriodDataAsync();
             RefreshPaychecks();
             LoadPaychecks();
             RequestProjectionRecalculation();
+
+            ShowSuccessToast($"Successfully saved {countSaved} paycheck{(countSaved > 1 ? "s" : "")}.");
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error saving paycheck.");
-            
-            MessageBox.Show("Failed to save paycheck. See log for details.", "Error", MessageBoxButton.OK,
+            Log.Error(ex, "Error saving batch paychecks.");
+            MessageBox.Show("Failed to save paychecks. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
     }
@@ -3111,18 +4326,21 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating paycheck from clone.");
-            
         }
     }
 
     private void CancelPaycheck() {
         try {
+            if (EditingPaycheckClone != null) {
+                EditingPaycheckClone.PropertyChanged -= EditingPaycheckClone_PropertyChanged;
+            }
+
             IsEditingPaycheck = false;
+            IsEditingPaycheckEnabled = false;
             EditingPaycheckClone = null;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling paycheck edit.");
-            
         }
     }
 
@@ -3139,6 +4357,7 @@ public class MainViewModel : ViewModelBase {
             try {
                 await _budgetService.DeletePaycheckAsync(EditingPaycheckClone.Id);
                 IsEditingPaycheck = false;
+                IsEditingPaycheckEnabled = false;
                 EditingPaycheckClone = null;
                 await LoadPaycheckDataAsync();
                 await LoadPeriodDataAsync();
@@ -3147,7 +4366,36 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error deleting paycheck.");
-                
+
+                MessageBox.Show("Failed to delete paycheck. See log for details.", "Error", MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+    }
+
+    private async Task DeleteSelectedPaycheckAsync() {
+        if (SelectedPaycheck == null) return;
+        var messageBoxResult = MessageBox.Show(
+            $"Are you sure you want to delete this paycheck?\r\n\r\n{SelectedPaycheck.Name}",
+            "Delete Confirmation",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning
+        );
+
+        if (messageBoxResult == MessageBoxResult.Yes) {
+            try {
+                await _budgetService.DeletePaycheckAsync(SelectedPaycheck.Id);
+                IsEditingPaycheck = false;
+                IsEditingPaycheckEnabled = false;
+                SelectedPaycheck = null;
+                await LoadPaycheckDataAsync();
+                await LoadPeriodDataAsync();
+                RefreshPaychecks();
+                RequestProjectionRecalculation();
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error deleting paycheck.");
+
                 MessageBox.Show("Failed to delete paycheck. See log for details.", "Error", MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
@@ -3158,10 +4406,89 @@ public class MainViewModel : ViewModelBase {
 
     #region Account CRUD
 
+    private void AddAnotherAccount() {
+        if (EditingAccountClone == null) return;
+
+        // Validate current item before staging
+        bool isValid = EditingAccountClone.ValidateAllProperties();
+        List<string> errors = EditingAccountClone.GetValidationErrors();
+        if (!isValid || errors.Any()) {
+            // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
+            OnPropertyChanged(nameof(EditingAccountClone));
+
+            MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(EditingAccountClone.Name)) {
+            MessageBox.Show("Please enter a name for the account.", "Validation Error", MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // Clean zero IDs
+
+        // Stage a clone of the filled form
+        StagedAccounts.Add(EditingAccountClone.Clone());
+
+        // Prepare a clean fresh instance for the next entry
+        if (EditingAccountClone != null) {
+            EditingAccountClone.PropertyChanged -= EditingAccountClone_PropertyChanged;
+        }
+
+        var nextTrans = new Account {
+            Name = "",
+            Type = AccountType.Checking,
+            Balance = 0,
+            BalanceAsOf = DateTime.Today,
+            IncludeInTotal = true,
+            MortgageDetails = new MortgageDetails(),
+            CreditCardDetails = new CreditCardDetails(),
+            HexColor = "#FF808080"
+        };
+
+        EditingAccountClone = nextTrans;
+
+        EditingAccountClone.PropertyChanged += EditingAccountClone_PropertyChanged;
+
+        OnPropertyChanged(nameof(TotalAccountItemsToSaveCount));
+        OnPropertyChanged(nameof(CanSaveAccount));
+        SaveAccountCommand.NotifyCanExecuteChanged();
+    }
+
+    private void RemoveStagedAccount(Account? item) {
+        if (item != null && StagedAccounts.Contains(item)) {
+            StagedAccounts.Remove(item);
+
+            OnPropertyChanged(nameof(TotalAccountItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveAccount));
+            SaveAccountCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    private void ClearCurrentAccountDraft() {
+        if (EditingAccountClone == null) return;
+
+        // Reset fields on the current active edit form without closing overlay
+        EditingAccountClone.Name = string.Empty;
+        EditingAccountClone.IncludeInTotal = true;
+        EditingAccountClone.Balance = 0;
+        EditingAccountClone.BalanceAsOf = DateTime.Today;
+        EditingAccountClone.Type = AccountType.Checking;
+        EditingAccountClone.MortgageDetails = new MortgageDetails();
+        EditingAccountClone.CreditCardDetails = new CreditCardDetails();
+        EditingAccountClone.HexColor = "#FF808080";
+    }
+
     private void AddAccount() {
         try {
+            if (EditingAccountClone != null) {
+                EditingAccountClone.PropertyChanged -= EditingAccountClone_PropertyChanged;
+            }
+
             EditingAccountClone = new Account {
-                Name = "New Account",
+                Name = "",
                 Type = AccountType.Checking,
                 Balance = 0,
                 BalanceAsOf = DateTime.Today,
@@ -3170,12 +4497,16 @@ public class MainViewModel : ViewModelBase {
                 CreditCardDetails = new CreditCardDetails(),
                 HexColor = "#FF808080"
             };
+
+            EditingAccountClone.PropertyChanged += EditingAccountClone_PropertyChanged;
+
             SelectedAccount = null;
             IsEditingAccount = true;
+            IsEditingAccountEnabled = true;
+            AddAnotherAccountCommand.NotifyCanExecuteChanged();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing new account.");
-            
         }
     }
 
@@ -3183,6 +4514,10 @@ public class MainViewModel : ViewModelBase {
         try {
             CancelAccount();
             if (SelectedAccount == null) return;
+            if (EditingAccountClone != null) {
+                EditingAccountClone.PropertyChanged -= EditingAccountClone_PropertyChanged;
+            }
+
             EditingAccountClone = new Account {
                 Id = SelectedAccount.Id,
                 Name = SelectedAccount.Name,
@@ -3235,52 +4570,201 @@ public class MainViewModel : ViewModelBase {
                 EditingAccountClone.AccountAprHistory = new();
             }
 
+            EditingAccountClone.PropertyChanged += EditingAccountClone_PropertyChanged;
+
             IsEditingAccount = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for account.");
-            
         }
     }
 
+    // private async Task SaveAccountAsync() {
+    //     if (EditingAccountClone != null) {
+    //         try {
+    //             List<string> errors = EditingAccountClone.GetValidationErrors();
+    //             if (errors.Any()) {
+    //                 MessageBox.Show(errors.First(), "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+    //                 return;
+    //             }
+    //             
+    //             if (EditingAccountClone.Type == AccountType.CreditCard &&
+    //                 (EditingAccountClone.AccountAprHistory == null ||
+    //                  EditingAccountClone.AccountAprHistory.Count ==
+    //                  0)) {
+    //                 MessageBox.Show(
+    //                     "Before you can save this credit card, you need to set up your interest rates.",
+    //                     "Incomplete Setup",
+    //                     MessageBoxButton.OK,
+    //                     MessageBoxImage.Warning
+    //                 );
+    //                 SetAccountAprRatesCommand.Execute(EditingAccountClone);
+    //                 return;
+    //             }
+    //
+    //             var selectedAccountId = SelectedAccount?.Id;
+    //             if (SelectedAccount != null) {
+    //                 UpdateAccountFromClone(SelectedAccount, EditingAccountClone);
+    //                 await _budgetService.UpsertAccountAsync(SelectedAccount);
+    //             }
+    //             else {
+    //                 EditingAccountClone.Id = await _budgetService.UpsertAccountAsync(EditingAccountClone);
+    //
+    //                 var openingBalance = new Transaction() {
+    //                     AccountId = EditingAccountClone.IsLiability ? EditingAccountClone.Id : null,
+    //                     ToAccountId = EditingAccountClone.IsLiability
+    //                         ? null
+    //                         : EditingAccountClone.Id,
+    //                     AccountName = EditingAccountClone.IsLiability
+    //                         ? EditingAccountClone.Name
+    //                         : null,
+    //                     ToAccountName = EditingAccountClone.IsLiability
+    //                         ? null
+    //                         : EditingAccountClone.Name,
+    //                     Amount = EditingAccountClone.Balance,
+    //                     TransactionDate = EditingAccountClone.BalanceAsOf,
+    //                     TransactionId = Guid.NewGuid(),
+    //                     ToFitId = Guid.NewGuid().ToString(),
+    //                     FromFitId = Guid.NewGuid().ToString(),
+    //                     Description = Constants.OpeningBalance,
+    //                     Memo = Constants.OpeningBalance
+    //                 };
+    //
+    //                 if (openingBalance.Amount != 0) {
+    //                     try {
+    //                         await _budgetService.UpsertTransactionAsync(openingBalance);
+    //                     }
+    //                     catch (Exception ex) {
+    //                         Log.Error(ex, "Error upserting transaction in PropertyChanged.");
+    //                     }
+    //
+    //                     List<Transaction> transactions = new List<Transaction>();
+    //                     if (openingBalance.AccountId.HasValue) {
+    //                         transactions.AddRange(
+    //                             await _budgetService.GetAccountTransactionsAsync(openingBalance.AccountId.Value));
+    //                     }
+    //
+    //                     if (openingBalance.ToAccountId.HasValue) {
+    //                         transactions.AddRange(
+    //                             await _budgetService.GetAccountTransactionsAsync(openingBalance.ToAccountId.Value));
+    //                     }
+    //
+    //                     string json = JsonConvert.SerializeObject(transactions.ToList());
+    //                     var reconciliationTransactions =
+    //                         JsonConvert.DeserializeObject<List<TransactionViewModel>>(json);
+    //                     if (reconciliationTransactions != null) {
+    //                         if (openingBalance.AccountId.HasValue) {
+    //                             await _reconciliationService.ReconcileAccountAsync(
+    //                                 openingBalance.AccountId.Value,
+    //                                 reconciliationTransactions,
+    //                                 openingBalance.Amount,
+    //                                 openingBalance.TransactionDate);
+    //                         }
+    //
+    //                         if (openingBalance.ToAccountId.HasValue) {
+    //                             await _reconciliationService.ReconcileAccountAsync(
+    //                                 openingBalance.ToAccountId.Value,
+    //                                 reconciliationTransactions,
+    //                                 openingBalance.Amount,
+    //                                 openingBalance.TransactionDate);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //
+    //             IsEditingAccount = false;
+    //             EditingAccountClone = null;
+    //
+    //             await LoadAccountDataAsync();
+    //
+    //             if (selectedAccountId.HasValue) {
+    //                 SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
+    //             }
+    //
+    //             await LoadPeriodDataAsync();
+    //
+    //             RequestProjectionRecalculation();
+    //         }
+    //         catch (Exception ex) {
+    //             Log.Error(ex, "Error saving account.");
+    //
+    //             MessageBox.Show("Failed to save account. See log for details.", "Error", MessageBoxButton.OK,
+    //                 MessageBoxImage.Error);
+    //         }
+    //     }
+    // }
+
+
+    public int TotalAccountItemsToSaveCount {
+        get {
+            int stagedCount = StagedAccounts?.Count ?? 0;
+            bool hasActiveDraft = EditingAccountClone != null &&
+                                  !string.IsNullOrWhiteSpace(EditingAccountClone.Name);
+            return stagedCount + (hasActiveDraft ? 1 : 0);
+        }
+    }
+
+    public bool CanSaveAccount => IsEditingAccount &&
+                                  IsEditingAccountEnabled &&
+                                  TotalAccountItemsToSaveCount > 0;
+
     private async Task SaveAccountAsync() {
-        if (EditingAccountClone != null) {
-            try {
+        if (EditingAccountClone == null && !StagedAccounts.Any()) return;
+
+        try {
+            // 1. Stage current draft if valid
+            if (EditingAccountClone != null && !string.IsNullOrWhiteSpace(EditingAccountClone.Name)) {
+                // Run DataAnnotations validation on the object to highlight red fields in WPF
+                bool isValid = EditingAccountClone.ValidateAllProperties();
+
+                List<string> errors = EditingAccountClone.GetValidationErrors();
+                if (!isValid || errors.Any()) {
+                    // Force WPF to re-evaluate all bindings hanging off EditingAccountClone
+                    OnPropertyChanged(nameof(EditingAccountClone));
+
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
+                        , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
                 if (EditingAccountClone.Type == AccountType.CreditCard &&
                     (EditingAccountClone.AccountAprHistory == null ||
-                     EditingAccountClone.AccountAprHistory.Count ==
-                     0)) {
-                    MessageBox.Show(
-                        "Before you can save this credit card, you need to set up your interest rates.",
-                        "Incomplete Setup",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning
-                    );
+                     EditingAccountClone.AccountAprHistory.Count == 0)) {
+                    MessageBox.Show("Before you can save this credit card, you need to set up your interest rates.",
+                        "Incomplete Setup", MessageBoxButton.OK, MessageBoxImage.Warning);
                     SetAccountAprRatesCommand.Execute(EditingAccountClone);
                     return;
                 }
 
-                var selectedAccountId = SelectedAccount?.Id;
-                if (SelectedAccount != null) {
-                    UpdateAccountFromClone(SelectedAccount, EditingAccountClone);
+                StagedAccounts.Add(EditingAccountClone);
+
+                OnPropertyChanged(nameof(TotalAccountItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveAccount));
+                SaveAccountCommand.NotifyCanExecuteChanged();
+            }
+
+            if (!StagedAccounts.Any()) {
+                MessageBox.Show("Please enter a name for the account.", "Validation Error", MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            // 2. Persist all staged items
+            foreach (var item in StagedAccounts) {
+                if (SelectedAccount != null && item.Id == SelectedAccount.Id) {
+                    UpdateAccountFromClone(SelectedAccount, item);
                     await _budgetService.UpsertAccountAsync(SelectedAccount);
                 }
                 else {
-                    EditingAccountClone.Id = await _budgetService.UpsertAccountAsync(EditingAccountClone);
+                    item.Id = await _budgetService.UpsertAccountAsync(item);
 
                     var openingBalance = new Transaction() {
-                        AccountId = EditingAccountClone.IsLiability ? EditingAccountClone.Id : null,
-                        ToAccountId = EditingAccountClone.IsLiability
-                            ? null
-                            : EditingAccountClone.Id,
-                        AccountName = EditingAccountClone.IsLiability
-                            ? EditingAccountClone.Name
-                            : null,
-                        ToAccountName = EditingAccountClone.IsLiability
-                            ? null
-                            : EditingAccountClone.Name,
-                        Amount = EditingAccountClone.Balance,
-                        TransactionDate = EditingAccountClone.BalanceAsOf,
+                        AccountId = item.IsLiability ? item.Id : null,
+                        ToAccountId = item.IsLiability ? null : item.Id,
+                        AccountName = item.IsLiability ? item.Name : null,
+                        ToAccountName = item.IsLiability ? null : item.Name,
+                        Amount = item.Balance,
+                        TransactionDate = item.BalanceAsOf,
                         TransactionId = Guid.NewGuid(),
                         ToFitId = Guid.NewGuid().ToString(),
                         FromFitId = Guid.NewGuid().ToString(),
@@ -3289,15 +4773,9 @@ public class MainViewModel : ViewModelBase {
                     };
 
                     if (openingBalance.Amount != 0) {
-                        try {
-                            await _budgetService.UpsertTransactionAsync(openingBalance);
-                        }
-                        catch (Exception ex) {
-                            Log.Error(ex, "Error upserting transaction in PropertyChanged.");
-                            
-                        }
+                        await _budgetService.UpsertTransactionAsync(openingBalance);
 
-                        List<Transaction> transactions = new List<Transaction>();
+                        List<Transaction> transactions = new();
                         if (openingBalance.AccountId.HasValue) {
                             transactions.AddRange(
                                 await _budgetService.GetAccountTransactionsAsync(openingBalance.AccountId.Value));
@@ -3314,42 +4792,47 @@ public class MainViewModel : ViewModelBase {
                         if (reconciliationTransactions != null) {
                             if (openingBalance.AccountId.HasValue) {
                                 await _reconciliationService.ReconcileAccountAsync(
-                                    openingBalance.AccountId.Value,
-                                    reconciliationTransactions,
-                                    openingBalance.Amount,
+                                    openingBalance.AccountId.Value, reconciliationTransactions, openingBalance.Amount,
                                     openingBalance.TransactionDate);
                             }
 
                             if (openingBalance.ToAccountId.HasValue) {
                                 await _reconciliationService.ReconcileAccountAsync(
-                                    openingBalance.ToAccountId.Value,
-                                    reconciliationTransactions,
-                                    openingBalance.Amount,
+                                    openingBalance.ToAccountId.Value, reconciliationTransactions, openingBalance.Amount,
                                     openingBalance.TransactionDate);
                             }
                         }
                     }
                 }
-
-                IsEditingAccount = false;
-                EditingAccountClone = null;
-
-                await LoadAccountDataAsync();
-
-                if (selectedAccountId.HasValue) {
-                    SelectedAccount = VisibleAccounts.FirstOrDefault(a => a.Id == selectedAccountId);
-                }
-
-                await LoadPeriodDataAsync();
-
-                RequestProjectionRecalculation();
             }
-            catch (Exception ex) {
-                Log.Error(ex, "Error saving account.");
-                
-                MessageBox.Show("Failed to save account. See log for details.", "Error", MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+
+            int countSaved = StagedAccounts.Count;
+
+            // 3. Reset editor state & clear staged collection
+            if (EditingAccountClone != null) {
+                EditingAccountClone.PropertyChanged -= EditingAccountClone_PropertyChanged;
             }
+
+            IsEditingAccount = false;
+            IsEditingAccountEnabled = false;
+            EditingAccountClone = null;
+            StagedAccounts.Clear();
+
+            OnPropertyChanged(nameof(TotalAccountItemsToSaveCount));
+            OnPropertyChanged(nameof(CanSaveAccount));
+            SaveAccountCommand.NotifyCanExecuteChanged();
+
+            // 4. Refresh UI once
+            await LoadAccountDataAsync();
+            await LoadPeriodDataAsync();
+            RequestProjectionRecalculation();
+
+            ShowSuccessToast($"Successfully saved {countSaved} account{(countSaved > 1 ? "s" : "")}.");
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error saving batch accounts.");
+            MessageBox.Show("Failed to save accounts. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -3395,18 +4878,21 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating account from clone.");
-            
         }
     }
 
     private void CancelAccount() {
         try {
+            if (EditingAccountClone != null) {
+                EditingAccountClone.PropertyChanged -= EditingAccountClone_PropertyChanged;
+            }
+
             IsEditingAccount = false;
+            IsEditingAccountEnabled = false;
             EditingAccountClone = null;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling account edit.");
-            
         }
     }
 
@@ -3461,6 +4947,7 @@ public class MainViewModel : ViewModelBase {
             if (messageBoxResult == MessageBoxResult.Yes) {
                 await _budgetService.DeleteAccountAsync(EditingAccountClone.Id);
                 IsEditingAccount = false;
+                IsEditingAccountEnabled = false;
                 EditingAccountClone = null;
                 await LoadAccountDataAsync();
                 await LoadPeriodDataAsync();
@@ -3469,7 +4956,73 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error deleting account.");
-            
+
+            MessageBox.Show("Failed to delete account. See log for details.", "Error", MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private async Task DeleteSelectedAccountAsync() {
+        if (SelectedAccount == null) return;
+
+        try {
+            var affectedPaychecks = Paychecks.Where(x =>
+                x.AccountId == SelectedAccount.Id && (x.EndDate == null || x.EndDate > DateTime.Now)).ToList();
+            var affectedBills = Bills.Where(x =>
+                (x.AccountId == SelectedAccount.Id || x.ToAccountId == SelectedAccount.Id) && x.IsActive &&
+                !x.IsArchived).ToList();
+            var affectedBuckets = Buckets.Where(x => x.AccountId == SelectedAccount.Id && !x.IsArchived).ToList();
+
+            if (affectedPaychecks.Any() || affectedBills.Any() || affectedBuckets.Any()) {
+                var availableAccounts = Accounts.Where(a => a.Id != SelectedAccount.Id && !a.IsArchived).ToList();
+                var vm = new ReassignAccountDependenciesViewModel(affectedPaychecks, affectedBills, affectedBuckets,
+                    availableAccounts, SelectedAccount.Id!);
+                var dialog = new ReassignAccountDependenciesDialog(vm) {
+                    Owner = Application.Current.MainWindow
+                };
+
+                if (dialog.ShowDialog() == true) {
+                    foreach (var pItem in vm.Paychecks) {
+                        pItem.Item.AccountId = pItem.TargetAccountId;
+                        await _budgetService.UpsertPaycheckAsync(pItem.Item);
+                    }
+
+                    foreach (var bItem in vm.Bills) {
+                        bItem.Bill.AccountId = bItem.TargetAccountId;
+                        bItem.Bill.ToAccountId = bItem.TargetToAccountId;
+                        await _budgetService.UpsertBillAsync(bItem.Bill);
+                    }
+
+                    foreach (var bItem in vm.Buckets) {
+                        bItem.Item.AccountId = bItem.TargetAccountId;
+                        await _budgetService.UpsertBucketAsync(bItem.Item, null);
+                    }
+                }
+                else {
+                    return;
+                }
+            }
+
+            var messageBoxResult = MessageBox.Show(
+                $"Are you sure you want to delete this account?\r\n\r\n{SelectedAccount.Name}",
+                "Delete Confirmation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning
+            );
+
+            if (messageBoxResult == MessageBoxResult.Yes) {
+                await _budgetService.DeleteAccountAsync(SelectedAccount.Id);
+                IsEditingAccount = false;
+                IsEditingAccountEnabled = false;
+                SelectedAccount = null;
+                await LoadAccountDataAsync();
+                await LoadPeriodDataAsync();
+                RequestProjectionRecalculation();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error deleting account.");
+
             MessageBox.Show("Failed to delete account. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -3521,7 +5074,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error getting StrategyTakeawayPrimary.");
-                
+
                 return string.Empty;
             }
         }
@@ -3547,7 +5100,7 @@ public class MainViewModel : ViewModelBase {
             var projectionStartDate = ProjectionStartDate;
             var projectionEndDate = ProjectionEndDate;
             var useAutoSweep = UseAutoSweep;
-            var allocation = EditableAllocations;
+            //var allocation = EditableAllocations;
 
             var snowballOptions = SnowballOptions;
             bool isSnowballEnabled = snowballOptions?.EnableSnowball == true;
@@ -3560,7 +5113,7 @@ public class MainViewModel : ViewModelBase {
                 var buckets = await _budgetService.GetAllBucketsAsync();
                 var periodBills = await _budgetService.GetAllPeriodBillsAsync();
                 var periodBuckets = await _budgetService.GetAllPeriodBucketsAsync();
-
+                var allocations = (await _budgetService.GetAllAllocationsAsync()).ToList();
                 cancellationToken.ThrowIfCancellationRequested();
 
                 List<AccountReconciliation>? reconciliations = null;
@@ -3610,7 +5163,7 @@ public class MainViewModel : ViewModelBase {
                     rawBucketTransactions.ToList(),
                     allTransactions,
                     start, end, accounts, paychecks.ToList(), bills.ToList(), buckets.ToList(),
-                    allocation.ToList(),
+                    allocations,
                     periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
                     showReconciled, true, useAutoSweep, null);
 
@@ -3626,7 +5179,7 @@ public class MainViewModel : ViewModelBase {
                         rawBucketTransactions.ToList(),
                         allTransactions,
                         start, end, accounts, paychecks.ToList(), bills.ToList(), buckets.ToList(),
-                        allocation.ToList(),
+                        allocations,
                         periodBills.ToList(), periodBuckets.ToList(), transactions.ToList(), reconciliations?.ToList(),
                         showReconciled, true, useAutoSweep, snowballOptions);
 
@@ -3705,11 +5258,10 @@ public class MainViewModel : ViewModelBase {
                 ShowWarningToast(message);
             }
         }
-        catch (OperationCanceledException) {
-        }
+        catch (OperationCanceledException) { }
         catch (Exception ex) {
             Log.Error(ex, "Error calculating projections.");
-            
+
             ShowWarningToast("Failed to calculate projections. Check logs.");
         }
         finally {
@@ -3732,7 +5284,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing toast.");
-            
         }
     }
 
@@ -3748,7 +5299,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing success toast.");
-            
         }
     }
 
@@ -3764,7 +5314,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing warning toast.");
-            
         }
     }
 
@@ -3843,7 +5392,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error getting projected bills for period starting {PeriodStart}.", periodStart);
-            
+
             return new List<PeriodBill>();
         }
     }
@@ -3878,7 +5427,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load budget data.");
-            
+
             MessageBox.Show("Failed to load budget data. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -3975,7 +5524,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load account data.");
-            
+
             MessageBox.Show("Failed to load account data. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -3984,7 +5533,7 @@ public class MainViewModel : ViewModelBase {
         }
     }
 
-    private ICollectionView _filteredBillsView;
+    private ICollectionView _filteredBillsView = null!;
     public ICollectionView FilteredBillsView => _filteredBillsView;
 
     private async Task LoadBillDataAsync() {
@@ -4015,6 +5564,7 @@ public class MainViewModel : ViewModelBase {
             var billsWithNoneList = new List<Bill>(unarchivedBills.Count + 1) {
                 new Bill { Id = 0, Name = "(None)" }
             };
+
             billsWithNoneList.AddRange(unarchivedBills);
 
             Bills.AddRange(billsList);
@@ -4024,7 +5574,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load bill data.");
-            
+
             MessageBox.Show("Failed to load bill data. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4042,11 +5592,12 @@ public class MainViewModel : ViewModelBase {
             string searchText = EditingTransactionClone?.Description?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(searchText)) return true;
 
-            return bill.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase);
+            //return bill.Name.Contains(searchText, StringComparison.OrdinalIgnoreCase)
+            return bill.Name.StartsWith(searchText, StringComparison.OrdinalIgnoreCase);
         }
         catch (Exception ex) {
             Log.Error(ex, "Error filtering bill item.");
-            
+
             return false;
         }
     }
@@ -4087,7 +5638,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load bucket data.");
-            
+
             MessageBox.Show("Failed to load bucket data. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4112,7 +5663,9 @@ public class MainViewModel : ViewModelBase {
             SubCategoriesWithNone.Clear();
 
             var subCategoriesList = (await _budgetService.GetAllSubCategoriesAsync(true))
-                .OrderBy(b => b.Name)
+                .OrderBy(b => b.CategoryName)
+                .ThenBy(b => b.SortOrder)
+                .ThenBy(b => b.Name)
                 .ToList();
 
             foreach (var b in subCategoriesList) {
@@ -4133,7 +5686,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load sub category data.");
-            
+
             MessageBox.Show("Failed to load sub category data. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4178,7 +5731,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load category data.");
-            
+
             MessageBox.Show("Failed to load category data. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4222,7 +5775,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Failed to load Paycheck data.");
-            
+
             MessageBox.Show("Failed to load Paycheck data. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4252,7 +5805,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading paychecks into period view.");
-            
         }
     }
 
@@ -4284,7 +5836,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period data.");
-            
         }
     }
 
@@ -4303,7 +5854,7 @@ public class MainViewModel : ViewModelBase {
                     }
                 }
             }
-            
+
             foreach (var pb in CurrentPeriodBuckets) {
                 pb.TransactionAmount = CurrentPeriodTransactions
                     .Where(t => t.BucketId == pb.BucketId)
@@ -4312,7 +5863,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error applying transaction amounts to period items.");
-            
         }
     }
 
@@ -4340,7 +5890,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period bills.");
-            
         }
     }
 
@@ -4380,7 +5929,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period buckets.");
-            
         }
     }
 
@@ -4412,7 +5960,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error getting next period date.");
-            
+
             return currentPeriodStart.AddDays(14);
         }
     }
@@ -4432,7 +5980,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error loading period transactions.");
-            
         }
     }
 
@@ -4448,7 +5995,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing period.");
-            
         }
     }
 
@@ -4496,7 +6042,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error initializing navigation menu.");
-            
         }
     }
 
@@ -4544,12 +6089,12 @@ public class MainViewModel : ViewModelBase {
                 if (nextIndex >= 0 && nextIndex < sortedDates.Count)
                     CurrentPeriodDate = sortedDates[nextIndex];
             }
+
             NextPeriodDate = GetNextPeriodDate(CurrentPeriodDate);
             await LoadPeriodDataAsync();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error navigating period.");
-            
         }
     }
 
@@ -4573,7 +6118,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing reconciliation window.");
-            
+
             MessageBox.Show("Failed to open reconciliation window. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4599,7 +6144,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing import window.");
-            
+
             MessageBox.Show("Failed to open import window. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4617,7 +6162,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing APR history window.");
-            
+
             MessageBox.Show("Failed to open interest rate window. See log for details.", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -4643,7 +6188,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error refreshing paychecks list.");
-            
         }
     }
 
@@ -4706,7 +6250,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error setting current period date.");
-            
         }
     }
 
@@ -4720,7 +6263,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error exporting transactions.");
-            
         }
     }
 
@@ -4733,7 +6275,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing about window.");
-            
         }
     }
 
@@ -4743,7 +6284,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during exit.");
-            
         }
     }
 
@@ -4755,7 +6295,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error during database backup.");
-            
+
             MessageBox.Show(ex.Message, "Backup Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -4769,7 +6309,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error showing amortization window.");
-            
         }
     }
 
@@ -4822,7 +6361,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error updating snowball analysis.");
-            
         }
     }
 
@@ -4844,7 +6382,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error getting total debt.");
-            
+
             return 0;
         }
     }
@@ -4872,9 +6410,16 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error finding debt free date.");
-            
+
             return null;
         }
+    }
+
+    private bool _isBillDropDownOpen;
+
+    public bool IsBillDropDownOpen {
+        get => _isBillDropDownOpen;
+        set => SetProperty(ref _isBillDropDownOpen, value);
     }
 
     private async void EditingTransactionClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
@@ -4883,13 +6428,98 @@ public class MainViewModel : ViewModelBase {
                 ApplyDefaultBucketForSubCategory();
             }
             else if (e.PropertyName == nameof(Transaction.Description)) {
+                OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveTransaction));
+                SaveTransactionCommand.NotifyCanExecuteChanged();
+
+                // Refresh the CollectionView filter
                 FilteredBillsView?.Refresh();
+
+                string typedText = EditingTransactionClone?.Description?.Trim() ?? string.Empty;
+
+                if (!string.IsNullOrWhiteSpace(typedText)) {
+                    // Check if there are any real matching bills other than (None)
+                    bool hasMatches = FilteredBillsView?.OfType<Bill>()
+                        .Any(b => b.Id != 0) ?? false;
+
+                    IsBillDropDownOpen = hasMatches;
+                }
+                else {
+                    IsBillDropDownOpen = false;
+                }
+
                 await TryAutoSuggestSubCategoryAsync();
             }
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in EditingTransactionClone_PropertyChanged.");
-            
+        }
+    }
+
+    private async void EditingAccountClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        try {
+            if (e.PropertyName == nameof(Account.Name)) {
+                OnPropertyChanged(nameof(TotalAccountItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveAccount));
+                SaveAccountCommand.NotifyCanExecuteChanged();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error in EditingAccountClone_PropertyChanged.");
+        }
+    }
+
+    private async void EditingBillClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        try {
+            if (e.PropertyName == nameof(Bill.Name)) {
+                OnPropertyChanged(nameof(TotalBillItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveBill));
+                SaveBillCommand.NotifyCanExecuteChanged();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error in EditingBillClone_PropertyChanged.");
+        }
+    }
+
+    private async void EditingBucketClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        try {
+            if (e.PropertyName == nameof(BudgetBucket.Name)) {
+                OnPropertyChanged(nameof(TotalBucketItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveBucket));
+                SaveBucketCommand.NotifyCanExecuteChanged();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error in EditingBucketClone_PropertyChanged.");
+        }
+    }
+
+    private async void EditingCategoryClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        try {
+            if (e.PropertyName == nameof(Category.Name)) {
+                OnPropertyChanged(nameof(AvailableParentCategories));
+                OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSaveCategory));
+                SaveCategoryCommand.NotifyCanExecuteChanged();
+                AddAnotherCategoryCommand.NotifyCanExecuteChanged();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error in EditingCategoryClone_PropertyChanged.");
+        }
+    }
+
+    private async void EditingPaycheckClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
+        try {
+            if (e.PropertyName == nameof(Paycheck.Name)) {
+                OnPropertyChanged(nameof(TotalPaycheckItemsToSaveCount));
+                OnPropertyChanged(nameof(CanSavePaycheck));
+                SavePaycheckCommand.NotifyCanExecuteChanged();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error in EditingPaycheckClone_PropertyChanged.");
         }
     }
 
@@ -4910,7 +6540,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error applying default bucket for subcategory.");
-            
         }
     }
 
@@ -4927,6 +6556,7 @@ public class MainViewModel : ViewModelBase {
                     typedText,
                     EditingTransactionClone.TransactionDate);
 
+                // Only assign SubCategoryId if the input text matches current typed state
                 if (suggestedSubId.HasValue && EditingTransactionClone.Description?.Trim() == typedText) {
                     EditingTransactionClone.SubCategoryId = suggestedSubId.Value;
                 }
@@ -4934,7 +6564,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error auto-suggesting subcategory.");
-            
         }
     }
 
@@ -4971,7 +6600,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error paying bill.");
-            
+
             MessageBox.Show($"Failed to record bill payment: {ex.Message}", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -5011,7 +6640,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error paying period bill.");
-            
+
             MessageBox.Show($"Failed to record bill payment: {ex.Message}", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -5058,7 +6687,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error funding envelope.");
-            
+
             MessageBox.Show($"Failed to set aside money for envelope: {ex.Message}", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -5101,7 +6730,7 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error skipping envelope funding.");
-            
+
             MessageBox.Show($"Failed to skip funding for envelope: {ex.Message}", "Error", MessageBoxButton.OK,
                 MessageBoxImage.Error);
         }
@@ -5150,7 +6779,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error calculating TotalActiveSweepAmount.");
-                
+
                 return 0m;
             }
         }
@@ -5170,7 +6799,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error calculating RecommendedDebtAllocation.");
-                
+
                 return 0m;
             }
         }
@@ -5188,7 +6817,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error calculating RecommendedInvestmentAllocation.");
-                
+
                 return 0m;
             }
         }
@@ -5207,6 +6836,7 @@ public class MainViewModel : ViewModelBase {
 
     public enum CashHealthStatus {
         Optimal,
+
         [Display(Name = "Transfer Recommended")]
         TransferRecommended,
         [Display(Name = "Global Deficit")] GlobalDeficit
@@ -5248,7 +6878,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error getting LowestProjectedCheckingBalance.");
-                
+
                 return 0;
             }
         }
@@ -5269,7 +6899,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error evaluating ReadinessStatus.");
-                
+
                 return CashHealthStatus.Optimal;
             }
         }
@@ -5379,7 +7009,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error getting ReadinessSuggestionMessage.");
-                
+
                 return string.Empty;
             }
         }
@@ -5392,13 +7022,14 @@ public class MainViewModel : ViewModelBase {
     public bool IsMinimumBalanceCushionBreached {
         get {
             try {
-                var checking = Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking && a.IsPrimary)
-                                ?? Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking);
+                var checking =
+                    Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking && a.IsPrimary)
+                    ?? Accounts.FirstOrDefault(a => !a.IsArchived && a.Type == AccountType.Checking);
                 return checking != null && checking.Balance < EnvelopeFloorRequirements;
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error evaluating IsMinimumBalanceCushionBreached.");
-                
+
                 return false;
             }
         }
@@ -5444,7 +7075,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error refreshing upcoming strategy tasks.");
-            
         }
     }
 
@@ -5463,7 +7093,7 @@ public class MainViewModel : ViewModelBase {
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error getting CurrentPeriodSnowballProjections.");
-                
+
                 return Enumerable.Empty<ProjectionItem>();
             }
         }
@@ -5484,7 +7114,8 @@ public class MainViewModel : ViewModelBase {
             appResources.Add(new ResourceDictionary { Source = newThemeUri });
 
             foreach (Window window in Application.Current.Windows) {
-                var charts = StayOnTarget.Helpers.VisualTreeUtils.FindVisualChildren<ProjectionLiveChartControl>(window);
+                var charts =
+                    StayOnTarget.Helpers.VisualTreeUtils.FindVisualChildren<ProjectionLiveChartControl>(window);
                 foreach (var chart in charts) {
                     chart.RefreshTheme();
                 }
@@ -5492,7 +7123,6 @@ public class MainViewModel : ViewModelBase {
         }
         catch (Exception ex) {
             Log.Error(ex, "Error setting theme.");
-            
         }
     }
 }

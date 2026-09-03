@@ -187,26 +187,66 @@ public static class SnowballStrategyProcessor
                         .First();
 
                     decimal investAmount = sweepPool;
-                    accountBalances[primaryCheckingId] -= investAmount;
-                    accountBalances[targetInvestment.Id] += investAmount;
-                    
-                    sweepPool = 0; 
 
-                    runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
-                        .Sum(a => accountBalances[a.Id]);
+                    // Apply Roth limits if the target account is a Roth account
+                    bool isRoth = targetInvestment.Type is AccountType.RothIRA or AccountType.Roth401k;
+                    if (isRoth)
+                    {
+                        int year = sweepDate.Year;
+                        if (!rothContributionsByYear.ContainsKey(year)) rothContributionsByYear[year] = 0;
 
-                    projectionList.Add(new ProjectionItem {
-                        Type = ProjectionEngine.ProjectionEventType.Snowball,
-                        TransactionDate = sweepDate,
-                        Description = $"Invest: {accountNames[targetInvestment.Id]}",
-                        FromAccountId = primaryCheckingId,
-                        ToAccountId = targetInvestment.Id,
-                        Amount = Math.Abs(investAmount),
-                        Balance = runningBalance,
-                        IsSynthetic = true,
-                        AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
-                        InOrOutOfMoneyAccount = true
-                    });
+                        decimal remainingLimit = options.AnnualRothIraContributionLimit - rothContributionsByYear[year];
+                        if (remainingLimit <= 0)
+                        {
+                            // If this Roth account is full, try to find a non-Roth account instead
+                            if (nonRothInvestmentAccounts.Any())
+                            {
+                                targetInvestment = nonRothInvestmentAccounts
+                                    .OrderByDescending(a => a.AnnualGrowthRate)
+                                    .First();
+                                isRoth = false;
+                            }
+                            else
+                            {
+                                // No other accounts to invest in
+                                investAmount = 0;
+                            }
+                        }
+                        else
+                        {
+                            investAmount = Math.Min(sweepPool, remainingLimit);
+                        }
+                    }
+
+                    if (investAmount > 0.01m)
+                    {
+                        accountBalances[primaryCheckingId] -= investAmount;
+                        accountBalances[targetInvestment.Id] += investAmount;
+
+                        if (isRoth)
+                        {
+                            rothContributionsByYear[sweepDate.Year] += investAmount;
+                        }
+
+                        sweepPool -= investAmount;
+
+                        runningBalance = accounts.Where(a => includedTotalAccounts.Contains(a.Id))
+                            .Sum(a => accountBalances[a.Id]);
+
+                        projectionList.Add(new ProjectionItem
+                        {
+                            Type = isRoth ? ProjectionEngine.ProjectionEventType.Roth : ProjectionEngine.ProjectionEventType.Snowball,
+                            TransactionDate = sweepDate,
+                            Description = isRoth ? $"Invest (Roth): {accountNames[targetInvestment.Id]}" : $"Invest: {accountNames[targetInvestment.Id]}",
+                            FromAccountId = primaryCheckingId,
+                            ToAccountId = targetInvestment.Id,
+                            Amount = Math.Abs(investAmount),
+                            Balance = runningBalance,
+                            IsSynthetic = true,
+                            AccountBalances = accountBalances.ToDictionary(kv => accountNames[kv.Key], kv => kv.Value),
+                            InOrOutOfMoneyAccount = true
+                        });
+                    }
                 }
             }
         }

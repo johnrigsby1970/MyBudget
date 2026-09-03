@@ -1,0 +1,421 @@
+﻿<UserControl x:Class="StayOnTarget.ViewModels.UserControls.EditTransactionsUserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:StayOnTarget"
+             xmlns:controls="clr-namespace:StayOnTarget.Controls"
+             xmlns:converters="clr-namespace:StayOnTarget.Converters"
+             xmlns:helpers="clr-namespace:StayOnTarget.Helpers"
+             mc:Ignorable="d"
+             d:DesignHeight="680" d:DesignWidth="680">
+
+    <!-- <UserControl.Resources> -->
+    <!--     <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" /> -->
+    <!--     <converters:VisibleForMortgageTypeConverter x:Key="VisibleForMortgageTypeConverter" /> -->
+    <!--     <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" /> -->
+    <!--     <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" /> -->
+    <!--     <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" /> -->
+    <!-- </UserControl.Resources> -->
+
+    <!-- Semi-transparent Dimmed Backdrop Overlay -->
+    <Grid Background="#99000000">
+        <!-- Centered Floating Dialog Card -->
+        <Border Background="{DynamicResource SurfaceBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderColorBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Width="780"
+                Margin="20"
+                Padding="20"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="15" ShadowDepth="4" Opacity="0.4" />
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /> <!-- 0: Header -->
+                    <RowDefinition Height="*" />    <!-- 1: Active Form (Takes remaining space) -->
+                    <RowDefinition Height="Auto" /> <!-- 2: Staged Batch List (Capped Height) -->
+                    <RowDefinition Height="Auto" /> <!-- 3: Footer Actions -->
+                </Grid.RowDefinitions>
+
+                <!-- 0: HEADER -->
+                <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                    <TextBlock Text="Edit Transactions"
+                               Style="{DynamicResource StyledTextBlock}"
+                               FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
+
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding StagedTransactions.Count, StringFormat='Pending items: {0}', FallbackValue='Pending items: 0'}"
+                                   Style="{DynamicResource StyledSecondaryTextBlock}"
+                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,10,0" />
+                        <Button Content="✕"
+                                Command="{Binding CancelTransactionCommand}"
+                                Style="{DynamicResource SecondaryButtonStyle}"
+                                Width="26" Height="26" Padding="0"
+                                FontWeight="Bold" ToolTip="Close overlay" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- FORM CONTENT (Scrollable for smaller screens) -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                    <Grid IsEnabled="{Binding IsEditingTransactionEnabled}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        
+                        <!-- Description ComboBox -->
+                        <!-- <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="0" Content="Description:" /> -->
+                        <!-- <ComboBox x:Name="DescriptionComboBox" -->
+                        <!--           Grid.Column="1" Grid.Row="0" -->
+                        <!--           ItemsSource="{Binding FilteredBillsView}" -->
+                        <!--           DisplayMemberPath="Name" -->
+                        <!--           SelectedValuePath="Id" -->
+                        <!--           SelectedValue="{Binding EditingTransactionClone.BillId}" -->
+                        <!--           Text="{Binding EditingTransactionClone.Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True, Delay=150}" -->
+                        <!--           IsEditable="True" -->
+                        <!--           IsTextSearchEnabled="False" -->
+                        <!--           IsVisibleChanged="DescriptionComboBox_IsVisibleChanged" -->
+                        <!--           IsDropDownOpen="{Binding IsBillDropDownOpen, Mode=TwoWay}" -->
+                        <!--           Margin="5"> -->
+                        <!--     <ComboBox.Style> -->
+                        <!--         <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}"> -->
+                        <!--             <Style.Triggers> -->
+                        <!--                 <DataTrigger Binding="{Binding EditingTransactionClone.Description}" -->
+                        <!--                              Value="{x:Static local:Constants.OpeningBalance}"> -->
+                        <!--                     <Setter Property="IsEnabled" Value="False" /> -->
+                        <!--                 </DataTrigger> -->
+                        <!--             </Style.Triggers> -->
+                        <!--         </Style> -->
+                        <!--     </ComboBox.Style> -->
+                        <!-- </ComboBox> -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="0" Content="Description:" />
+
+                        <controls:AutoCompleteTextBox Grid.Column="1" Grid.Row="0" x:Name="DescriptionComboBox"
+                                                      ItemsSource="{Binding Bills}"
+                                                      DisplayMemberPath="Name"
+                                                      SelectedValuePath="Id"
+                                                      IsVisibleChanged="DescriptionComboBox_IsVisibleChanged"
+                                                      SelectedValue="{Binding EditingTransactionClone.BillId}"
+                                                      Text="{Binding EditingTransactionClone.Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                                      Margin="5" />
+                        
+                        <!-- Amount -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="0" Content="Amount:" />
+                        <controls:NumericTextBox Grid.Column="3" Grid.Row="0"
+                                                 Text="{Binding EditingTransactionClone.Amount, Converter={StaticResource AbsoluteValueConverter}}"
+                                                 Margin="5" />
+                        
+                        <!-- From Account & To Account -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="1"
+                               Content="From Account:" />
+                        <ComboBox Grid.Column="1" Grid.Row="1"
+                                  ItemsSource="{Binding TransactionAccounts}"
+                                  SelectedValue="{Binding EditingTransactionClone.AccountId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name"
+                                  Margin="5" />
+
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="1" Content="To Account:" />
+                        <ComboBox Grid.Column="3" Grid.Row="1"
+                                  ItemsSource="{Binding TransactionToAccounts}"
+                                  SelectedValue="{Binding EditingTransactionClone.ToAccountId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name"
+                                  Margin="5" />
+                        
+                        <!-- Date -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="2" Content="Date:" />
+                        <DatePicker Grid.Column="1" Grid.Row="2"
+                                    SelectedDate="{Binding EditingTransactionClone.TransactionDate}"
+                                    Margin="5" />
+
+                        
+                        <!-- Bill Link -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="2" Content="Bill:" />
+                        <ComboBox Grid.Column="3" Grid.Row="2"
+                                  ItemsSource="{Binding BillsWithNone}"
+                                  SelectedValue="{Binding EditingTransactionClone.BillId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name"
+                                  Margin="5" />
+                        
+                        <!-- Category & Envelope -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="3"
+                               Content="Sub Category:" />
+                        <ComboBox Grid.Column="1" Grid.Row="3"
+                                  ItemsSource="{Binding SubCategoriesWithNone}"
+                                  SelectedValue="{Binding EditingTransactionClone.SubCategoryId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name"
+                                  Margin="5" />
+
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="3" Content="Envelope:" />
+                        <ComboBox Grid.Column="3" Grid.Row="3"
+                                  ItemsSource="{Binding BucketsWithNone}"
+                                  SelectedValue="{Binding EditingTransactionClone.BucketId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name"
+                                  Margin="5" />
+
+                        <!-- Paycheck Context Fields -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="4" Content="Paycheck:">
+                            <Label.Visibility>
+                                <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}"
+                                              FallbackValue="Collapsed">
+                                    <Binding Path="EditingTransactionClone.ToAccountId" />
+                                    <Binding Path="Accounts" />
+                                </MultiBinding>
+                            </Label.Visibility>
+                        </Label>
+                        <ComboBox Grid.Column="1" Grid.Row="4"
+                                  ItemsSource="{Binding Paychecks}"
+                                  SelectedValue="{Binding EditingTransactionClone.PaycheckId}"
+                                  SelectedValuePath="Id"
+                                  DisplayMemberPath="Name"
+                                  Margin="5">
+                            <ComboBox.Visibility>
+                                <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}"
+                                              FallbackValue="Collapsed">
+                                    <Binding Path="EditingTransactionClone.ToAccountId" />
+                                    <Binding Path="Accounts" />
+                                </MultiBinding>
+                            </ComboBox.Visibility>
+                        </ComboBox>
+
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="4"
+                               Content="Payroll Date:">
+                            <Label.Visibility>
+                                <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}"
+                                              FallbackValue="Collapsed">
+                                    <Binding Path="EditingTransactionClone.ToAccountId" />
+                                    <Binding Path="Accounts" />
+                                </MultiBinding>
+                            </Label.Visibility>
+                        </Label>
+                        <DatePicker Grid.Column="3" Grid.Row="4"
+                                    SelectedDate="{Binding EditingTransactionClone.PaycheckOccurrenceDate}"
+                                    Margin="5">
+                            <DatePicker.Visibility>
+                                <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}"
+                                              FallbackValue="Collapsed">
+                                    <Binding Path="EditingTransactionClone.ToAccountId" />
+                                    <Binding Path="Accounts" />
+                                </MultiBinding>
+                            </DatePicker.Visibility>
+                        </DatePicker>
+
+                        <!-- Mortgage Flags -->
+                        <StackPanel Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="4" Orientation="Horizontal"
+                                    Margin="5">
+                            <CheckBox Content="Principal Only (Mortgage/Loan Extra)"
+                                      IsChecked="{Binding EditingTransactionClone.IsPrincipalOnly}"
+                                      VerticalAlignment="Center"
+                                      Margin="0,0,10,0">
+                                <CheckBox.Visibility>
+                                    <MultiBinding Converter="{StaticResource VisibleForMortgageTypeConverter}">
+                                        <Binding Path="EditingTransactionClone.ToAccountId" />
+                                        <Binding Path="Accounts" />
+                                    </MultiBinding>
+                                </CheckBox.Visibility>
+                            </CheckBox>
+                            <CheckBox Content="Rebalance (Adds to Debt)"
+                                      IsChecked="{Binding EditingTransactionClone.IsRebalance}"
+                                      VerticalAlignment="Center">
+                                <CheckBox.Visibility>
+                                    <MultiBinding Converter="{StaticResource VisibleForMortgageTypeConverter}">
+                                        <Binding Path="EditingTransactionClone.ToAccountId" />
+                                        <Binding Path="Accounts" />
+                                    </MultiBinding>
+                                </CheckBox.Visibility>
+                            </CheckBox>
+                        </StackPanel>
+                        
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="6" Content="Memo:" />
+                        <TextBox Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="6"
+                                 Text="{Binding EditingTransactionClone.Memo}"
+                                 Margin="5" />
+                        
+                        <!-- Reconciliation Sub-Panel -->
+                        <Border Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="4"
+                                Background="{DynamicResource WindowBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderColorBrush}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="10"
+                                Margin="5,10,5,5">
+                            <StackPanel>
+                                <TextBlock Text="Bank &amp; Reconciliation Status"
+                                           Style="{DynamicResource StyledTextBlock}"
+                                           FontWeight="SemiBold"
+                                           FontSize="12"
+                                           Margin="0,0,0,6" />
+
+                                <ItemsControl ItemsSource="{Binding EditingTransactionStatusItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,3">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="130" />
+                                                    <ColumnDefinition Width="130" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <TextBlock Grid.Column="0"
+                                                           Style="{DynamicResource StyledTextBlock}"
+                                                           Text="{Binding AccountName}"
+                                                           VerticalAlignment="Center"
+                                                           FontWeight="Medium" />
+
+                                                <ComboBox Grid.Column="1"
+                                                          ItemsSource="{Binding AvailableStatuses}"
+                                                          SelectedValue="{Binding CurrentStatus, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                                          Margin="4,0" />
+
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding StatusDetailsText}"
+                                                           Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="11"
+                                                           Margin="6,0,0,0" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- PENDING BATCH STAGING LIST (Visible only when StagedTransactions has items) -->
+                <Border Grid.Row="2" Grid.Column="0" 
+                        Background="{DynamicResource WindowBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderColorBrush}"
+                        BorderThickness="1" CornerRadius="6"
+                        Margin="0,0,0,15" Padding="8"
+                        Visibility="{Binding StagedTransactions.Count, Converter={StaticResource IntToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Staged for Save:"
+                                   Style="{DynamicResource StyledSecondaryTextBlock}"
+                                   FontWeight="Bold" FontSize="11" Margin="0,0,0,4" />
+                        
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" 
+                                      MaxHeight="140">
+                            <ItemsControl ItemsSource="{Binding StagedTransactions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel Margin="0,2">
+                                            <Button Content="✕" 
+                                                    Command="{Binding DataContext.RemoveStagedTransactionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{DynamicResource DangerButtonStyle}"
+                                                    Width="18" Height="18" Padding="0" Margin="0,0,8,0"
+                                                    ToolTip="Remove from batch" />
+
+                                            <TextBlock Text="{Binding Amount, StringFormat=C}" DockPanel.Dock="Right" FontWeight="Bold" Style="{DynamicResource StyledTextBlock}"/>
+                                            <TextBlock Text="{Binding Description}" Style="{DynamicResource StyledTextBlock}" TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+                <!-- FOOTER ACTIONS -->
+                <Grid Grid.Row="3" Margin="0,5,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Delete Button (Left side) -->
+                    <!-- <Button Grid.Column="0" -->
+                    <!--         Content="Delete" -->
+                    <!--         Command="{Binding DeleteTransactionCommand}" -->
+                    <!--         Width="80"> -->
+                    <!--     <Button.Style> -->
+                    <!--         <Style TargetType="Button" BasedOn="{StaticResource DangerButtonStyle}"> -->
+                    <!--             <Setter Property="Visibility" Value="Visible" /> -->
+                    <!--             <Style.Triggers> -->
+                    <!--                 <DataTrigger Binding="{Binding EditingTransactionClone.TransactionId, Converter={StaticResource NullToVisibilityConverter}}" Value="Collapsed"> -->
+                    <!--                     <Setter Property="Visibility" Value="Collapsed" /> -->
+                    <!--                 </DataTrigger> -->
+                    <!--             </Style.Triggers> -->
+                    <!--         </Style> -->
+                    <!--     </Button.Style> -->
+                    <!-- </Button> -->
+                    <Button Grid.Column="0"
+                            Content="Clear Form"
+                            Command="{Binding ClearCurrentDraftCommand}"
+                            Style="{DynamicResource SecondaryButtonStyle}"
+                            Width="90" />
+
+                    <!-- Batch Controls (Right side) -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Add Another"
+                                x:Name="AddAnotherButton"
+                                IsDefault="True"
+                                Command="{Binding AddAnotherTransactionCommand}"
+                                Click="AddAnotherButton_Click"
+                                Style="{DynamicResource SecondaryButtonStyle}"
+                                Width="100" Margin="4,0" />
+
+                        <Button Command="{Binding SaveTransactionCommand}"
+                                IsEnabled="{Binding CanSaveTransaction}"
+                                MinWidth="100" Padding="12,6"
+                                Margin="4,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                    <!-- Bind to the integer value -->
+                                    <Setter Property="Content" Value="{Binding TotalTransactionItemsToSaveCount}" />
+                                    <!-- Default template for multiple staged items -->
+                                    <Setter Property="ContentStringFormat" Value="Save All ({0})" />
+                                    <Style.Triggers>
+                                        <!-- Hide count when saving only 1 item (active draft or 1 staged item) -->
+                                        <DataTrigger Binding="{Binding TotalTransactionItemsToSaveCount}" Value="1">
+                                            <Setter Property="Content" Value="Save" />
+                                            <Setter Property="ContentStringFormat" Value="{x:Null}" />
+                                        </DataTrigger>
+                                        <!-- Default label when 0 -->
+                                        <DataTrigger Binding="{Binding TotalTransactionItemsToSaveCount}" Value="0">
+                                            <Setter Property="Content" Value="Save" />
+                                            <Setter Property="ContentStringFormat" Value="{x:Null}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button Content="Cancel"
+                                IsCancel="True"
+                                Command="{Binding CancelTransactionCommand}"
+                                Style="{DynamicResource SecondaryButtonStyle}"
+                                Width="80" Margin="4,0" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,9 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows;
 using StayOnTarget.Models;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.Input;
 using Serilog;
 using StayOnTarget.Services;
@@ -11,9 +9,9 @@ using StayOnTarget.Services;
 namespace StayOnTarget.ViewModels;
 
 public class NewTransactionViewModel : ViewModelBase {
-    private readonly BudgetService _budgetService;
-    private Account _account;
-    private readonly Action<NewTransactionViewModel, bool> _closeCallback;
+    private readonly BudgetService _budgetService = null!;
+    private Account _account = null!;
+    private readonly Action<NewTransactionViewModel, bool>? _closeCallback;
 
     private ImportedTransactionViewModel? _selectedImported;
 
@@ -90,8 +88,8 @@ public class NewTransactionViewModel : ViewModelBase {
         set => SetProperty(ref _loaded, value);
     }
 
-    public IRelayCommand CancelNewTransactionCommand { get; }
-    public IAsyncRelayCommand SaveNewTransactionCommand { get; }
+    public IRelayCommand CancelNewTransactionCommand { get; } = null!;
+    public IAsyncRelayCommand SaveNewTransactionCommand { get; } = null!;
 
     private ObservableCollection<Account> _accounts = new();
 

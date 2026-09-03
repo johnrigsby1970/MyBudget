@@ -1,4 +1,3 @@
-using System.Net.Mime;
 using System.Windows.Media;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
@@ -9,10 +8,10 @@ namespace StayOnTarget.ViewModels;
 
 public class ToastViewModel : ViewModelBase
 {
-    private readonly DispatcherTimer _autoCloseTimer;
+    private readonly DispatcherTimer _autoCloseTimer = null!;
 
-    public string Message { get; }
-    
+    public string Message { get; } = null!;
+
     public Brush Background { get; set; } = Brushes.Goldenrod;
     public Brush Border { get; set; } = Brushes.DarkRed;
     public Brush Text { get; set; } = Brushes.Black;
@@ -35,7 +34,7 @@ public class ToastViewModel : ViewModelBase
     public static SolidColorBrush InfoTextBrush { get; set; } = System.Windows.Application.Current?.TryFindResource(ThemeKeys.InfoTextBrush) as SolidColorBrush ?? Brushes.LightBlue;
     public static SolidColorBrush NeutralTextBrush { get; set; } = System.Windows.Application.Current?.TryFindResource(ThemeKeys.NeutralTextBrush) as SolidColorBrush ?? Brushes.Gray;
     
-    public IRelayCommand CloseCommand { get; }
+    public IRelayCommand CloseCommand { get; } = null!;
 
     public ToastViewModel(string message, Action<ToastViewModel> onClose, ToastType? type = null)
     {

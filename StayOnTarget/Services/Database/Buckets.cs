@@ -173,6 +173,23 @@ public partial class BudgetService
         }
     }
 
+    public async Task<IEnumerable<BucketPaycheckAllocation>> GetAllAllocationsAsync()
+    {
+        try {
+            await using var conn = _db.GetConnection();
+            await conn.OpenAsync();
+
+            return await conn.QueryAsync<BucketPaycheckAllocation>(@"
+            SELECT AllocationId, BucketId, PaycheckId, AllocationType, AllocationValue, SortOrder, IsActive
+            FROM BucketPaycheckAllocations
+            WHERE IsActive = 1");
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error fetching all bucket allocations.");
+            return Enumerable.Empty<BucketPaycheckAllocation>();
+        }
+    }
+    
     public async Task<IEnumerable<BucketPaycheckAllocation>> GetAllocationsForBucketAsync(int bucketId)
     {
         try {

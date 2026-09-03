@@ -13,9 +13,9 @@ using StayOnTarget.Views;
 namespace StayOnTarget.ViewModels;
 
 public partial class ReconciliationViewModel : ViewModelBase {
-    private readonly BudgetService _budgetService;
-    private readonly ReconciliationService _reconciliationService;
-    private Account _account;
+    private readonly BudgetService _budgetService = null!;
+    private readonly ReconciliationService _reconciliationService = null!;
+    private Account _account = null!;
 
 
     public ReconciliationViewModel(Account account, BudgetService budgetService) {
@@ -71,6 +71,12 @@ public partial class ReconciliationViewModel : ViewModelBase {
                     
                 }
             });
+            
+            #region For orphan reconciliations
+            ShowHistoricalOverlayCommand = new RelayCommand(() => IsHistoricalOverlayVisible = true);
+            CancelHistoricalOverlayCommand = new RelayCommand(() => IsHistoricalOverlayVisible = false);
+            ProcessHistoricalReconciliationCommand = new AsyncRelayCommand(ProcessHistoricalReconciliationAsync);
+            #endregion
         }
         catch (Exception ex) {
             Log.Fatal(ex, "Critical error initializing ReconciliationViewModel.");
@@ -78,6 +84,18 @@ public partial class ReconciliationViewModel : ViewModelBase {
         }
     }
 
+    #region For orphan reconciliations
+    
+    [ObservableProperty] private bool _isHistoricalOverlayVisible;
+    [ObservableProperty] private bool _hasHistoricalOrphans;
+    [ObservableProperty] private ObservableCollection<TransactionViewModel> _historicalOrphanTransactions = new();
+
+    public IRelayCommand ShowHistoricalOverlayCommand { get; } = null!;
+    public IRelayCommand CancelHistoricalOverlayCommand { get; } = null!;
+    public IAsyncRelayCommand ProcessHistoricalReconciliationCommand { get; } = null!;
+    
+    #endregion
+    
     private bool? _isAllSelected;
     public bool? IsAllSelected
     {
@@ -165,7 +183,7 @@ public partial class ReconciliationViewModel : ViewModelBase {
         }
     }
     
-    public IAsyncRelayCommand InitializeDataCommand { get; }
+    public IAsyncRelayCommand InitializeDataCommand { get; } = null!;
 
     [ObservableProperty] private bool _canReconcile = true;
 
@@ -443,15 +461,15 @@ public partial class ReconciliationViewModel : ViewModelBase {
     public bool CanShowAdjustBalance => IsBalanceAdjustmentVisible == false;
     public bool CanShowOpeningBalanceCorrection => IsOpeningBalanceCorrectionVisible == false;
 
-    public IAsyncRelayCommand AdjustBalanceCommand { get; }
+    public IAsyncRelayCommand AdjustBalanceCommand { get; } = null!;
 
-    public IRelayCommand CancelAdjustmentCommand { get; private set; }
-    public IRelayCommand ShowAdjustmentCommand { get; private set; }
+    public IRelayCommand CancelAdjustmentCommand { get; private set; } = null!;
+    public IRelayCommand ShowAdjustmentCommand { get; private set; } = null!;
 
-    public IAsyncRelayCommand CorrectOpeningBalanceCommand { get; }
-    public IAsyncRelayCommand CancelCorrectOpeningBalanceCommand { get; }
+    public IAsyncRelayCommand CorrectOpeningBalanceCommand { get; } = null!;
+    public IAsyncRelayCommand CancelCorrectOpeningBalanceCommand { get; } = null!;
 
-    public IRelayCommand ToggleSelectionCommand { get; }
+    public IRelayCommand ToggleSelectionCommand { get; } = null!;
 
     public string ReconcileButtonText {
         get {
@@ -725,7 +743,12 @@ public partial class ReconciliationViewModel : ViewModelBase {
 
             // 2. Map the cloned models directly into ViewModels
             var reconciliationTransactions = clonedTransactions
-                .Select(x => new TransactionViewModel(x, Account))
+                .Select(x => {
+                    var vm = new TransactionViewModel(x, Account);
+                    // Capture whether the record was cleared in DB prior to UI adjustments
+                    vm.WasOriginallyCleared = (x.AccountId == _account.Id ? x.FromAccountIsCleared : x.ToAccountIsCleared) ?? false;
+                    return vm;
+                })
                 .ToList();
             
             bool hasTransactionPriorToLastReconcile = false;
@@ -735,45 +758,68 @@ public partial class ReconciliationViewModel : ViewModelBase {
             LastReconciledDate = lastReconciledDate ?? DateTime.MinValue;
             if (CurrentAssetValue == 0) CurrentAssetValue = EndingBalance;
 
+            // Historical Orphans: Backdated AND were already marked cleared in the DB
+            var historicalOrphans = reconciliationTransactions
+                .Where(t => LastReconciledDate != DateTime.MinValue 
+                            && t.TransactionDate < LastReconciledDate 
+                            && t.WasOriginallyCleared) // <--- Only grab items already flagged as cleared
+                .ToList();
+            
+            HasHistoricalOrphans = historicalOrphans.Any();
+            HistoricalOrphanTransactions = new ObservableCollection<TransactionViewModel>(historicalOrphans);
+
+            // Active statement candidates (current window)
+            var activeTransactions = reconciliationTransactions
+                .Where(t => LastReconciledDate == DateTime.MinValue 
+                            || t.TransactionDate >= LastReconciledDate 
+                            || !t.WasOriginallyCleared) // <--- Keeps backdated pending/uncleared items in the main grid
+                .ToList();
+            
             decimal? newReconciledBalance = null;
             DateTime? newReconciledDate = null;
             
             newReconciledBalance = beginningBalance;
             
             foreach (var t in reconciliationTransactions!.OrderBy(b => b.TransactionDate)) {
-                if (t.AccountId == _account.Id) {
-                    if (t.FromAccountIsCleared ?? false) {
-                        t.IsCleared = true;
-                    }
+                // Only set IsCleared to true if the transaction occurred on or after the last reconciliation date
+                bool isPriorToLastReconcile = lastReconciledDate.HasValue && t.TransactionDate < lastReconciledDate.Value;
+
+                if (isPriorToLastReconcile) {
+                    t.IsCleared = false;
                 }
-                else if (t.ToAccountId == _account.Id) {
-                    if (t.ToAccountIsCleared ?? false) {
-                        t.IsCleared = true;
+                else {
+                    if (t.AccountId == _account.Id) {
+                        if (t.FromAccountIsCleared ?? false) {
+                            t.IsCleared = true;
+                        }
+                    }
+                    else if (t.ToAccountId == _account.Id) {
+                        if (t.ToAccountIsCleared ?? false) {
+                            t.IsCleared = true;
+                        }
                     }
                 }
 
                 if (t.IsCleared) {
-                 
-                        if (t.AccountId == _account.Id) {
-                            if (_account.IsLiability) {
-                                newReconciledBalance += t.Amount;
-                            }
-                            else {
-                                newReconciledBalance -= t.Amount;
-                            }
+                    if (t.AccountId == _account.Id) {
+                        if (_account.IsLiability) {
+                            newReconciledBalance += t.Amount;
                         }
-                        else if (t.ToAccountId == _account.Id) {
-                            if (_account.IsLiability) {
-                                newReconciledBalance -= t.Amount;
-                            }
-                            else {
-                                newReconciledBalance += t.Amount;
-                            }
+                        else {
+                            newReconciledBalance -= t.Amount;
                         }
-                    
+                    }
+                    else if (t.ToAccountId == _account.Id) {
+                        if (_account.IsLiability) {
+                            newReconciledBalance -= t.Amount;
+                        }
+                        else {
+                            newReconciledBalance += t.Amount;
+                        }
+                    }
                 }
             }
-
+            
             NewReconciledBalance = newReconciledBalance;
             NewReconciledDate = newReconciledDate;
             ReconciliationTransactions =
@@ -788,6 +834,32 @@ public partial class ReconciliationViewModel : ViewModelBase {
         }
     }
 
+    private async Task ProcessHistoricalReconciliationAsync() {
+        try {
+            var selectedRecords = HistoricalOrphanTransactions
+                .Where(x => x.IsCleared)
+                .Select(x => (int)(x.AccountId == _account.Id ? x.FromRecordId ?? 0 : x.ToRecordId ?? 0))
+                .Where(id => id > 0)
+                .ToList();
+
+            if (selectedRecords.Any()) {
+                SpinnerMessage = "Resolving historical records...";
+                IsBusy = true;
+
+                await _budgetService.ReconcileHistoricalTransactionsAsync(_account.Id, selectedRecords);
+                IsHistoricalOverlayVisible = false;
+
+                await LoadDataAsync();
+            }
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error processing historical reconciliation batch.");
+        }
+        finally {
+            IsBusy = false;
+        }
+    }
+    
     public async Task UpdateReconciliationTransactionsAsync() {
         try {
             decimal? newReconciledBalance = null;
