@@ -804,6 +804,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
             imported.MatchedManualTransactionId = manual.TransactionId;
             imported.BillId = manual.BillId;
             imported.BucketId = manual.BucketId;
+            
+            manual.IsMatched = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in ApplyMatch.");

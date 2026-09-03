@@ -97,7 +97,8 @@
                               RowDetailsVisibilityMode="Collapsed">
                         <DataGrid.ItemContainerStyle>
                             <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <Setter Property="IsSelected"
+                                        Value="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </Style>
                         </DataGrid.ItemContainerStyle>
                         <DataGrid.Columns>
@@ -263,7 +264,42 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Date" Binding="{Binding TransactionDate, StringFormat=d}"
                                                     Width="90" />
-                                <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
+                                <DataGridTemplateColumn Header="Description" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- Description stays on the left -->
+                                                <TextBlock Grid.Column="0" 
+                                                           Text="{Binding Description}" 
+                                                           TextTrimming="CharacterEllipsis" 
+                                                           VerticalAlignment="Center" />
+
+                                                <!-- Match indicator anchored to the far right -->
+                                                <TextBlock Grid.Column="1" 
+                                                           Text="✓ (Matched)" 
+                                                           FontWeight="Bold" 
+                                                           Margin="8,0,4,0"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMatched}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat=C}"
                                                     Width="90" />
                             </DataGrid.Columns>
@@ -312,19 +348,6 @@
                             Padding="10,4"
                             Margin="0,0,10,0"
                             HorizontalAlignment="Right" />
-
-                    <!-- <Button Content="Open QFX File..." -->
-                    <!--         Command="{Binding ImportQfxCommand}" -->
-                    <!--         Padding="10,4" -->
-                    <!--         Margin="0,0,10,0" -->
-                    <!--         HorizontalAlignment="Right" /> -->
-                    <!-- -->
-                    <!-- <Button Content="Open CSV File..." -->
-                    <!--         Command="{Binding ImportCsvCommand}" -->
-                    <!--         Padding="10,4" -->
-                    <!--         Margin="0,0,10,0" -->
-                    <!--         HorizontalAlignment="Right" /> -->
-
                     <Button Content="Update Transactions" Style="{StaticResource PrimaryButtonStyle}"
                             Command="{Binding SaveCommand}"
                             Width="120" Padding="5" IsDefault="True"
