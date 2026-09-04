@@ -11,6 +11,7 @@
         xmlns:controls="clr-namespace:StayOnTarget.Controls"
         mc:Ignorable="d"
         Title="Reconciliation" Height="450" Width="750"
+        Foreground="{DynamicResource PrimaryTextBrush}"
         Background="{DynamicResource WindowBackgroundBrush}">
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Loaded">
@@ -28,7 +29,7 @@
 
     <Grid Margin="10" Background="Transparent" PreviewMouseDown="Window_PreviewMouseDown">
         <DockPanel IsEnabled="{Binding CanReconcile}">
-            <TextBlock DockPanel.Dock="Top" x:Name="HeaderLabel" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
+            <TextBlock Style="{DynamicResource StyledTextBlock}" DockPanel.Dock="Top" x:Name="HeaderLabel" FontSize="16" FontWeight="Bold" Margin="0,0,0,10" />
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -39,20 +40,25 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <StackPanel Grid.Column="0" Grid.Row="0" Margin="0,5" Orientation="Horizontal">
-                    <Label Content="Beginning balance:" Margin="0,0" />
-                    <Label
-                        Content="{Binding BeginningBalance}"
-                        ContentStringFormat="{}{0:C2}"
-                        Width="Auto" Margin="0,0" />
+                    <Label Style="{DynamicResource StyledLabel}"  Content="Beginning balance:" Margin="0,0" />
+                    <Label Style="{DynamicResource StyledLabel}" 
+                           Content="{Binding BeginningBalance}"
+                           ContentStringFormat="{}{0:C2}"
+                           Width="Auto" Margin="0,0" />
                 </StackPanel>
                 
-                <Border Grid.Row="1" Margin="0,0,0,8" Padding="8,6" Background="#FFF8E1" BorderBrush="#FFE082" BorderThickness="1" CornerRadius="4"
+                <Border Grid.Row="1" Margin="0,0,0,8" Padding="8,6" 
+                        Background="{DynamicResource SurfaceBackgroundBrush}"
+                        BorderBrush="{DynamicResource BorderColorBrush}"
+                        BorderThickness="1" CornerRadius="4"
                         Visibility="{Binding HasHistoricalOrphans, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="Resolve Backdated Items" 
                                 Command="{Binding ShowHistoricalOverlayCommand}" 
-                                Padding="10,2" Style="{StaticResource SecondaryButtonStyle}" />
-                        <TextBlock VerticalAlignment="Center" Foreground="#B78103" FontWeight="SemiBold">
+                                Padding="10,2" Style="{DynamicResource SecondaryButtonStyle}" />
+                        <TextBlock Foreground="{DynamicResource WarningBrush}"
+                                   VerticalAlignment="Center" 
+                                   FontWeight="SemiBold">
                             <Run Text="⚠️ Found backdated unreconciled records predating " />
                             <Run Text="{Binding LastReconciledDate, StringFormat='{}{0:MM/dd/yyyy}'}" />
                         </TextBlock>
@@ -67,7 +73,7 @@
                           SelectionMode="Single">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Date"
-                                            HeaderStyle="{StaticResource CenterAlignedHeaderStyle}"
+                                            HeaderStyle="{DynamicResource CenterAlignedHeaderStyle}"
                                             Binding="{Binding TransactionDate, StringFormat='{}{0:MM/dd/yyyy}'}"
                                             IsReadOnly="False" Width="90">
                             <DataGridTextColumn.ElementStyle>
@@ -79,7 +85,7 @@
                         <DataGridTextColumn Header="Description"
                                             Binding="{Binding Description}" Width="*" />
                         <DataGridTextColumn Header="Amount"
-                                            HeaderStyle="{StaticResource RightAlignedHeaderStyle}"
+                                            HeaderStyle="{DynamicResource RightAlignedHeaderStyle}"
                                             Binding="{Binding SignedAmount, StringFormat=C}"
                                             Width="80">
                             <DataGridTextColumn.ElementStyle>
@@ -118,21 +124,21 @@
                             VerticalAlignment="Center"
                             Visibility="{Binding NewReconciledBalance, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}">
 
-                    <Label Content="Target Balance:" Margin="0,0" />
+                    <Label Style="{DynamicResource StyledLabel}"  Content="Target Balance:" Margin="0,0" />
                     <controls:NumericTextBox Grid.Row="1" Grid.Column="1"
                                              Text="{Binding TargetBalance, StringFormat={}{0:C2}, UpdateSourceTrigger=LostFocus}"
                                              Width="90"
                                              VerticalAlignment="Center"
                                              Margin="0,0, 15, 0" />
 
-                    <Label Content="Reconciled balance:" Margin="0,0" />
-                    <Label
-                        Content="{Binding NewReconciledBalance}"
-                        ContentStringFormat="{}{0:C2}"
-                        Width="Auto" Margin="0,0, 15, 0" />
+                    <Label Style="{DynamicResource StyledLabel}"  Content="Reconciled balance:" Margin="0,0" />
+                    <Label Style="{DynamicResource StyledLabel}" 
+                           Content="{Binding NewReconciledBalance}"
+                           ContentStringFormat="{}{0:C2}"
+                           Width="Auto" Margin="0,0, 15, 0" />
 
                     <!-- Difference Display -->
-                    <Label Content="Difference:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"
+                    <Label Style="{DynamicResource StyledLabel}"  Content="Difference:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"
                            Visibility="{Binding NewReconciledBalance, Converter={StaticResource NullToVisibilityConverter}, FallbackValue=Collapsed}" />
                     <TextBlock Text="{Binding Difference, StringFormat={}{0:C2}}"
                                FontWeight="Bold"
@@ -162,7 +168,7 @@
 
                     <!-- Register Balance Label -->
                     <Label Content="Register Balance:" VerticalAlignment="Center" Margin="0,0"
-                           Foreground="{StaticResource SecondaryTextBrush}" />
+                           Foreground="{DynamicResource SecondaryTextBrush}" />
 
                     <!-- Help Info Icon with Tooltip -->
                     <Path
@@ -182,7 +188,7 @@
                     <Label Content="{Binding EndingBalance}"
                            ContentStringFormat="{}{0:C2}"
                            VerticalAlignment="Center"
-                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Foreground="{DynamicResource SecondaryTextBrush}"
                            Width="Auto" Margin="0,0, 5, 0" />
 
                     <!-- Edit Button -->
@@ -199,13 +205,13 @@
                             Visibility="{Binding Account.Type, ConverterParameter='CreditCard|Checking|Savings|Mortgage|PersonalLoan|HELOC|StudentLoan|Investment|CD|Retirement401k|Brokerage|CollegeFund|Cash|Auto|IRA|RothIRA|Roth401k|RealEstate', Converter={StaticResource AccountTypeToVisibilityConverter}, FallbackValue=Collapsed}">
                         <Path
                             Data="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-                            Fill="#555555"
+                            Fill="{DynamicResource ButtonPrimaryBackgroundBrush}"
                             Stretch="Uniform"
                             Width="14"
                             Height="14" />
                     </Button>
 
-                    <Label Content="Reconciled date:" Margin="0,0" />
+                    <Label Style="{DynamicResource StyledLabel}"  Content="Reconciled date:" Margin="0,0" />
 
                     <DatePicker
                         SelectedDate="{Binding NewReconciledDate, 
@@ -222,7 +228,7 @@
                     <Button Content="Import" Command="{Binding ImportAccountCommand}"
                             Width="80"
                             Margin="0,0,10,0"
-                            Style="{StaticResource SecondaryButtonStyle}"
+                            Style="{DynamicResource SecondaryButtonStyle}"
                             Click="HandleImportAccount_Click">
                     </Button>
                     <Button Content="{Binding ReconcileButtonText}"
@@ -248,7 +254,7 @@
                         </Button.Style>
                     </Button>
                     <Button Content="Cancel" Width="80" Click="CancelButton_Click" IsCancel="True"
-                            Style="{StaticResource SecondaryButtonStyle}" />
+                            Style="{DynamicResource SecondaryButtonStyle}" />
                 </StackPanel>
             </Grid>
         </DockPanel>
@@ -257,10 +263,13 @@
         <Grid Background="#80000000"
               IsEnabled="{Binding CanReconcile}"
               Visibility="{Binding IsBalanceAdjustmentVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Border Background="White" Width="400" VerticalAlignment="Center" Padding="20" CornerRadius="8"
-                    BorderBrush="Gray" BorderThickness="1">
+            <Border  
+                Background="{DynamicResource SurfaceBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderColorBrush}"
+                Width="400" VerticalAlignment="Center" Padding="20" CornerRadius="8"
+                     BorderThickness="1">
                 <StackPanel>
-                    <TextBlock Text="Update Account Balance" FontSize="16" FontWeight="Bold" Margin="0,0,0,15" />
+                    <TextBlock Style="{DynamicResource StyledTextBlock}" Text="Update Account Balance" FontSize="16" FontWeight="Bold" Margin="0,0,0,15" />
 
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
@@ -275,11 +284,11 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Label Grid.Row="0" Grid.Column="0" Content="Current ledger balance:" Margin="0,5,0,5" />
-                        <Label Grid.Row="0" Grid.Column="1"
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Row="0" Grid.Column="0" Content="Current ledger balance:" Margin="0,5,0,5" />
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Row="0" Grid.Column="1"
                                Content="{Binding NewReconciledBalance, StringFormat={}{0:0.00;-0.00;''}}" Margin="0,0" />
 
-                        <Label Grid.Row="1" Grid.Column="0" Content="Today's value:" Margin="0,5,0,5" />
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Row="1" Grid.Column="0" Content="Today's value:" Margin="0,5,0,5" />
 
                         <controls:NumericTextBox Grid.Row="1" Grid.Column="1"
                                                  Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged}"
@@ -288,10 +297,10 @@
 
                         <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,5" />
 
-                        <Label Grid.Row="3" Grid.Column="0" Content="Adjustment transaction:" Margin="0,5,0,5"
+                        <Label Style="{DynamicResource StyledLabel}"  Grid.Row="3" Grid.Column="0" Content="Adjustment transaction:" Margin="0,5,0,5"
                                Visibility="{Binding AdjustmentTransactionAmount, Converter={StaticResource NullToVisibilityConverter}}" />
 
-                        <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,5,0,5"
+                        <TextBlock Style="{DynamicResource StyledTextBlock}" Grid.Row="3" Grid.Column="1" Margin="0,5,0,5"
                                    TextWrapping="Wrap"
                                    Visibility="{Binding AdjustmentTransactionAmount, Converter={StaticResource NullToVisibilityConverter}}"
                                    MaxWidth="400">
@@ -300,7 +309,7 @@
                             <Run Text="{Binding AdjustmentTransactionDescription, Mode=OneWay}" />
                         </TextBlock>
 
-                        <Label Grid.Row="4" Grid.Column="0" Content="Memo:" Margin="0,5,0,5"
+                        <Label Style="{DynamicResource StyledLabel}"  Grid.Row="4" Grid.Column="0" Content="Memo:" Margin="0,5,0,5"
                                Visibility="{Binding AdjustmentTransactionAmount, Converter={StaticResource NullToVisibilityConverter}}" />
                         <TextBox Grid.Row="4" Grid.Column="1"
                                  Visibility="{Binding AdjustmentTransactionAmount, Converter={StaticResource NullToVisibilityConverter}}"
@@ -317,11 +326,12 @@
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
                         <Button Content="Update" Width="80"
+                                Style="{DynamicResource PrimaryButtonStyle}"
                                 Command="{Binding AdjustBalanceCommand}"
                                 Margin="0,0,10,0" Padding="10,0" />
 
                         <Button Content="Cancel" Command="{Binding CancelAdjustmentCommand}" Width="80"
-                                Margin="0,0,10,0" Style="{StaticResource SecondaryButtonStyle}" />
+                                Margin="0,0,10,0" Style="{DynamicResource SecondaryButtonStyle}" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -330,11 +340,16 @@
         <!-- Opening Balance Correction Overlay -->
         <Grid Background="#80000000"
               Visibility="{Binding IsOpeningBalanceCorrectionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Border Background="White" Width="400" VerticalAlignment="Center" Padding="20" CornerRadius="8"
-                    BorderBrush="Gray" BorderThickness="1">
+            <Border  Background="{DynamicResource SurfaceBackgroundBrush}"
+                     BorderBrush="{DynamicResource BorderColorBrush}"
+                     Width="400" VerticalAlignment="Center" Padding="20" CornerRadius="8"
+                     BorderThickness="1">
                 <StackPanel>
-                    <TextBlock Text="Update Opening Balance" FontSize="16" FontWeight="Bold" Margin="0,0,0,5" />
+                    <TextBlock 
+                        Style="{DynamicResource StyledTextBlock}"
+                        Text="Update Opening Balance" FontSize="16" FontWeight="Bold" Margin="0,0,0,5" />
                     <TextBlock
+                        Style="{DynamicResource StyledTextBlock}"
                         Text="The opening balance you have in the system, if any, is newer than the oldest transaction. Please set a new opening balance. Changes may reset prior reconciliations."
                         FontSize="12" Margin="0,0,0,15" />
 
@@ -351,13 +366,13 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Opening Balance"
+                        <TextBlock Style="{DynamicResource StyledTextBlock}"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Opening Balance"
                                    Margin="0,0,0,5" />
                         <controls:NumericTextBox Grid.Row="0" Grid.Column="1"
                                                  Text="{Binding OpeningBalance, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0" />
 
-                        <Label Grid.Row="1" Grid.Column="0" Content="Balance as of:" />
+                        <Label Style="{DynamicResource StyledLabel}"  Grid.Row="1" Grid.Column="0" Content="Balance as of:" />
                         <DatePicker Grid.Row="1" Grid.Column="1"
                                     SelectedDate="{Binding OpeningBalanceAsOf, UpdateSourceTrigger=PropertyChanged}"
                                     DisplayDateEnd="{Binding OpeningBalanceMaximumAsOf}"
@@ -372,7 +387,7 @@
                                 Margin="0,0,10,0" Padding="10,0" />
 
                         <Button Content="Cancel" Command="{Binding CancelCorrectOpeningBalanceCommand}" Width="80"
-                                Margin="0,0,10,0" Style="{StaticResource SecondaryButtonStyle}" />
+                                Margin="0,0,10,0" Style="{DynamicResource SecondaryButtonStyle}" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -398,9 +413,12 @@
         <!-- Historical Items Resolution Overlay -->
         <Grid Background="#80000000"
               Visibility="{Binding IsHistoricalOverlayVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Border Background="White" Width="600" Height="380" VerticalAlignment="Center" Padding="20"
-                    CornerRadius="8"
-                    BorderBrush="Gray" BorderThickness="1">
+            <Border 
+                Background="{DynamicResource SurfaceBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderColorBrush}"
+                Width="600" Height="380" VerticalAlignment="Center" Padding="20"
+                CornerRadius="8"
+                BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -436,10 +454,11 @@
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
                         <Button Content="Apply Selected" Width="110"
+                                Style="{DynamicResource PrimaryButtonStyle}" 
                                 Command="{Binding ProcessHistoricalReconciliationCommand}"
                                 Margin="0,0,10,0" />
                         <Button Content="Cancel" Command="{Binding CancelHistoricalOverlayCommand}" Width="80"
-                                Style="{StaticResource SecondaryButtonStyle}" />
+                                Style="{DynamicResource SecondaryButtonStyle}" />
                     </StackPanel>
                 </Grid>
             </Border>

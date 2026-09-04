@@ -8,15 +8,7 @@
              xmlns:converters="clr-namespace:StayOnTarget.Converters"
              mc:Ignorable="d"
              d:DesignHeight="680" d:DesignWidth="680">
-
-    <!-- <UserControl.Resources> -->
-    <!--     <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" /> -->
-    <!--     <converters:VisibleForMortgageTypeConverter x:Key="VisibleForMortgageTypeConverter" /> -->
-    <!--     <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" /> -->
-    <!--     <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" /> -->
-    <!--     <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" /> -->
-    <!-- </UserControl.Resources> -->
-
+    
     <!-- Semi-transparent Dimmed Backdrop Overlay -->
     <Grid Background="#99000000">
         <!-- Centered Floating Dialog Card -->
@@ -363,37 +355,33 @@
                             <Border BorderBrush="Gray" BorderThickness="1"
                                     CornerRadius="3"
                                     Height="100">
-                                <DataGrid
-                                    ItemsSource="{Binding EditableAllocations}"
-                                    AutoGenerateColumns="False"
-                                    CanUserAddRows="True">
+                                <DataGrid ItemsSource="{Binding EditableAllocations}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="True">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn
-                                            Header="Paycheck" Width="*">
+                                        <DataGridTemplateColumn Header="Paycheck" Width="*">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <TextBlock
-                                                        Style="{DynamicResource StyledSecondaryTextBlock}"
-                                                        Text="{Binding PaycheckName}"
-                                                        VerticalAlignment="Center"
-                                                        Margin="4,0" />
+                                                    <TextBlock Style="{DynamicResource StyledSecondaryTextBlock}"
+                                                               Text="{Binding PaycheckName, TargetNullValue='(Select Paycheck)', FallbackValue='(Select Paycheck)'}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="4,0" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                             <DataGridTemplateColumn.CellEditingTemplate>
                                                 <DataTemplate>
-                                                    <ComboBox
-                                                        ItemsSource="{Binding DataContext.Paychecks, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        SelectedValue="{Binding PaycheckId, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
-                                                        SelectedValuePath="Id"
-                                                        DisplayMemberPath="Name"
-                                                        IsDropDownOpen="True" />
+                                                    <ComboBox ItemsSource="{Binding DataContext.PaychecksWithNone, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                              SelectedValue="{Binding PaycheckId, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
+                                                              SelectedValuePath="Id"
+                                                              DisplayMemberPath="Name"
+                                                              IsDropDownOpen="True" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellEditingTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTextColumn
-                                            Header="Allocation Value"
-                                            Binding="{Binding AllocationValue, StringFormat=N2}"
-                                            Width="120" />
+
+                                        <DataGridTextColumn Header="Allocation Value"
+                                                            Binding="{Binding AllocationValue, StringFormat=N2}"
+                                                            Width="120" />
                                         <DataGridCheckBoxColumn Header="Active"
                                                                 Binding="{Binding IsActive}"
                                                                 Width="60" />
@@ -404,36 +392,37 @@
 
                         <!-- Dynamic Purpose Description Banner -->
                         <Border Background="{DynamicResource DescriptionBannerBackgroundBrush}" BorderBrush="#CBD5E1"
-                                BorderThickness="1" CornerRadius="4"
-                                Padding="8,6" Margin="0,0,0,8">
-                            <TextBlock x:Name="BucketPurposeText"
-                                       TextWrapping="Wrap" FontSize="11"
-                                       Foreground="#334155" LineHeight="15">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
-                                        <!-- Default Standard Envelope Description -->
-                                        <Setter Property="Text"
-                                                Value="💡 Think of this as a temporary allowance for a period. Spending comes out of this envelope first. If you spend less, the leftover cash goes back to your main account. If you spend more, it automatically pulls from your extra reserves." />
-                                        <Style.Triggers>
-                                            <!-- UpfrontFloor Description -->
-                                            <DataTrigger
-                                                Binding="{Binding EditingBucketClone.Type}"
-                                                Value="UpfrontFloor">
-                                                <Setter Property="Text"
-                                                        Value="💡 Sets a minimum balance cushion in your account. Make sure your account actually holds these funds—projections will alert you whenever your balance falls below this required floor at any point in the projected timeline." />
-                                            </DataTrigger>
-                                            <!-- AccumulatingDrawdown Description -->
-                                            <DataTrigger
-                                                Binding="{Binding EditingBucketClone.Type}"
-                                                Value="AccumulatingDrawdown">
-                                                <Setter Property="Text"
-                                                        Value="💡 Builds up cash over time from paychecks toward a goal. Ensure your account actually holds these saved funds, as projections will alert you if your balance drops below your accumulated target and offers actions to take to indicate money has been set aside as available for this savings goal." />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </Border>
+        BorderThickness="1" CornerRadius="4"
+        Padding="8,6" Margin="0,8">
+    <StackPanel>
+        <!-- Purpose Header Explanation -->
+        <TextBlock Text="💡 Linked allocations set how much money gets automatically transferred from each paycheck into this envelope. If no paychecks are selected, the envelope relies on manual transactions or total target funding for the period."
+                   TextWrapping="Wrap" FontSize="11"
+                   Foreground="{DynamicResource PrimaryTextBrush}" LineHeight="15" Margin="0,0,0,4" />
+
+        <!-- Existing Bucket Type Specific Description -->
+        <TextBlock x:Name="BucketPurposeText"
+                   TextWrapping="Wrap" FontSize="11"
+                   Foreground="{DynamicResource SecondaryTextBrush}" LineHeight="15">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Text"
+                            Value="Standard Envelopes represent temporary allowances per period. Spending comes out of this envelope first." />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding EditingBucketClone.Type}" Value="UpfrontFloor">
+                            <Setter Property="Text"
+                                    Value="Upfront Floors set a minimum balance cushion in your account. Projections will alert you whenever your balance falls below this required floor." />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding EditingBucketClone.Type}" Value="AccumulatingDrawdown">
+                            <Setter Property="Text"
+                                    Value="Accumulating Drawdowns build cash over time toward a long-term goal. Projections alert you if your balance drops below your target." />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+    </StackPanel>
+</Border>
 
                         <!-- SubCategory Association Section (KEPT VISIBLE FOR ALL TYPES) -->
                         <TextBlock

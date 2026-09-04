@@ -8,7 +8,9 @@
         xmlns:converters="clr-namespace:StayOnTarget.Converters"
         mc:Ignorable="d"
         Title="Export Transactions" Height="550" Width="500"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize" ShowInTaskbar="False"
+        Foreground="{DynamicResource PrimaryTextBrush}"
+        Background="{DynamicResource WindowBackgroundBrush}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
@@ -28,8 +30,8 @@
         <TextBlock Text="Select Accounts" FontWeight="Bold" Margin="0,0,0,5" />
         <DockPanel Grid.Row="1" Margin="0,0,0,15">
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,5,0,0">
-                <Button Content="Select All" Command="{Binding SelectAllCommand}" Margin="0,0,10,0" Padding="10,2" />
-                <Button Content="Clear Selection" Command="{Binding ClearSelectionCommand}" Padding="10,2" />
+                <Button Content="Select All" Command="{Binding SelectAllCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,0" Padding="10,2" />
+                <Button Content="Clear Selection" Command="{Binding ClearSelectionCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="10,2" />
                 <CheckBox Content="Include Archived Accounts" IsChecked="{Binding IncludeArchivedAccounts}" VerticalAlignment="Center" Margin="20,0,0,0" />
             </StackPanel>
             <Border BorderBrush="#CBD5E1" BorderThickness="1">
@@ -45,7 +47,7 @@
 
         <!-- Date Range Filter -->
         <StackPanel Grid.Row="2" Margin="0,0,0,15">
-            <TextBlock Text="Date Range" FontWeight="Bold" Margin="0,0,0,5" />
+            <TextBlock Style="{DynamicResource StyledTextBlock}" Text="Date Range" FontWeight="Bold" Margin="0,0,0,5" />
             <ComboBox SelectedValue="{Binding SelectedDateFilter}" SelectedValuePath="Tag">
                 <ComboBoxItem Content="All Dates" Tag="{x:Static vm:DateFilterOption.AllDates}" />
                 <ComboBoxItem Content="Year to Date" Tag="{x:Static vm:DateFilterOption.YearToDate}" />
@@ -61,31 +63,34 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="From:" VerticalAlignment="Center" Margin="0,0,5,0" />
                 <DatePicker Grid.Column="1" SelectedDate="{Binding FromDate}" Margin="0,0,10,0" />
-                <TextBlock Grid.Column="2" Text="To:" VerticalAlignment="Center" Margin="0,0,5,0" />
+                <TextBlock Style="{DynamicResource StyledTextBlock}" Grid.Column="2" Text="To:" VerticalAlignment="Center" Margin="0,0,5,0" />
                 <DatePicker Grid.Column="3" SelectedDate="{Binding ToDate}" />
             </Grid>
         </StackPanel>
 
         <!-- CSV Export Options -->
         <StackPanel Grid.Row="3" Margin="0,0,0,15">
-            <TextBlock Text="CSV Format &amp; Options" FontWeight="Bold" Margin="0,0,0,5" />
+            <TextBlock Style="{DynamicResource StyledTextBlock}" Text="CSV Format &amp; Options" FontWeight="Bold" Margin="0,0,0,5" />
             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                <RadioButton Content="Standard CSV" IsChecked="{Binding SelectedPreset, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static vm:CsvExportPreset.Standard}}" Margin="0,0,20,0" />
-                <RadioButton Content="Quicken Compatible CSV" IsChecked="{Binding SelectedPreset, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static vm:CsvExportPreset.Quicken}}" />
+                <RadioButton Content="Standard CSV" Style="{DynamicResource StyledRadioButton}"  IsChecked="{Binding SelectedPreset, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static vm:CsvExportPreset.Standard}}" Margin="0,0,20,0" />
+                <RadioButton Content="Quicken Compatible CSV" Style="{DynamicResource StyledRadioButton}" IsChecked="{Binding SelectedPreset, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter={x:Static vm:CsvExportPreset.Quicken}}" />
             </StackPanel>
             
             <StackPanel Orientation="Horizontal" Visibility="{Binding IsQuickenPreset, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                <CheckBox Content="Include Bucket / Category" IsChecked="{Binding IncludeBuckets}" Margin="0,0,20,0" />
-                <CheckBox Content="Include Status" IsChecked="{Binding IncludeStatus}" Margin="0,0,20,0" />
-                <CheckBox Content="Include Memos / Notes" IsChecked="{Binding IncludeMemos}" />
+                <CheckBox
+                    Foreground="{DynamicResource SecondaryTextBrush}" Content="Include Bucket / Category" IsChecked="{Binding IncludeBuckets}" Margin="0,0,20,0" />
+                <CheckBox
+                    Foreground="{DynamicResource SecondaryTextBrush}" Content="Include Status" IsChecked="{Binding IncludeStatus}" Margin="0,0,20,0" />
+                <CheckBox
+                    Foreground="{DynamicResource SecondaryTextBrush}" Content="Include Memos / Notes" IsChecked="{Binding IncludeMemos}" />
             </StackPanel>
             
-            <TextBlock Text="Quicken format uses fixed columns." FontStyle="Italic" Foreground="Gray" Visibility="{Binding IsQuickenPreset, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <TextBlock Style="{DynamicResource StyledTextBlock}" Text="Quicken format uses fixed columns." FontStyle="Italic" Foreground="Gray" Visibility="{Binding IsQuickenPreset, Converter={StaticResource BooleanToVisibilityConverter}}" />
         </StackPanel>
 
         <!-- File Destination -->
         <StackPanel Grid.Row="4" Margin="0,0,0,20">
-            <TextBlock Text="File Destination" FontWeight="Bold" Margin="0,0,0,5" />
+            <TextBlock Style="{DynamicResource StyledTextBlock}" Text="File Destination" FontWeight="Bold" Margin="0,0,0,5" />
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

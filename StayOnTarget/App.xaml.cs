@@ -365,7 +365,18 @@ public partial class App : Application {
     private void LaunchMainWindow(BudgetService budgetService) {
         //private void LaunchMainWindow(string dbPath, string password) {
         try {
+            if(budgetService == null) throw new ArgumentNullException(nameof(budgetService));
+            
             Log.Information("Initializing BudgetService and MainWindow.");
+
+            try {
+                // Trigger startup rolling backup
+                budgetService.CreateRollingBackup("startup");
+            }
+            catch (Exception ex) {
+                Log.Error(ex, "Error executing startup backup.");
+            }
+            
             //var budgetService = new BudgetService(dbPath, password);
             var reconciliationService = new ReconciliationService(budgetService);
             var viewModel = new MainViewModel(budgetService, reconciliationService);

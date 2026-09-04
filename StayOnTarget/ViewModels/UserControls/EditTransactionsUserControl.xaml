@@ -48,10 +48,12 @@
                                Style="{DynamicResource StyledTextBlock}"
                                FontSize="16" FontWeight="Bold" VerticalAlignment="Center" />
 
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding StagedTransactions.Count, StringFormat='Pending items: {0}', FallbackValue='Pending items: 0'}"
-                                   Style="{DynamicResource StyledSecondaryTextBlock}"
-                                   FontSize="12" FontWeight="SemiBold" Margin="0,0,10,0" />
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+                        <TextBlock
+                            Text="{Binding StagedTransactions.Count, StringFormat='Pending items: {0}', FallbackValue='Pending items: 0'}"
+                            Style="{DynamicResource StyledSecondaryTextBlock}"
+                            FontSize="12" FontWeight="SemiBold" Margin="0,0,10,0" />
                         <Button Content="✕"
                                 Command="{Binding CancelTransactionCommand}"
                                 Style="{DynamicResource SecondaryButtonStyle}"
@@ -78,9 +80,11 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />                    
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        
+
                         <!-- Description ComboBox -->
                         <!-- <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="0" Content="Description:" /> -->
                         <!-- <ComboBox x:Name="DescriptionComboBox" -->
@@ -106,7 +110,8 @@
                         <!--         </Style> -->
                         <!--     </ComboBox.Style> -->
                         <!-- </ComboBox> -->
-                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="0" Content="Description:" />
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="0"
+                               Content="Description:" />
 
                         <controls:AutoCompleteTextBox Grid.Column="1" Grid.Row="0" x:Name="DescriptionComboBox"
                                                       ItemsSource="{Binding Bills}"
@@ -116,13 +121,13 @@
                                                       SelectedValue="{Binding EditingTransactionClone.BillId}"
                                                       Text="{Binding EditingTransactionClone.Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}"
                                                       Margin="5" />
-                        
+
                         <!-- Amount -->
                         <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="0" Content="Amount:" />
                         <controls:NumericTextBox Grid.Column="3" Grid.Row="0"
                                                  Text="{Binding EditingTransactionClone.Amount, Converter={StaticResource AbsoluteValueConverter}}"
                                                  Margin="5" />
-                        
+
                         <!-- From Account & To Account -->
                         <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="1"
                                Content="From Account:" />
@@ -140,14 +145,14 @@
                                   SelectedValuePath="Id"
                                   DisplayMemberPath="Name"
                                   Margin="5" />
-                        
+
                         <!-- Date -->
                         <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="2" Content="Date:" />
                         <DatePicker Grid.Column="1" Grid.Row="2"
                                     SelectedDate="{Binding EditingTransactionClone.TransactionDate}"
                                     Margin="5" />
 
-                        
+
                         <!-- Bill Link -->
                         <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="2" Content="Bill:" />
                         <ComboBox Grid.Column="3" Grid.Row="2"
@@ -156,27 +161,134 @@
                                   SelectedValuePath="Id"
                                   DisplayMemberPath="Name"
                                   Margin="5" />
-                        
-                        <!-- Category & Envelope -->
-                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="3"
-                               Content="Sub Category:" />
+
+                        <!-- Category & Envelope (Disabled when split mode is active) -->
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="3" Content="Sub Category:"
+                               Visibility="{Binding IsSplitTransaction, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
                         <ComboBox Grid.Column="1" Grid.Row="3"
                                   ItemsSource="{Binding SubCategoriesWithNone}"
                                   SelectedValue="{Binding EditingTransactionClone.SubCategoryId}"
                                   SelectedValuePath="Id"
                                   DisplayMemberPath="Name"
+                                  Visibility="{Binding IsSplitTransaction, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                                   Margin="5" />
 
-                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="3" Content="Envelope:" />
+                        <Label Style="{DynamicResource StyledLabel}" 
+                               Grid.Column="2" Grid.Row="3" Content="Envelope:"
+                               Visibility="{Binding IsSplitTransaction, Converter={StaticResource InverseBooleanToVisibilityConverter}}" />
                         <ComboBox Grid.Column="3" Grid.Row="3"
                                   ItemsSource="{Binding BucketsWithNone}"
                                   SelectedValue="{Binding EditingTransactionClone.BucketId}"
                                   SelectedValuePath="Id"
                                   DisplayMemberPath="Name"
+                                  Visibility="{Binding IsSplitTransaction, Converter={StaticResource InverseBooleanToVisibilityConverter}}"
                                   Margin="5" />
+                        <!-- Split Mode Toggle & Indicator -->
+                        <StackPanel Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="4" Orientation="Horizontal"
+                                    Margin="5,8">
+                            <CheckBox Content="Split Transaction Categories"
+                                      Foreground="{DynamicResource PrimaryTextBrush}"
+                                      IsChecked="{Binding IsSplitTransaction}"
+                                      VerticalAlignment="Center"
+                                      FontWeight="SemiBold" />
+
+                            <TextBlock Text="{Binding UnassignedSplitAmount, StringFormat='Unassigned: {0:C}'}"
+                                       Foreground="{DynamicResource ErrorBrush}"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       Margin="15,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource StyledTextBlock}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSplitTransaction}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- EXPANDABLE SPLIT DETAILS EDITOR PANEL -->
+                        <Border Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="4"
+                                Background="{DynamicResource WindowBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderColorBrush}"
+                                BorderThickness="1" CornerRadius="6" Padding="10" Margin="5"
+                                Visibility="{Binding IsSplitTransaction, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Category &amp; Envelope Splits"
+                                               Style="{DynamicResource StyledTextBlock}"
+                                               FontWeight="Bold" VerticalAlignment="Center" />
+                                    <Button Content="+ Add Subcategory"
+                                            Command="{Binding AddSplitDetailLegCommand}"
+                                            Style="{DynamicResource SecondaryButtonStyle}"
+                                            HorizontalAlignment="Right" Padding="8,2" />
+                                </DockPanel>
+
+                                <DataGrid ItemsSource="{Binding EditingSplitDetails}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          GridLinesVisibility="Horizontal"
+                                          Background="Transparent"
+                                          BorderThickness="0">
+                                    <DataGrid.Columns>
+                                        <!-- SubCategory Selection -->
+                                        <DataGridTemplateColumn Header="SubCategory" Width="*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox
+                                                        ItemsSource="{Binding DataContext.SubCategoriesWithNone, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        SelectedValue="{Binding SubCategoryId, UpdateSourceTrigger=PropertyChanged}"
+                                                        SelectedValuePath="Id"
+                                                        DisplayMemberPath="Name" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Envelope / Bucket Selection -->
+                                        <DataGridTemplateColumn Header="Envelope" Width="*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox
+                                                        ItemsSource="{Binding DataContext.BucketsWithNone, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        SelectedValue="{Binding BucketId, UpdateSourceTrigger=PropertyChanged}"
+                                                        SelectedValuePath="Id"
+                                                        DisplayMemberPath="Name" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Amount Leg -->
+                                        <DataGridTemplateColumn Header="Amount" Width="100">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <controls:NumericTextBox
+                                                        Text="{Binding Amount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Action: Delete Leg -->
+                                        <DataGridTemplateColumn Width="40">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="✕"
+                                                            Command="{Binding DataContext.RemoveSplitDetailLegCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Style="{DynamicResource DangerButtonStyle}"
+                                                            Width="22" Height="22" Padding="0" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </StackPanel>
+                        </Border>
 
                         <!-- Paycheck Context Fields -->
-                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="4" Content="Paycheck:">
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="6" Content="Paycheck:">
                             <Label.Visibility>
                                 <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}"
                                               FallbackValue="Collapsed">
@@ -185,7 +297,7 @@
                                 </MultiBinding>
                             </Label.Visibility>
                         </Label>
-                        <ComboBox Grid.Column="1" Grid.Row="4"
+                        <ComboBox Grid.Column="1" Grid.Row="6"
                                   ItemsSource="{Binding Paychecks}"
                                   SelectedValue="{Binding EditingTransactionClone.PaycheckId}"
                                   SelectedValuePath="Id"
@@ -200,7 +312,7 @@
                             </ComboBox.Visibility>
                         </ComboBox>
 
-                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="4"
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="2" Grid.Row="6"
                                Content="Payroll Date:">
                             <Label.Visibility>
                                 <MultiBinding Converter="{StaticResource PaycheckFieldVisibilityConverter}"
@@ -210,7 +322,7 @@
                                 </MultiBinding>
                             </Label.Visibility>
                         </Label>
-                        <DatePicker Grid.Column="3" Grid.Row="4"
+                        <DatePicker Grid.Column="3" Grid.Row="6"
                                     SelectedDate="{Binding EditingTransactionClone.PaycheckOccurrenceDate}"
                                     Margin="5">
                             <DatePicker.Visibility>
@@ -223,7 +335,7 @@
                         </DatePicker>
 
                         <!-- Mortgage Flags -->
-                        <StackPanel Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="4" Orientation="Horizontal"
+                        <StackPanel Grid.Column="0" Grid.Row="7" Grid.ColumnSpan="4" Orientation="Horizontal"
                                     Margin="5">
                             <CheckBox Content="Principal Only (Mortgage/Loan Extra)"
                                       IsChecked="{Binding EditingTransactionClone.IsPrincipalOnly}"
@@ -247,14 +359,14 @@
                                 </CheckBox.Visibility>
                             </CheckBox>
                         </StackPanel>
-                        
-                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="6" Content="Memo:" />
-                        <TextBox Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="6"
+
+                        <Label Style="{DynamicResource StyledLabel}" Grid.Column="0" Grid.Row="8" Content="Memo:" />
+                        <TextBox Grid.Column="1" Grid.ColumnSpan="3" Grid.Row="8"
                                  Text="{Binding EditingTransactionClone.Memo}"
                                  Margin="5" />
-                        
+
                         <!-- Reconciliation Sub-Panel -->
-                        <Border Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="4"
+                        <Border Grid.Row="9" Grid.Column="0" Grid.ColumnSpan="4"
                                 Background="{DynamicResource WindowBackgroundBrush}"
                                 BorderBrush="{DynamicResource BorderColorBrush}"
                                 BorderThickness="1"
@@ -305,7 +417,7 @@
                 </ScrollViewer>
 
                 <!-- PENDING BATCH STAGING LIST (Visible only when StagedTransactions has items) -->
-                <Border Grid.Row="2" Grid.Column="0" 
+                <Border Grid.Row="2" Grid.Column="0"
                         Background="{DynamicResource WindowBackgroundBrush}"
                         BorderBrush="{DynamicResource BorderColorBrush}"
                         BorderThickness="1" CornerRadius="6"
@@ -319,22 +431,25 @@
                         <TextBlock Text="Staged for Save:"
                                    Style="{DynamicResource StyledSecondaryTextBlock}"
                                    FontWeight="Bold" FontSize="11" Margin="0,0,0,4" />
-                        
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" 
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                                       MaxHeight="140">
                             <ItemsControl ItemsSource="{Binding StagedTransactions}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <DockPanel Margin="0,2">
-                                            <Button Content="✕" 
+                                            <Button Content="✕"
                                                     Command="{Binding DataContext.RemoveStagedTransactionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding}"
                                                     Style="{DynamicResource DangerButtonStyle}"
                                                     Width="18" Height="18" Padding="0" Margin="0,0,8,0"
                                                     ToolTip="Remove from batch" />
 
-                                            <TextBlock Text="{Binding Amount, StringFormat=C}" DockPanel.Dock="Right" FontWeight="Bold" Style="{DynamicResource StyledTextBlock}"/>
-                                            <TextBlock Text="{Binding Description}" Style="{DynamicResource StyledTextBlock}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Amount, StringFormat=C}" DockPanel.Dock="Right"
+                                                       FontWeight="Bold" Style="{DynamicResource StyledTextBlock}" />
+                                            <TextBlock Text="{Binding Description}"
+                                                       Style="{DynamicResource StyledTextBlock}"
+                                                       TextTrimming="CharacterEllipsis" />
                                         </DockPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

@@ -33,6 +33,7 @@
             <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
             <converters:DeltaToBrushConverter x:Key="DeltaToBrushConverter" />
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
             <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" />
             <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
             <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
@@ -449,6 +450,11 @@
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
+            
+            <Style x:Key="StyledRadioButton" TargetType="{x:Type RadioButton}">
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                <Setter Property="VerticalContentAlignment" Value="Center" />
+            </Style>
 
             <!-- <Style x:Key="StyledCheckBox" TargetType="{x:Type CheckBox}"> -->
             <!--     <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /> -->
@@ -508,6 +514,67 @@
                 <Setter Property="TextAlignment" Value="Right" />
             </Style>
 
+            <!-- IMPLICIT LISTBOXITEM STYLE -->
+<Style TargetType="{x:Type ListBoxItem}">
+    <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="8,6" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                <Border x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="{TemplateBinding Padding}"
+                        SnapsToDevicePixels="True">
+                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SidebarHoverBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SidebarSelectedBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter Property="Opacity" Value="0.55" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
+
+<!-- IMPLICIT LISTBOX STYLE -->
+<Style TargetType="{x:Type ListBox}">
+    <Setter Property="Background" Value="{DynamicResource DataGridRowBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DataGridRowForegroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderColorBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="1" />
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+    <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+    <Setter Property="Template">
+        <Setter.Value>
+            <ControlTemplate TargetType="{x:Type ListBox}">
+                <Border x:Name="Bd"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="4"
+                        SnapsToDevicePixels="True">
+                    <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}">
+                        <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                    </ScrollViewer>
+                </Border>
+            </ControlTemplate>
+        </Setter.Value>
+    </Setter>
+</Style>
+            
             <!-- 1. IMPLICIT COMBOBOXITEM STYLE -->
             <Style TargetType="{x:Type ComboBoxItem}">
                 <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />

@@ -20,6 +20,7 @@
         mc:Ignorable="d"
         Title="Stay On Target" Height="600" Width="1000" MinWidth="1000"
         Background="{DynamicResource WindowBackgroundBrush}"
+        Foreground="{DynamicResource PrimaryTextBrush}"
         WindowState="Maximized">
 
     <i:Interaction.Triggers>
@@ -46,52 +47,13 @@
             <Setter Property="FontWeight" Value="Normal" />
         </Style>
 
-        <!-- <converters:LessThanConverter x:Key="LessThanConverter" /> -->
-        <!-- <converters:VisibleForMortgageTypeConverter x:Key="VisibleForMortgageTypeConverter" /> -->
-        <!-- <converters:MultiBooleanToVisibilityConverter x:Key="MultiBooleanToVisibilityConverter" /> -->
-        <!-- <converters:MarkBillPaidVisibilityConverter x:Key="MarkBillPaidVisibilityConverter" /> -->
-        <!-- <converters:NullOrZeroToVisibilityConverter x:Key="NullOrZeroToVisibilityConverter" /> -->
-        <!-- <converters:SetContainsAccountIdConverter x:Key="SetContainsAccountIdConverter" /> -->
-        <!-- <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" /> -->
-        <!-- <converters:ProjectionAmountToBrushConverter x:Key="ProjectionAmountToBrushConverter" /> -->
-        <!-- <converters:ProjectionYearsLabelConverter x:Key="ProjectionYearsLabelConverter" /> -->
-        <!-- <converters:DoubleToDecimalConverter x:Key="DoubleToDecimalConverter" /> -->
-        <!-- <converters:AccountTypeToIconConverter x:Key="AccountIconConverter" /> -->
-        <!-- <converters:AmountToBrushConverter x:Key="AmountToBrushConverter" /> -->
-        <!-- <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" /> -->
-        <!-- <converters:BooleanAndToVisibilityConverter x:Key="BooleanAndToVisibilityConverter" /> -->
-        <!-- <converters:CategoryNameConverter x:Key="CategoryNameConverter" /> -->
-        <!-- <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" /> -->
-        <!-- <converters:NegativeToRedConverter x:Key="NegativeToRedConverter" /> -->
-        <!-- <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter" /> -->
-        <!-- <converters:DeltaToBrushConverter x:Key="DeltaToBrushConverter" /> -->
-        <!-- <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" /> -->
-        <!-- <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter" /> -->
-        <!-- <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" /> -->
-        <!-- <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter" /> -->
-        <!-- <converters:PaycheckFieldVisibilityConverter x:Key="PaycheckFieldVisibilityConverter" /> -->
-
-        <!-- <CollectionViewSource x:Key="SortedBills" Source="{Binding Bills}"> -->
-        <!--     <CollectionViewSource.SortDescriptions> -->
-        <!--         <scm:SortDescription PropertyName="Name" /> -->
-        <!--     </CollectionViewSource.SortDescriptions> -->
-        <!-- </CollectionViewSource> -->
-
         <CollectionViewSource x:Key="SortedCurrentPeriodTransactions"
                               Source="{Binding CurrentPeriodTransactions}">
             <CollectionViewSource.SortDescriptions>
                 <scm:SortDescription PropertyName="TransactionDate" />
             </CollectionViewSource.SortDescriptions>
         </CollectionViewSource>
-
-        <!-- <ObjectDataProvider x:Key="EnumFrequency" -->
-        <!--                     MethodName="GetValues" -->
-        <!--                     ObjectType="{x:Type models:Frequency}"> -->
-        <!--     <ObjectDataProvider.MethodParameters> -->
-        <!--         <x:Type TypeName="models:Frequency" /> -->
-        <!--     </ObjectDataProvider.MethodParameters> -->
-        <!-- </ObjectDataProvider> -->
-
+        
         <ObjectDataProvider x:Key="EnumSurplusAllocationTarget"
                             MethodName="GetValues"
                             ObjectType="{x:Type sys:Enum}">
@@ -266,8 +228,8 @@
                                                            Margin="0,0,0,12" />
 
                                                 <!-- CASH READINESS & ACTION SUGGESTION CARD -->
-                                                <Border Background="{DynamicResource ReadinessStatusBackgroundBrush}"
-                                                        BorderBrush="{DynamicResource ReadinessStatusBorderBrush}"
+                                                <Border Background="{Binding ReadinessStatusBackgroundBrush}"
+                                                        BorderBrush="{Binding ReadinessStatusBorderBrush}"
                                                         BorderThickness="1" CornerRadius="8" Padding="14"
                                                         Margin="0,0,0,16">
                                                     <StackPanel>
@@ -275,7 +237,7 @@
                                                             <TextBlock Style="{DynamicResource    StyledTextBlock}"
                                                                        Text="{Binding ReadinessStatusTitle}"
                                                                        FontSize="14" FontWeight="Bold"
-                                                                       Foreground="{DynamicResource ReadinessStatusHeaderBrush}"
+                                                                       Foreground="{Binding ReadinessStatusHeaderBrush}"
                                                                        VerticalAlignment="Center" />
 
                                                             <TextBlock
@@ -745,33 +707,6 @@
                                                                             Orientation="Horizontal"
                                                                             HorizontalAlignment="Left"
                                                                             Margin="0,5,0,0">
-                                                                        <!-- <Button Content="Delete" -->
-                                                                        <!--         Command="{Binding DeleteTransactionCommand}" -->
-                                                                        <!--         Width="80" Margin="2"> -->
-                                                                        <!--     <Button.Style> -->
-                                                                        <!--         <Style TargetType="Button" -->
-                                                                        <!--             BasedOn="{StaticResource DangerButtonStyle}"> -->
-                                                                        <!--             <Setter Property="Visibility" -->
-                                                                        <!--                 Value="Visible" /> -->
-                                                                        <!--             <Style.Triggers> -->
-                                                                        <!--                 <DataTrigger -->
-                                                                        <!--                     Binding="{Binding EditingTransactionClone.TransactionId, Converter={StaticResource NullToVisibilityConverter}}" -->
-                                                                        <!--                     Value="Collapsed"> -->
-                                                                        <!--                     <Setter -->
-                                                                        <!--                         Property="Visibility" -->
-                                                                        <!--                         Value="Collapsed" /> -->
-                                                                        <!--                 </DataTrigger> -->
-                                                                        <!--                 <DataTrigger -->
-                                                                        <!--                     Binding="{Binding IsEditingTransaction}" -->
-                                                                        <!--                     Value="False"> -->
-                                                                        <!--                     <Setter -->
-                                                                        <!--                         Property="Visibility" -->
-                                                                        <!--                         Value="Collapsed" /> -->
-                                                                        <!--                 </DataTrigger> -->
-                                                                        <!--             </Style.Triggers> -->
-                                                                        <!--         </Style> -->
-                                                                        <!--     </Button.Style> -->
-                                                                        <!-- </Button> -->
                                                                         <Button Content="Delete"
                                                                                 Command="{Binding DeleteSelectedTransactionCommand}"
                                                                                 Width="80" Margin="2">
@@ -897,311 +832,6 @@
                                                                                     Width="Auto" MinWidth="100" />
                                                                         </DataGrid.Columns>
                                                                     </DataGrid>
-
-                                                                    <!-- <StackPanel Grid.Row="1" Margin="5" -->
-                                                                    <!--         IsEnabled="{Binding IsEditingTransactionEnabled}"> -->
-                                                                    <!--     <TextBlock -->
-                                                                    <!--         Style="{DynamicResource StyledTextBlock}" -->
-                                                                    <!--         Text="Edit Transaction Item" -->
-                                                                    <!--         FontWeight="Bold" Margin="0,5" -->
-                                                                    <!--         Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}" /> -->
-                                                                    <!--     <Grid -->
-                                                                    <!--         Visibility="{Binding IsEditingTransaction, Converter={StaticResource BooleanToVisibilityConverter}}"> -->
-                                                                    <!--         <Grid.ColumnDefinitions> -->
-                                                                    <!--             <ColumnDefinition Width="Auto" /> -->
-                                                                    <!--             <ColumnDefinition Width="*" /> -->
-                                                                    <!--             <ColumnDefinition Width="Auto" /> -->
-                                                                    <!--             <ColumnDefinition Width="*" /> -->
-                                                                    <!--         </Grid.ColumnDefinitions> -->
-                                                                    <!--         <Grid.RowDefinitions> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--             <RowDefinition Height="Auto" /> -->
-                                                                    <!--         </Grid.RowDefinitions> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="0" Grid.Row="0" -->
-                                                                    <!--             Content="Date:" /> -->
-                                                                    <!--         <DatePicker Grid.Column="1" -->
-                                                                    <!--                 Grid.Row="0" -->
-                                                                    <!--                 SelectedDate="{Binding EditingTransactionClone.TransactionDate}" -->
-                                                                    <!--                 Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="0" Grid.Row="1" -->
-                                                                    <!--             Content="Description:" /> -->
-                                                                    <!--         <ComboBox Grid.Column="1" Grid.Row="1" -->
-                                                                    <!--                 ItemsSource="{Binding FilteredBillsView}" -->
-                                                                    <!--                 DisplayMemberPath="Name" -->
-                                                                    <!--                 SelectedValuePath="Id" -->
-                                                                    <!--                 SelectedValue="{Binding EditingTransactionClone.BillId}" -->
-                                                                    <!--                 Text="{Binding EditingTransactionClone.Description, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" -->
-                                                                    <!--                 IsEditable="True" -->
-                                                                    <!--                 IsTextSearchEnabled="False" -->
-                                                                    <!--                 StaysOpenOnEdit="True" Margin="5"> -->
-                                                                    <!--             <ComboBox.Style> -->
-                                                                    <!--                 <Style TargetType="ComboBox" -->
-                                                                    <!--                     BasedOn="{StaticResource {x:Type ComboBox}}"> -->
-                                                                    <!--                     <Style.Triggers> -->
-                                                                    <!--                         <DataTrigger -->
-                                                                    <!--                             Binding="{Binding EditingTransactionClone.Description}" -->
-                                                                    <!--                             Value="{x:Static local:Constants.OpeningBalance}"> -->
-                                                                    <!--                             <Setter -->
-                                                                    <!--                                 Property="IsEnabled" -->
-                                                                    <!--                                 Value="False" /> -->
-                                                                    <!--                         </DataTrigger> -->
-                                                                    <!--                         <Trigger -->
-                                                                    <!--                             Property="IsKeyboardFocusWithin" -->
-                                                                    <!--                             Value="True"> -->
-                                                                    <!--                             <Setter -->
-                                                                    <!--                                 Property="IsDropDownOpen" -->
-                                                                    <!--                                 Value="True" /> -->
-                                                                    <!--                         </Trigger> -->
-                                                                    <!--                     </Style.Triggers> -->
-                                                                    <!--                 </Style> -->
-                                                                    <!--             </ComboBox.Style> -->
-                                                                    <!--         </ComboBox> -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="2" Grid.Row="1" -->
-                                                                    <!--             Content="Memo:" /> -->
-                                                                    <!--         <TextBox Grid.Column="3" Grid.Row="1" -->
-                                                                    <!--                 Text="{Binding EditingTransactionClone.Memo}" -->
-                                                                    <!--                 Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="0" Grid.Row="2" -->
-                                                                    <!--             Content="Amount:" /> -->
-                                                                    <!--         <controls:NumericTextBox -->
-                                                                    <!--             Grid.Column="1" -->
-                                                                    <!--             Grid.Row="2" -->
-                                                                    <!--             Text="{Binding EditingTransactionClone.Amount, Converter={StaticResource AbsoluteValueConverter}}" -->
-                                                                    <!--             Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="0" -->
-                                                                    <!--             Grid.Row="3" -->
-                                                                    <!--             Content="From Account:" /> -->
-                                                                    <!--         <ComboBox Grid.Column="1" Grid.Row="3" -->
-                                                                    <!--                 x:Name="FromAccountComboBox" -->
-                                                                    <!--                 ItemsSource="{Binding TransactionAccounts}" -->
-                                                                    <!--                 SelectedValue="{Binding EditingTransactionClone.AccountId}" -->
-                                                                    <!--                 SelectedValuePath="Id" -->
-                                                                    <!--                 DisplayMemberPath="Name" Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="2" Grid.Row="3" -->
-                                                                    <!--             Content="To Account:" /> -->
-                                                                    <!--         <ComboBox Grid.Column="3" Grid.Row="3" -->
-                                                                    <!--                 x:Name="ToAccountComboBox" -->
-                                                                    <!--                 ItemsSource="{Binding TransactionToAccounts}" -->
-                                                                    <!--                 SelectedValue="{Binding EditingTransactionClone.ToAccountId}" -->
-                                                                    <!--                 SelectedValuePath="Id" -->
-                                                                    <!--                 DisplayMemberPath="Name" Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="0" Grid.Row="4" -->
-                                                                    <!--             Content="Bill:" /> -->
-                                                                    <!--         <ComboBox Grid.Column="1" Grid.Row="4" -->
-                                                                    <!--                 x:Name="BillComboBox" -->
-                                                                    <!--                 ItemsSource="{Binding BillsWithNone}" -->
-                                                                    <!--                 SelectedValue="{Binding EditingTransactionClone.BillId}" -->
-                                                                    <!--                 SelectedValuePath="Id" -->
-                                                                    <!--                 DisplayMemberPath="Name" Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="0" Grid.Row="5" -->
-                                                                    <!--             Content="Sub Category:" /> -->
-                                                                    <!--         <ComboBox Grid.Column="1" Grid.Row="5" -->
-                                                                    <!--                 x:Name="SubCategoryComboBox" -->
-                                                                    <!--                 ItemsSource="{Binding SubCategoriesWithNone}" -->
-                                                                    <!--                 SelectedValue="{Binding EditingTransactionClone.SubCategoryId}" -->
-                                                                    <!--                 SelectedValuePath="Id" -->
-                                                                    <!--                 DisplayMemberPath="Name" Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="2" Grid.Row="5" -->
-                                                                    <!--             Content="Envelope:" /> -->
-                                                                    <!--         <ComboBox Grid.Column="3" Grid.Row="5" -->
-                                                                    <!--                 x:Name="BucketComboBox" -->
-                                                                    <!--                 ItemsSource="{Binding BucketsWithNone}" -->
-                                                                    <!--                 SelectedValue="{Binding EditingTransactionClone.BucketId}" -->
-                                                                    <!--                 SelectedValuePath="Id" -->
-                                                                    <!--                 DisplayMemberPath="Name" Margin="5" /> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="0" Grid.Row="6" -->
-                                                                    <!--             Content="Paycheck:"> -->
-                                                                    <!--             <Label.Visibility> -->
-                                                                    <!--                 <MultiBinding -->
-                                                                    <!--                     Converter="{StaticResource PaycheckFieldVisibilityConverter}" -->
-                                                                    <!--                     FallbackValue="Collapsed"> -->
-                                                                    <!--                     <Binding -->
-                                                                    <!--                         Path="EditingTransactionClone.ToAccountId" /> -->
-                                                                    <!--                     <Binding Path="Accounts" /> -->
-                                                                    <!--                 </MultiBinding> -->
-                                                                    <!--             </Label.Visibility> -->
-                                                                    <!--         </Label> -->
-                                                                    <!--         <ComboBox Grid.Column="1" Grid.Row="6" -->
-                                                                    <!--                 ItemsSource="{Binding Paychecks}" -->
-                                                                    <!--                 SelectedValue="{Binding EditingTransactionClone.PaycheckId}" -->
-                                                                    <!--                 SelectedValuePath="Id" -->
-                                                                    <!--                 DisplayMemberPath="Name" Margin="5"> -->
-                                                                    <!--             <ComboBox.Visibility> -->
-                                                                    <!--                 <MultiBinding -->
-                                                                    <!--                     Converter="{StaticResource PaycheckFieldVisibilityConverter}" -->
-                                                                    <!--                     FallbackValue="Collapsed"> -->
-                                                                    <!--                     <Binding -->
-                                                                    <!--                         Path="EditingTransactionClone.ToAccountId" /> -->
-                                                                    <!--                     <Binding Path="Accounts" /> -->
-                                                                    <!--                 </MultiBinding> -->
-                                                                    <!--             </ComboBox.Visibility> -->
-                                                                    <!--         </ComboBox> -->
-                                                                    <!-- -->
-                                                                    <!--         <Label -->
-                                                                    <!--             Style="{DynamicResource StyledLabel}" -->
-                                                                    <!--             Grid.Column="2" Grid.Row="6" -->
-                                                                    <!--             Content="Payroll Date:"> -->
-                                                                    <!--             <Label.Visibility> -->
-                                                                    <!--                 <MultiBinding -->
-                                                                    <!--                     Converter="{StaticResource PaycheckFieldVisibilityConverter}" -->
-                                                                    <!--                     FallbackValue="Collapsed"> -->
-                                                                    <!--                     <Binding -->
-                                                                    <!--                         Path="EditingTransactionClone.ToAccountId" /> -->
-                                                                    <!--                     <Binding Path="Accounts" /> -->
-                                                                    <!--                 </MultiBinding> -->
-                                                                    <!--             </Label.Visibility> -->
-                                                                    <!--         </Label> -->
-                                                                    <!--         <DatePicker Grid.Column="3" -->
-                                                                    <!--                 Grid.Row="6" -->
-                                                                    <!--                 SelectedDate="{Binding EditingTransactionClone.PaycheckOccurrenceDate}" -->
-                                                                    <!--                 Margin="5"> -->
-                                                                    <!--             <DatePicker.Visibility> -->
-                                                                    <!--                 <MultiBinding -->
-                                                                    <!--                     Converter="{StaticResource PaycheckFieldVisibilityConverter}" -->
-                                                                    <!--                     FallbackValue="Collapsed"> -->
-                                                                    <!--                     <Binding -->
-                                                                    <!--                         Path="EditingTransactionClone.ToAccountId" /> -->
-                                                                    <!--                     <Binding Path="Accounts" /> -->
-                                                                    <!--                 </MultiBinding> -->
-                                                                    <!--             </DatePicker.Visibility> -->
-                                                                    <!--         </DatePicker> -->
-                                                                    <!-- -->
-                                                                    <!--         <StackPanel Grid.Column="0" -->
-                                                                    <!--                 Grid.Row="7" -->
-                                                                    <!--                 Grid.ColumnSpan="4" -->
-                                                                    <!--                 Orientation="Horizontal" Margin="5"> -->
-                                                                    <!--             <CheckBox -->
-                                                                    <!--                 Content="Principal Only (Mortgage/Loan Extra)" -->
-                                                                    <!--                 IsChecked="{Binding EditingTransactionClone.IsPrincipalOnly}" -->
-                                                                    <!--                 VerticalAlignment="Center" -->
-                                                                    <!--                 Margin="0,0,10,0"> -->
-                                                                    <!--                 <CheckBox.Visibility> -->
-                                                                    <!--                     <MultiBinding -->
-                                                                    <!--                         Converter="{StaticResource VisibleForMortgageTypeConverter}"> -->
-                                                                    <!--                         ~1~ Binding 1: The integer ID of the To Account @1@ -->
-                                                                    <!--                         <Binding -->
-                                                                    <!--                             Path="EditingTransactionClone.ToAccountId" /> -->
-                                                                    <!--                         ~1~ Binding 2: The full list of accounts to look up the type @1@ -->
-                                                                    <!--                         <Binding Path="Accounts" /> -->
-                                                                    <!--                     </MultiBinding> -->
-                                                                    <!--                 </CheckBox.Visibility> -->
-                                                                    <!--             </CheckBox> -->
-                                                                    <!--             <CheckBox -->
-                                                                    <!--                 Content="Rebalance (Adds to Debt)" -->
-                                                                    <!--                 IsChecked="{Binding EditingTransactionClone.IsRebalance}" -->
-                                                                    <!--                 VerticalAlignment="Center"> -->
-                                                                    <!--                 <CheckBox.Visibility> -->
-                                                                    <!--                     <MultiBinding -->
-                                                                    <!--                         Converter="{StaticResource VisibleForMortgageTypeConverter}"> -->
-                                                                    <!--                         ~1~ Binding 1: The integer ID of the To Account @1@ -->
-                                                                    <!--                         <Binding -->
-                                                                    <!--                             Path="EditingTransactionClone.ToAccountId" /> -->
-                                                                    <!--                         ~1~ Binding 2: The full list of accounts to look up the type @1@ -->
-                                                                    <!--                         <Binding Path="Accounts" /> -->
-                                                                    <!--                     </MultiBinding> -->
-                                                                    <!--                 </CheckBox.Visibility> -->
-                                                                    <!--             </CheckBox> -->
-                                                                    <!--         </StackPanel> -->
-                                                                    <!--         ~1~ Reconciliation & Bank Status Sub-Panel @1@ -->
-                                                                    <!--         <Border Grid.Row="8" Grid.Column="0" -->
-                                                                    <!--                 Grid.ColumnSpan="4" -->
-                                                                    <!--                 Background="{DynamicResource SurfaceBackgroundBrush}" -->
-                                                                    <!--                 BorderBrush="{DynamicResource BorderColorBrush}" -->
-                                                                    <!--                 BorderThickness="1" -->
-                                                                    <!--                 CornerRadius="6" Padding="10" -->
-                                                                    <!--                 Margin="5"> -->
-                                                                    <!--             <StackPanel> -->
-                                                                    <!--                 <DockPanel Margin="0,0,0,6"> -->
-                                                                    <!--                     <TextBlock -->
-                                                                    <!--                         Text="Bank &amp; Reconciliation Status" -->
-                                                                    <!--                         Style="{DynamicResource StyledTextBlock}" -->
-                                                                    <!--                         FontWeight="SemiBold" -->
-                                                                    <!--                         FontSize="12" /> -->
-                                                                    <!--                 </DockPanel> -->
-                                                                    <!-- -->
-                                                                    <!--                 ~1~ Status Table / Rows for Both Sides @1@ -->
-                                                                    <!--                 <ItemsControl -->
-                                                                    <!--                     ItemsSource="{Binding EditingTransactionStatusItems}"> -->
-                                                                    <!--                     <ItemsControl.ItemTemplate> -->
-                                                                    <!--                         <DataTemplate> -->
-                                                                    <!--                             <Grid Margin="0,3"> -->
-                                                                    <!--                                 <Grid.ColumnDefinitions> -->
-                                                                    <!--                                     <ColumnDefinition -->
-                                                                    <!--                                         Width="*" /> -->
-                                                                    <!--                                     <ColumnDefinition -->
-                                                                    <!--                                         Width="120" /> -->
-                                                                    <!--                                     <ColumnDefinition -->
-                                                                    <!--                                         Width="120" /> -->
-                                                                    <!--                                 </Grid.ColumnDefinitions> -->
-                                                                    <!-- -->
-                                                                    <!--                                 ~1~ Account Name @1@ -->
-                                                                    <!--                                 <TextBlock -->
-                                                                    <!--                                     Grid.Column="0" -->
-                                                                    <!--                                     Style="{DynamicResource StyledTextBlock}" -->
-                                                                    <!--                                     Text="{Binding AccountName}" -->
-                                                                    <!--                                     VerticalAlignment="Center" -->
-                                                                    <!--                                     FontWeight="Medium" /> -->
-                                                                    <!-- -->
-                                                                    <!--                                 ~1~ Status Dropdown or Toggle (Uncleared / Cleared / Reconciled) @1@ -->
-                                                                    <!--                                 <ComboBox -->
-                                                                    <!--                                     Grid.Column="1" -->
-                                                                    <!--                                     ItemsSource="{Binding AvailableStatuses}" -->
-                                                                    <!--                                     SelectedValue="{Binding CurrentStatus, UpdateSourceTrigger=PropertyChanged}" -->
-                                                                    <!--                                     Margin="4,0" /> -->
-                                                                    <!-- -->
-                                                                    <!--                                 ~1~ Info / Reconciliation ID indicator @1@ -->
-                                                                    <!--                                 <TextBlock -->
-                                                                    <!--                                     Grid.Column="2" -->
-                                                                    <!--                                     Text="{Binding StatusDetailsText}" -->
-                                                                    <!--                                     Style="{DynamicResource StyledSecondaryTextBlock}" -->
-                                                                    <!--                                     VerticalAlignment="Center" -->
-                                                                    <!--                                     FontSize="11" -->
-                                                                    <!--                                     Margin="6,0,0,0" /> -->
-                                                                    <!--                             </Grid> -->
-                                                                    <!--                         </DataTemplate> -->
-                                                                    <!--                     </ItemsControl.ItemTemplate> -->
-                                                                    <!--                 </ItemsControl> -->
-                                                                    <!--             </StackPanel> -->
-                                                                    <!--         </Border> -->
-                                                                    <!-- -->
-                                                                    <!--     </Grid> -->
-                                                                    <!-- </StackPanel> -->
                                                                 </Grid>
                                                             </DockPanel>
                                                         </TabItem>

@@ -12,6 +12,7 @@
            mc:Ignorable="d"
            Title="Import &amp; Reconcile QFX Transactions" Height="700" Width="900"
            WindowStartupLocation="CenterScreen"
+           Foreground="{DynamicResource PrimaryTextBrush}"
            Background="{DynamicResource WindowBackgroundBrush}">
     <i:Interaction.Triggers>
         <i:EventTrigger EventName="Loaded">
@@ -19,49 +20,6 @@
         </i:EventTrigger>
     </i:Interaction.Triggers>
     <av:Window.Resources>
-        <!-- <Style TargetType="{x:Type DataGrid}"> -->
-        <!--     <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0" /> -->
-        <!--     <Setter Property="VerticalGridLinesBrush" Value="#E2E8F0" /> -->
-        <!-- -->
-        <!--     <Setter Property="BorderBrush" Value="#CBD5E1" /> -->
-        <!--     <Setter Property="BorderThickness" Value="1" /> -->
-        <!-- -->
-        <!--     <Setter Property="AlternatingRowBackground" Value="#F8FAFC" /> -->
-        <!-- -->
-        <!--     <Setter Property="RowBackground" Value="White" /> -->
-        <!--     <Setter Property="Background" Value="White" /> -->
-        <!--     <Setter Property="GridLinesVisibility" Value="All" /> -->
-        <!-- </Style> -->
-
-        <!-- <Style TargetType="{x:Type DataGridRow}"> -->
-        <!--     <Style.Resources> -->
-        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#3B82F6" /> -->
-        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#3B82F6" /> -->
-        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" /> -->
-        <!--         <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White" /> -->
-        <!--     </Style.Resources> -->
-        <!-- </Style> -->
-        <!-- <Style TargetType="{x:Type DataGridColumnHeader}"> -->
-        <!--     <Setter Property="Background" Value="#E2E8F0" /> -->
-        <!-- -->
-        <!--     <Setter Property="Foreground" Value="#1E293B" /> -->
-        <!--     <Setter Property="FontWeight" Value="SemiBold" /> -->
-        <!--     <Setter Property="FontSize" Value="12" /> -->
-        <!-- -->
-        <!--     <Setter Property="Padding" Value="8,6,8,6" /> -->
-        <!--     <Setter Property="HorizontalContentAlignment" Value="Left" /> -->
-        <!-- -->
-        <!--     <Setter Property="BorderBrush" Value="#CBD5E1" /> -->
-        <!--     <Setter Property="BorderThickness" Value="0,0,1,1" /> -->
-        <!-- -->
-        <!--     <Setter Property="SeparatorBrush" Value="#CBD5E1"/> -->
-        <!-- </Style> -->
-        <!-- <Style x:Key="RightAlignedHeaderStyle"  -->
-        <!--        TargetType="{x:Type DataGridColumnHeader}"  -->
-        <!--        BasedOn="{StaticResource {x:Type DataGridColumnHeader}}"> -->
-        <!-- -->
-        <!--     <Setter Property="HorizontalContentAlignment" Value="Right" /> -->
-        <!-- </Style> -->
         <converters:AccountTypeToVisibilityConverter x:Key="AccountTypeToVisibilityConverter" />
         <converters:AbsoluteValueConverter x:Key="AbsoluteValueConverter" />
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -86,7 +44,9 @@
                     <RowDefinition Height="Auto" />
                 </av:Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="Reconcile Import" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
+                <TextBlock Grid.Row="0"
+                           Style="{DynamicResource StyledTextBlock}"
+                           Text="Reconcile Import" FontSize="18" FontWeight="Bold" Margin="0,0,0,10" />
 
                 <GroupBox Grid.Row="1" Header="1. Imported Bank Transactions">
                     <DataGrid ItemsSource="{Binding ImportedTransactions}"
@@ -276,6 +236,7 @@
                                                 <!-- Description stays on the left -->
                                                 <TextBlock Grid.Column="0" 
                                                            Text="{Binding Description}" 
+                                                           Style="{DynamicResource StyledTextBlock}"
                                                            TextTrimming="CharacterEllipsis" 
                                                            VerticalAlignment="Center" />
 
@@ -286,7 +247,7 @@
                                                            Margin="8,0,4,0"
                                                            VerticalAlignment="Center">
                                                     <TextBlock.Style>
-                                                        <Style TargetType="TextBlock">
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource StyledTextBlock}">
                                                             <Setter Property="Visibility" Value="Collapsed" />
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding IsMatched}" Value="True">
@@ -334,10 +295,10 @@
                                 Padding="8,5" Margin="0,0,0,8" />
 
                         <TextBlock Grid.Row="3"
+                                   Foreground="{DynamicResource SpecialHeadingBrush}"
                                    Text="💡 Tip: Select a bank transaction above and pair it with a manual entry below. If the bank amount is less than your manual entry, linking will automatically split the entry for you. You can use Ctrl key to select multiple import records to match to a single manual record using 'Link Selected Transaction'."
                                    TextWrapping="Wrap"
                                    FontSize="11"
-                                   Foreground="#666"
                                    VerticalAlignment="Top" />
                     </Grid>
                 </Grid>
@@ -364,7 +325,9 @@
             <Border Background="White" Width="600" VerticalAlignment="Center" Padding="20" CornerRadius="8"
                     BorderBrush="Gray" BorderThickness="1">
                 <StackPanel>
-                    <TextBlock Text="Map CSV Columns" FontSize="16" FontWeight="Bold" Margin="0,0,0,15" />
+                    <TextBlock Text="Map CSV Columns"
+                               Style="{DynamicResource StyledTextBlock}"
+                               FontSize="16" FontWeight="Bold" Margin="0,0,0,15" />
 
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
@@ -379,21 +342,25 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Date Column:" VerticalAlignment="Center"
+                                   Style="{DynamicResource StyledTextBlock}"
                                    Margin="0,5" />
                         <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
                                   SelectedItem="{Binding CsvMapping.DateHeader}" Margin="0,5" />
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Amount Column:" VerticalAlignment="Center"
+                                   Style="{DynamicResource StyledTextBlock}"
                                    Margin="0,5" />
                         <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
                                   SelectedItem="{Binding CsvMapping.AmountHeader}" Margin="0,5" />
 
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Payee Column:" VerticalAlignment="Center"
+                                   Style="{DynamicResource StyledTextBlock}"
                                    Margin="0,5" />
                         <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
                                   SelectedItem="{Binding CsvMapping.PayeeHeader}" Margin="0,5" />
 
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="FITID / Reference:" VerticalAlignment="Center"
+                                   Style="{DynamicResource StyledTextBlock}"
                                    Margin="0,5" />
                         <ComboBox Grid.Row="3" Grid.Column="1" ItemsSource="{Binding CsvMapping.AvailableHeaders}"
                                   SelectedItem="{Binding CsvMapping.BankIdHeader}" Margin="0,5" />

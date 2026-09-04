@@ -10,7 +10,6 @@ using StayOnTarget.ViewModels;
 namespace StayOnTarget.Services;
 
 public partial class BudgetService {
-    
     public async Task ReconcileHistoricalTransactionsAsync(int accountId, List<int> recordIds) {
         if (!recordIds.Any()) return;
 
@@ -55,7 +54,7 @@ public partial class BudgetService {
             throw;
         }
     }
-    
+
     public async Task UnreconcileAndResetTransactionAsync(int transactionRecordId) {
         await using var conn = _db.GetConnection();
         await conn.OpenAsync();
@@ -503,7 +502,7 @@ public partial class BudgetService {
         LEFT JOIN Bills ON t.BillId = Bills.Id
         LEFT JOIN Buckets ON t.BucketId = Buckets.Id
         LEFT JOIN SubCategories ON t.SubCategoryId = SubCategories.Id;";
-            
+
             // const string sql = @"
             // WITH AccountMinDate AS (
             //     SELECT a.Id AS AccountId, IFNULL(ar.MaxDate, a.BalanceAsOf) AS MinDate 
@@ -573,6 +572,12 @@ public partial class BudgetService {
 
             if (original == null) return;
 
+            // Set to collect all distinct bucket IDs affected during this split operation
+            var bucketsToRecalculate = new HashSet<int>();
+            if (original.BucketId.HasValue) {
+                bucketsToRecalculate.Add(original.BucketId.Value);
+            }
+
             decimal totalBankAmount = bankItems.Sum(x => Math.Abs(x.Amount));
             decimal originalAmount = Math.Abs(original.Amount);
             decimal remainderAmount = originalAmount - totalBankAmount;
@@ -580,13 +585,20 @@ public partial class BudgetService {
             // 2. Process Bank Charges (Update 1st, Insert subsequent N-1)
             for (int i = 0; i < bankItems.Count; i++) {
                 var item = bankItems[i];
+                int? itemBucketId = item.BucketId ?? original.BucketId;
+
+                if (itemBucketId.HasValue) {
+                    bucketsToRecalculate.Add(itemBucketId.Value);
+                }
 
                 if (i == 0) {
                     // Update original record with 1st bank charge amount & Bank FITID
-                    // Keeps original TransactionId
                     original.Amount = Math.Abs(item.Amount);
                     original.FitId = item.BankId ?? string.Empty;
                     original.IsCleared = true;
+                    original.BucketId = itemBucketId;
+                    original.BillId = item.BillId ?? original.BillId;
+                    original.SubCategoryId = item.SubCategoryId ?? original.SubCategoryId;
 
                     var updateParams = GetUpdateParameters(
                         original,
@@ -602,14 +614,14 @@ public partial class BudgetService {
                 else {
                     // Spawn new cleared record with its own unique TransactionId
                     var child = new Ledger {
-                        TransactionId = Guid.NewGuid(), // NEW TransactionId
+                        TransactionId = Guid.NewGuid(),
                         Description = original.Description,
                         Memo = original.Memo,
                         Amount = Math.Abs(item.Amount),
                         TransactionDate = original.TransactionDate,
                         AccountId = accountId,
                         BillId = item.BillId ?? original.BillId,
-                        BucketId = item.BucketId ?? original.BucketId,
+                        BucketId = itemBucketId,
                         SubCategoryId = item.SubCategoryId ?? original.SubCategoryId,
                         IsCleared = true,
                         FitId = item.BankId ?? string.Empty
@@ -630,7 +642,7 @@ public partial class BudgetService {
             // 3. Insert Uncleared Remainder Record with its own unique TransactionId
             if (remainderAmount > 0) {
                 var remainderChild = new Transaction {
-                    TransactionId = Guid.NewGuid(), // NEW TransactionId
+                    TransactionId = Guid.NewGuid(),
                     Description = original.Description,
                     Memo = original.Memo,
                     Amount = remainderAmount,
@@ -654,9 +666,9 @@ public partial class BudgetService {
                 await conn.ExecuteAsync(GetInsertSql(), remainderParams, tx);
             }
 
-            // Recalculate envelope balance if assigned to a bucket
-            if (original.BucketId.HasValue) {
-                await RecalculateBucketBalanceAsync(original.BucketId.Value, tx);
+            // 4. Recalculate envelope balances for ALL affected buckets
+            foreach (var bucketId in bucketsToRecalculate) {
+                await RecalculateBucketBalanceAsync(bucketId, tx);
             }
 
             await tx.CommitAsync();
@@ -668,25 +680,30 @@ public partial class BudgetService {
             throw;
         }
     }
-    
-    public async Task<bool> UpdateTransactionForBankFitIdAsync(int accountId, string transactionId,
-        string bankFitId, bool isCleared, int id) {
+
+    public async Task<bool> UpdateTransactionForBankFitIdAsync(
+        int accountId,
+        string transactionId,
+        string bankFitId,
+        bool isCleared) {
         try {
             await using var conn = _db.GetConnection();
             await conn.OpenAsync();
-            await using var tx = conn.BeginTransaction();
+            await using var tx = await conn.BeginTransactionAsync();
 
             try {
+                // Update ALL rows (splits) sharing this TransactionId for the target account
                 await conn.ExecuteAsync(@"
                 UPDATE Transactions 
-                SET FitId = @bankFitId, IsCleared = @isCleared 
-                WHERE AccountId = @accountId AND TRANSACTIONID = @transactionId AND ID = @id",
+                SET FitId = @bankFitId, 
+                    IsCleared = @isCleared 
+                WHERE AccountId = @accountId 
+                  AND TransactionId = @transactionId",
                     new {
                         bankFitId,
                         isCleared = isCleared ? 1 : 0,
                         accountId,
-                        transactionId,
-                        id
+                        transactionId
                     }, tx);
 
                 await tx.CommitAsync();
@@ -698,10 +715,44 @@ public partial class BudgetService {
             }
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error updating transaction for bank FitID[cite: 25].");
+            Log.Error(ex, "Error updating transaction splits for bank FitID.");
             throw;
         }
     }
+
+    // public async Task<bool> UpdateTransactionForBankFitIdAsync(int accountId, string transactionId,
+    //     string bankFitId, bool isCleared, int id) {
+    //     try {
+    //         await using var conn = _db.GetConnection();
+    //         await conn.OpenAsync();
+    //         await using var tx = conn.BeginTransaction();
+    //
+    //         try {
+    //             await conn.ExecuteAsync(@"
+    //             UPDATE Transactions 
+    //             SET FitId = @bankFitId, IsCleared = @isCleared 
+    //             WHERE AccountId = @accountId AND TRANSACTIONID = @transactionId AND ID = @id",
+    //                 new {
+    //                     bankFitId,
+    //                     isCleared = isCleared ? 1 : 0,
+    //                     accountId,
+    //                     transactionId,
+    //                     id
+    //                 }, tx);
+    //
+    //             await tx.CommitAsync();
+    //             return true;
+    //         }
+    //         catch {
+    //             await tx.RollbackAsync();
+    //             throw;
+    //         }
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error updating transaction for bank FitID[cite: 25].");
+    //         throw;
+    //     }
+    // }
 
     private async Task<decimal> GetAccountBalanceAsOfAsync(int accountId, DateTime asOfDate,
         SqliteConnection? conn = null, IDbTransaction? tx = null) {
@@ -756,7 +807,7 @@ public partial class BudgetService {
             try {
                 var bucketsToRecalculate = new HashSet<int>();
 
-                // Step 1: Capture original Bucket IDs before modification
+                // Step 1: Capture historical Bucket IDs linked to this TransactionId prior to saving
                 if (t.TransactionId != Guid.Empty) {
                     var oldRows = (await conn.QueryAsync<dynamic>(
                         "SELECT BucketId FROM Transactions WHERE TransactionId = @TransactionId",
@@ -769,7 +820,7 @@ public partial class BudgetService {
                     }
                 }
 
-                // Guard: Null out stale Reconciliation IDs if referenced AccountReconciliation no longer exists
+                // Guard: Clean up orphaned Reconciliation IDs if referenced record was invalidated/deleted
                 if (t.FromAccountReconciliationId.HasValue) {
                     var exists = await conn.ExecuteScalarAsync<int>(
                         "SELECT COUNT(*) FROM AccountReconciliations WHERE Id = @id",
@@ -784,7 +835,6 @@ public partial class BudgetService {
                     if (exists == 0) t.ToAccountReconciliationId = null;
                 }
 
-                // Step 2: In-place Upsert Logic
                 if (t.TransactionId == Guid.Empty) {
                     t.TransactionId = Guid.NewGuid();
                 }
@@ -795,56 +845,114 @@ public partial class BudgetService {
 
                 string insertWithIdSql = GetInsertSql() + "; SELECT last_insert_rowid();";
 
-                // --- 1. OUTBOUND / FROM SIDE ---
-                if (t.AccountId.HasValue) {
-                    decimal amount = -Math.Abs(t.Amount);
-                    if (t.FromRecordId.HasValue && t.FromRecordId > 0) {
-                        var p = GetUpdateParameters(t, t.AccountId, amount, t.FromAccountReconciliationId,
-                            t.FromRecordId,
-                            t.FromAccountIsCleared ?? false, t.FromFitId);
-                        await conn.ExecuteAsync(GetUpdateSql(), p, tx);
+                // Guard Check: Identify true single-account multi-category splits
+                bool isMultiCategorySplit = t.Details != null
+                                            && t.Details.Count > 1
+                                            && t.Details.Select(d => d.AccountId ?? t.AccountId).Distinct().Count() ==
+                                            1;
+
+                // Step 2: Handle Multi-Category Splits
+                if (isMultiCategorySplit) {
+                    var currentDetailIds = t.Details!.Where(d => d.Id > 0).Select(d => d.Id).ToList();
+                    if (currentDetailIds.Any()) {
+                        await conn.ExecuteAsync(
+                            "DELETE FROM Transactions WHERE TransactionId = @TxId AND Id NOT IN @Ids",
+                            new { TxId = t.TransactionId.ToString(), Ids = currentDetailIds }, tx);
                     }
-                    else {
-                        var p = GetInsertParameters(t, t.AccountId, amount, t.FromAccountReconciliationId,
-                            t.FromAccountIsCleared ?? false, t.FromFitId);
-                        t.FromRecordId = await conn.ExecuteScalarAsync<int>(insertWithIdSql, p, tx);
+
+                    foreach (var detail in t.Details!) {
+                        if (detail.BucketId.HasValue) {
+                            bucketsToRecalculate.Add(detail.BucketId.Value);
+                        }
+
+                        var legTx = new Transaction {
+                            TransactionId = t.TransactionId,
+                            Description = detail.Description,
+                            Memo = detail.Memo,
+                            Amount = detail.Amount,
+                            TransactionDate = t.TransactionDate,
+                            AccountId = detail.AccountId ?? t.AccountId,
+                            BillId = detail.BillId,
+                            BucketId = detail.BucketId,
+                            SubCategoryId = detail.SubCategoryId,
+                            IsPrincipalOnly = t.IsPrincipalOnly,
+                            IsInterestOnly = false,
+                            PaycheckId = t.PaycheckId,
+                            PaycheckOccurrenceDate = t.PaycheckOccurrenceDate,
+                            FromAccountIsCleared = detail.IsCleared,
+                            FromFitId = detail.FitId
+                        };
+
+                        decimal legAmount = -Math.Abs(detail.Amount);
+
+                        if (detail.Id > 0) {
+                            var p = GetUpdateParameters(legTx, legTx.AccountId, legAmount, detail.ReconciliationId,
+                                detail.Id, detail.IsCleared, detail.FitId);
+                            await conn.ExecuteAsync(GetUpdateSql(), p, tx);
+                        }
+                        else {
+                            var p = GetInsertParameters(legTx, legTx.AccountId, legAmount, detail.ReconciliationId,
+                                detail.IsCleared, detail.FitId);
+                            detail.Id = await conn.ExecuteScalarAsync<int>(insertWithIdSql, p, tx);
+                        }
                     }
                 }
-                else if (t.FromRecordId.HasValue && t.FromRecordId > 0) {
-                    await conn.ExecuteAsync("DELETE FROM Transactions WHERE Id = @Id", new { Id = t.FromRecordId }, tx);
-                    t.FromRecordId = null;
+                else {
+                    // Step 3: Standard Single-Leg Entry or 2-Account Transfer Path
+
+                    // --- 1. OUTBOUND / FROM SIDE ---
+                    if (t.AccountId.HasValue) {
+                        decimal amount = -Math.Abs(t.Amount);
+                        if (t.FromRecordId.HasValue && t.FromRecordId > 0) {
+                            var p = GetUpdateParameters(t, t.AccountId, amount, t.FromAccountReconciliationId,
+                                t.FromRecordId, t.FromAccountIsCleared ?? false, t.FromFitId);
+                            await conn.ExecuteAsync(GetUpdateSql(), p, tx);
+                        }
+                        else {
+                            var p = GetInsertParameters(t, t.AccountId, amount, t.FromAccountReconciliationId,
+                                t.FromAccountIsCleared ?? false, t.FromFitId);
+                            t.FromRecordId = await conn.ExecuteScalarAsync<int>(insertWithIdSql, p, tx);
+                        }
+                    }
+                    else if (t.FromRecordId.HasValue && t.FromRecordId > 0) {
+                        await conn.ExecuteAsync("DELETE FROM Transactions WHERE Id = @Id", new { Id = t.FromRecordId },
+                            tx);
+                        t.FromRecordId = null;
+                    }
+
+                    // --- 2. INBOUND / TO SIDE ---
+                    if (t.ToAccountId.HasValue) {
+                        decimal amount = t.AccountId.HasValue ? Math.Abs(t.Amount) : t.Amount;
+
+                        if (t.ToRecordId.HasValue && t.ToRecordId > 0) {
+                            var p = GetUpdateParameters(t, t.ToAccountId, amount, t.ToAccountReconciliationId,
+                                t.ToRecordId,
+                                t.ToAccountIsCleared ?? false, t.ToFitId);
+                            await conn.ExecuteAsync(GetUpdateSql(), p, tx);
+                        }
+                        else {
+                            var p = GetInsertParameters(t, t.ToAccountId, amount, t.ToAccountReconciliationId,
+                                t.ToAccountIsCleared ?? false, t.ToFitId);
+                            t.ToRecordId = await conn.ExecuteScalarAsync<int>(insertWithIdSql, p, tx);
+                        }
+                    }
+                    else if (t.ToRecordId.HasValue && t.ToRecordId > 0) {
+                        await conn.ExecuteAsync("DELETE FROM Transactions WHERE Id = @Id", new { Id = t.ToRecordId },
+                            tx);
+                        t.ToRecordId = null;
+                    }
                 }
 
-                // --- 2. INBOUND / TO SIDE ---
-                if (t.ToAccountId.HasValue) {
-                    decimal amount = t.AccountId.HasValue ? Math.Abs(t.Amount) : t.Amount;
-
-                    if (t.ToRecordId.HasValue && t.ToRecordId > 0) {
-                        var p = GetUpdateParameters(t, t.ToAccountId, amount, t.ToAccountReconciliationId, t.ToRecordId,
-                            t.ToAccountIsCleared ?? false, t.ToFitId);
-                        await conn.ExecuteAsync(GetUpdateSql(), p, tx);
-                    }
-                    else {
-                        var p = GetInsertParameters(t, t.ToAccountId, amount, t.ToAccountReconciliationId,
-                            t.ToAccountIsCleared ?? false, t.ToFitId);
-                        t.ToRecordId = await conn.ExecuteScalarAsync<int>(insertWithIdSql, p, tx);
-                    }
-                }
-                else if (t.ToRecordId.HasValue && t.ToRecordId > 0) {
-                    await conn.ExecuteAsync("DELETE FROM Transactions WHERE Id = @Id", new { Id = t.ToRecordId }, tx);
-                    t.ToRecordId = null;
-                }
-
-                // --- 3. MORTGAGE INTEREST COMPUTATION ---
+                // Step 4: Mortgage Interest Computation
                 if (t.ToAccountId.HasValue && !t.IsPrincipalOnly) {
                     var toAccount = (await GetAllAccountsAsOfAsync(asOfDate: t.TransactionDate, cn: conn, tx: tx))
                         .FirstOrDefault(a => a.Id == t.ToAccountId.Value);
 
-                    if (toAccount != null && (toAccount.IsLoanAccount) && toAccount.MortgageDetails != null) {
+                    if (toAccount != null && toAccount.IsLoanAccount && toAccount.MortgageDetails != null) {
                         int statementDay = toAccount.MortgageDetails.StatementDay;
-
                         int year = t.TransactionDate.Year;
                         int month = t.TransactionDate.Month;
+
                         if (t.TransactionDate.Day < statementDay) {
                             var prevMonthDate = t.TransactionDate.AddMonths(-1);
                             year = prevMonthDate.Year;
@@ -853,20 +961,16 @@ public partial class BudgetService {
 
                         int safeDay = Math.Min(statementDay, DateTime.DaysInMonth(year, month));
                         DateTime targetStatementDate = new DateTime(year, month, safeDay);
-
-                        var nextMonthDate = targetStatementDate.AddMonths(1);
-                        int nextSafeDay = Math.Min(statementDay,
-                            DateTime.DaysInMonth(nextMonthDate.Year, nextMonthDate.Month));
-                        DateTime nextStatementDate = new DateTime(nextMonthDate.Year, nextMonthDate.Month, nextSafeDay);
+                        DateTime nextStatementDate = targetStatementDate.AddMonths(1);
 
                         var memoToSearch = $"as of statement date {targetStatementDate:M/d/yyyy}";
 
                         var existingInterestOnStatement = await conn.QueryFirstOrDefaultAsync<dynamic>(
                             @"SELECT TransactionId, ReconciliationId FROM Transactions 
-                      WHERE AccountId = @accountId 
-                      AND IsInterestOnly = 1 
-                      AND TransactionDate > @start 
-                      AND TransactionDate <= @end",
+                          WHERE AccountId = @accountId 
+                          AND IsInterestOnly = 1 
+                          AND TransactionDate > @start 
+                          AND TransactionDate <= @end",
                             new {
                                 accountId = t.ToAccountId.Value,
                                 start = targetStatementDate.ToString("yyyy-MM-dd"),
@@ -874,8 +978,7 @@ public partial class BudgetService {
                             }, tx);
 
                         if (existingInterestOnStatement == null ||
-                            existingInterestOnStatement?.TransactionId.ToString() ==
-                            t.TransactionId.ToString()) {
+                            existingInterestOnStatement?.TransactionId.ToString() == t.TransactionId.ToString()) {
                             var interestAmount = await CalculateAccruedInterestAsync(t.TransactionDate,
                                 toAccount.MortgageDetails.InterestRate, statementDay, t.ToAccountId.Value, conn, tx);
 
@@ -883,15 +986,11 @@ public partial class BudgetService {
                                 "SELECT Id, ReconciliationId, TransactionDate FROM Transactions WHERE TransactionId = @TransactionId AND IsInterestOnly = 1",
                                 new { TransactionId = t.TransactionId.ToString() }, tx);
 
-                            int? interestReconciliationId = null;
-                            int? existingInterestId = null;
-                            bool interestIsCleared = false;
-
-                            if (existingInterest != null) {
-                                existingInterestId = (int?)existingInterest.Id;
-                                interestReconciliationId = (int?)existingInterest.ReconciliationId;
-                                interestIsCleared = (bool)(existingInterest.IsCleared == 1);
-                            }
+                            int? interestReconciliationId = existingInterest != null
+                                ? (int?)existingInterest.ReconciliationId
+                                : null;
+                            int? existingInterestId = existingInterest != null ? (int?)existingInterest.Id : null;
+                            bool interestIsCleared = existingInterest != null && existingInterest!.IsCleared == 1;
 
                             var interestTx = new Transaction {
                                 TransactionId = t.TransactionId,
@@ -920,7 +1019,7 @@ public partial class BudgetService {
                     }
                 }
 
-                // --- 4. RE-SYNC BUCKET BALANCES FOR ALL AFFECTED ENVELOPES ---
+                // Step 5: Recalculate envelope balances for all impacted buckets
                 foreach (var bucketId in bucketsToRecalculate) {
                     await RecalculateBucketBalanceAsync(bucketId, tx);
                 }
@@ -934,7 +1033,7 @@ public partial class BudgetService {
             }
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error upserting transaction[cite: 25].");
+            Log.Error(ex, "Error upserting transaction.");
             throw;
         }
     }
@@ -996,6 +1095,83 @@ public partial class BudgetService {
 
     #region Private Service Helpers (Mapping Engine)
 
+    // private IEnumerable<Transaction> MergeDbRowsToUiTransactions(IEnumerable<dynamic> dbRows) {
+    //     try {
+    //         var resultList = new List<Transaction>();
+    //         var transactionGroups = dbRows.GroupBy(r => r.TransactionId?.ToString());
+    //
+    //         foreach (var group in transactionGroups) {
+    //             if (string.IsNullOrEmpty(group.Key)) continue;
+    //
+    //             var list = group.ToList();
+    //
+    //             // Project all rows in this group to TransactionDetail items
+    //             var details = list.Select(MapDynamicToTransactionDetail).ToList();
+    //
+    //             bool hasInterestOnly =
+    //                 list.Any(r => r.IsInterestOnly != null && Convert.ToInt32(r.IsInterestOnly) == 1);
+    //
+    //             if (list.Count() >= 2) {
+    //                 if (hasInterestOnly) {
+    //                     var normalRows = list.Where(r => r.IsInterestOnly != 1).ToList();
+    //                     var interestRows = list.Where(r => r.IsInterestOnly == 1).ToList();
+    //
+    //                     if (normalRows.Count == 2) {
+    //                         var tx = MergeRows(normalRows);
+    //                         tx.Details.AddRange(normalRows.Select(MapDynamicToTransactionDetail));
+    //                         resultList.Add(tx);
+    //                     }
+    //                     else if (normalRows.Count == 1) {
+    //                         var tx = MapDynamicToTransaction(normalRows[0], false);
+    //                         tx.Details.Add(MapDynamicToTransactionDetail(normalRows[0]));
+    //                         resultList.Add(tx);
+    //                     }
+    //
+    //                     foreach (var ir in interestRows) {
+    //                         if ((double)ir.Amount < 0) {
+    //                             var intTx = MapDynamicToTransaction(ir, false);
+    //                             intTx.Details.Add(MapDynamicToTransactionDetail(ir));
+    //                             resultList.Add(intTx);
+    //                         }
+    //                     }
+    //
+    //                     continue;
+    //                 }
+    //
+    //                 // Standard 2-leg transfer or multi-row split
+    //                 var transaction = MergeRows(list);
+    //
+    //                 // If it's a split expense (multiple rows under 1 account) vs a 2-account transfer
+    //                 transaction.Details.AddRange(details);
+    //                 resultList.Add(transaction);
+    //             }
+    //             else {
+    //                 var standaloneRow = list.First();
+    //
+    //                 if (standaloneRow.IsInterestOnly == 1) {
+    //                     if ((double)standaloneRow.Amount < 0) {
+    //                         var tx = MapDynamicToTransaction(standaloneRow, isTransferSide: false);
+    //                         tx.Details.Add(details.First());
+    //                         resultList.Add(tx);
+    //                     }
+    //                 }
+    //                 else {
+    //                     var tx = MapDynamicToTransaction(standaloneRow, isTransferSide: false);
+    //                     tx.Details.Add(details
+    //                         .First()); // Ensures 1-leg standalone entries still get their Details populated!
+    //                     resultList.Add(tx);
+    //                 }
+    //             }
+    //         }
+    //
+    //         return resultList;
+    //     }
+    //     catch (Exception ex) {
+    //         Log.Error(ex, "Error merging DB rows to UI transactions.");
+    //         return Enumerable.Empty<Transaction>();
+    //     }
+    // }
+
     private IEnumerable<Transaction> MergeDbRowsToUiTransactions(IEnumerable<dynamic> dbRows) {
         try {
             var resultList = new List<Transaction>();
@@ -1005,52 +1181,119 @@ public partial class BudgetService {
                 if (string.IsNullOrEmpty(group.Key)) continue;
 
                 var list = group.ToList();
+                var details = list.Select(MapDynamicToTransactionDetail).ToList();
+
+                var distinctAccountIds = list
+                    .Where(r => r.AccountId != null)
+                    .Select(r => (int)r.AccountId)
+                    .Distinct()
+                    .ToList();
+
                 bool hasInterestOnly =
                     list.Any(r => r.IsInterestOnly != null && Convert.ToInt32(r.IsInterestOnly) == 1);
 
-                if (list.Count() >= 2) {
-                    if (hasInterestOnly) {
-                        var normalRows = list.Where(r => r.IsInterestOnly != 1).ToList();
-                        var interestRows = list.Where(r => r.IsInterestOnly == 1).ToList();
+                if (hasInterestOnly) {
+                    var normalRows = list.Where(r => r.IsInterestOnly != 1).ToList();
+                    var interestRows = list.Where(r => r.IsInterestOnly == 1).ToList();
 
-                        if (normalRows.Count == 2) {
-                            resultList.Add(MergeRows(normalRows));
-                        }
-                        else if (normalRows.Count == 1) {
-                            resultList.Add(MapDynamicToTransaction(normalRows[0], false));
-                        }
-
-                        foreach (var ir in interestRows) {
-                            if ((double)ir.Amount < 0) {
-                                resultList.Add(MapDynamicToTransaction(ir, false));
-                            }
-                        }
-
-                        continue;
-                    }
-
-                    resultList.Add(MergeRows(list));
-                }
-                else {
-                    var standaloneRow = list.First();
-
-                    if (standaloneRow.IsInterestOnly == 1) {
-                        if ((double)standaloneRow.Amount < 0) {
-                            resultList.Add(MapDynamicToTransaction(standaloneRow, isTransferSide: false));
-                        }
+                    if (normalRows.Count == 2 && distinctAccountIds.Count > 1) {
+                        var tx = MergeRows(normalRows);
+                        tx.Details.AddRange(normalRows.Select(MapDynamicToTransactionDetail));
+                        resultList.Add(tx);
                     }
                     else {
-                        resultList.Add(MapDynamicToTransaction(standaloneRow, isTransferSide: false));
+                        foreach (var row in normalRows) {
+                            var tx = MapDynamicToTransaction(row, isTransferSide: false);
+                            tx.Details.Add(MapDynamicToTransactionDetail(row));
+                            resultList.Add(tx);
+                        }
                     }
+
+                    foreach (var ir in interestRows) {
+                        if ((double)ir.Amount < 0) {
+                            var intTx = MapDynamicToTransaction(ir, isTransferSide: false);
+                            intTx.Details.Add(MapDynamicToTransactionDetail(ir));
+                            resultList.Add(intTx);
+                        }
+                    }
+
+                    continue;
+                }
+
+                // CASE A: Standard 2-Account Transfer (e.g., Checking -> Credit Card)
+                if (distinctAccountIds.Count > 1 && list.Count >= 2) {
+                    var transferTx = MergeRows(list);
+                    transferTx.Details.AddRange(details);
+                    resultList.Add(transferTx);
+                }
+                // CASE B: Multi-row Category Split within the SAME Account
+                else if (list.Count > 1) {
+                    var primaryRow = list.First();
+
+                    var splitTx = new Transaction {
+                        TransactionId = Guid.Parse(primaryRow.TransactionId.ToString()),
+                        Description = primaryRow.Description ?? string.Empty,
+                        NormalizedDescription = primaryRow.NormalizedDescription ?? string.Empty,
+                        Memo = primaryRow.Memo,
+                        TransactionDate = DateTime.Parse(primaryRow.TransactionDate),
+                        AccountId = (int?)primaryRow.AccountId,
+                        AccountName = primaryRow.AccountName,
+                        Amount = list.Sum(r => Math.Abs((decimal)r.Amount)), // Total header outflow
+
+                        // FromRecordId is NULL at header level because multiple ledger rows make up this total
+                        FromRecordId = null,
+                        FromFitId = primaryRow.FitId?.ToString() ?? string.Empty,
+                        FromAccountIsCleared = list.All(r => r.IsCleared == 1),
+                        FromAccountReconciliationId = primaryRow.ReconciliationId != null
+                            ? (int?)primaryRow.ReconciliationId
+                            : null,
+
+                        ToAccountId = null,
+                        ToRecordId = null,
+                        ToFitId = string.Empty
+                    };
+
+                    // Each detail item retains its own distinct DB Id (FromRecordId)
+                    splitTx.Details.AddRange(details);
+                    resultList.Add(splitTx);
+                }
+                // CASE C: Standard 1-Leg Single Row Entry
+                else {
+                    var standaloneRow = list.First();
+                    var tx = MapDynamicToTransaction(standaloneRow, isTransferSide: false);
+                    tx.Details.Add(details.First());
+                    resultList.Add(tx);
                 }
             }
 
             return resultList;
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error merging DB rows to UI transactions[cite: 25].");
+            Log.Error(ex, "Error merging DB rows to UI transactions.");
             return Enumerable.Empty<Transaction>();
         }
+    }
+
+    //to take dynamic and create TransactionDetail to become Transaction.Details
+    private TransactionDetail MapDynamicToTransactionDetail(dynamic row) {
+        return new TransactionDetail {
+            Id = Convert.ToInt32(row.Id),
+            TransactionId = Guid.Parse(row.TransactionId.ToString()),
+            Description = row.Description ?? string.Empty,
+            Memo = row.Memo,
+            Amount = Math.Abs((decimal)row.Amount),
+            TransactionDate = DateTime.Parse(row.TransactionDate),
+            AccountId = row.AccountId != null ? (int?)row.AccountId : null,
+            BillId = row.BillId != null ? (int?)row.BillId : null,
+            BucketId = row.BucketId != null ? (int?)row.BucketId : null,
+            SubCategoryId = row.SubCategoryId != null ? (int?)row.SubCategoryId : null,
+            ReconciliationId = row.ReconciliationId != null ? (int?)row.ReconciliationId : null,
+            IsCleared = row.IsCleared == 1,
+            FitId = row.FitId?.ToString() ?? string.Empty,
+            AccountName = row.AccountName,
+            BillName = row.BillName,
+            BucketName = row.BucketName
+        };
     }
 
     private Transaction MergeRows(IEnumerable<dynamic> group) {
@@ -1213,7 +1456,7 @@ public partial class BudgetService {
         p.Add("SubCategoryId", t.SubCategoryId);
         return p;
     }
-    
+
     private DynamicParameters GetInsertParameters(Ledger t, int? targetAccountId, decimal targetedAmount,
         int? targetReconciliationId, bool targetIsCleared, string targetFitId) {
         var p = new DynamicParameters();
@@ -1262,7 +1505,7 @@ public partial class BudgetService {
         p.Add("SubCategoryId", t.SubCategoryId);
         return p;
     }
-    
+
     private DynamicParameters GetUpdateParameters(Ledger t, int? targetAccountId, decimal targetedAmount,
         int? targetReconciliationId, long? id, bool targetIsCleared, string targetFitId) {
         var p = new DynamicParameters();

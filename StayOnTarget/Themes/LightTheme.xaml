@@ -86,7 +86,7 @@
     <SolidColorBrush x:Key="SuccessBrush" Color="#43BB26" />
     <SolidColorBrush x:Key="SuccessTextBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="WarningBorderBrush" Color="#EAAC45" />
-    <SolidColorBrush x:Key="WarningBrush" Color="#F9C200" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#B38A00" />
     <SolidColorBrush x:Key="WarningTextBrush" Color="#3C4655" />
     <SolidColorBrush x:Key="ErrorBorderBrush" Color="#B31E1F" />
     <SolidColorBrush x:Key="ErrorBrush" Color="#CE1311" />

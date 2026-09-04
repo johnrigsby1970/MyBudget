@@ -16,6 +16,7 @@ using StayOnTarget.Extensions;
 using StayOnTarget.Helpers;
 using StayOnTarget.Themes;
 using StayOnTarget.Views;
+
 #pragma warning disable CS0414 // Field is assigned but its value is never used
 
 namespace StayOnTarget.ViewModels;
@@ -67,6 +68,43 @@ public class MainViewModel : ViewModelBase {
     private NavigationItemViewModel? _selectedNavigationItem;
 
     #region Properties
+
+    #region Split Details Properties
+
+    private bool _isSplitTransaction;
+
+    public bool IsSplitTransaction {
+        get => _isSplitTransaction;
+        set {
+            if (SetProperty(ref _isSplitTransaction, value)) {
+                if (value) {
+                    // Only add an initial leg if the split details list is empty!
+                    if (!EditingSplitDetails.Any()) {
+                        AddSplitDetailLeg();
+                    }
+                }
+
+                OnPropertyChanged(nameof(UnassignedSplitAmount));
+                OnPropertyChanged(nameof(CanSaveTransaction));
+            }
+        }
+    }
+
+    public ObservableCollection<TransactionDetail> EditingSplitDetails { get; } = new();
+
+    public decimal UnassignedSplitAmount {
+        get {
+            if (EditingTransactionClone == null) return 0m;
+            decimal totalAllocated = EditingSplitDetails.Sum(d => d.Amount);
+            return Math.Abs(EditingTransactionClone.Amount) - totalAllocated;
+        }
+    }
+
+    public IRelayCommand ToggleSplitTransactionCommand { get; } = null!;
+    public IRelayCommand AddSplitDetailLegCommand { get; } = null!;
+    public IRelayCommand<TransactionDetail> RemoveSplitDetailLegCommand { get; } = null!;
+
+    #endregion
 
     #region Overlay Staged Collections
 
@@ -124,8 +162,8 @@ public class MainViewModel : ViewModelBase {
 
             // Include active category clone if present and not already in the list
             if (EditingCategoryClone != null) {
-                var displayName = string.IsNullOrWhiteSpace(EditingCategoryClone.Name) 
-                    ? "(New Category)" 
+                var displayName = string.IsNullOrWhiteSpace(EditingCategoryClone.Name)
+                    ? "(New Category)"
                     : EditingCategoryClone.Name;
 
                 if (!list.Any(c => c.Name.Equals(displayName, StringComparison.OrdinalIgnoreCase))) {
@@ -388,8 +426,9 @@ public class MainViewModel : ViewModelBase {
             SaveSubCategoryCommand = new AsyncRelayCommand(SaveSubCategoryAsync, () => IsEditingSubCategory);
             DeleteSubCategoryCommand = new AsyncRelayCommand(DeleteSubCategoryAsync, () => CanEditSubCategory);
 
-            DeleteSelectedSubCategoryCommand = new AsyncRelayCommand(DeleteSelectedSubCategoryAsync, () => CanEditSubCategory);
-            
+            DeleteSelectedSubCategoryCommand =
+                new AsyncRelayCommand(DeleteSelectedSubCategoryAsync, () => CanEditSubCategory);
+
             AddCategoryCommand = new RelayCommand(AddCategory, () => IsNotEditingCategory);
             EditCategoryCommand = new RelayCommand(EditCategory, () => CanEditCategory);
             CancelCategoryCommand = new RelayCommand(CancelCategory, () => IsEditingCategory);
@@ -511,6 +550,23 @@ public class MainViewModel : ViewModelBase {
 
             _filteredBillsView = CollectionViewSource.GetDefaultView(BillsWithNone);
             _filteredBillsView.Filter = FilterBillItem;
+
+            #region Splits
+
+            ToggleSplitTransactionCommand = new RelayCommand(() => IsSplitTransaction = !IsSplitTransaction);
+
+            AddSplitDetailLegCommand = new RelayCommand(AddSplitDetailLeg);
+
+            RemoveSplitDetailLegCommand = new RelayCommand<TransactionDetail>(item => {
+                if (item != null && EditingSplitDetails.Contains(item)) {
+                    EditingSplitDetails.Remove(item);
+                    OnPropertyChanged(nameof(UnassignedSplitAmount));
+                    OnPropertyChanged(nameof(CanSaveTransaction));
+                }
+            });
+
+            #endregion
+
             IsFlyoutOpen = true;
         }
         catch (Exception ex) {
@@ -810,7 +866,7 @@ public class MainViewModel : ViewModelBase {
         set {
             try {
                 if (SetProperty(ref _selectedSubCategory, value)) {
-                    if(_selectedCategory!=null) IsEditingSubCategory = true;
+                    if (_selectedCategory != null) IsEditingSubCategory = true;
                     // Add these lines to notify WPF controls bound to SubCategory commands:
                     OnPropertyChanged(nameof(CanEditSubCategory));
                     EditSubCategoryCommand.NotifyCanExecuteChanged();
@@ -837,6 +893,7 @@ public class MainViewModel : ViewModelBase {
                 if (_editingSubCategoryClone != null) {
                     _editingSubCategoryClone.PropertyChanged += EditingSubCategoryClone_PropertyChanged;
                 }
+
                 SaveSubCategoryCommand.NotifyCanExecuteChanged();
             }
         }
@@ -848,7 +905,7 @@ public class MainViewModel : ViewModelBase {
             if (SetProperty(ref _isEditingSubCategory, value)) {
                 // EditSubCategoryCommand might still depend on whether an edit session is active,
                 // but DeleteSubCategoryCommand is no longer tied to this state.
-                EditSubCategoryCommand.NotifyCanExecuteChanged(); 
+                EditSubCategoryCommand.NotifyCanExecuteChanged();
                 SaveSubCategoryCommand.NotifyCanExecuteChanged();
                 CancelSubCategoryCommand.NotifyCanExecuteChanged();
             }
@@ -863,9 +920,9 @@ public class MainViewModel : ViewModelBase {
     public IRelayCommand SaveSubCategoryCommand { get; } = null!;
     public IRelayCommand CancelSubCategoryCommand { get; } = null!;
     public IAsyncRelayCommand DeleteSubCategoryCommand { get; } = null!;
-    
+
     public IAsyncRelayCommand DeleteSelectedSubCategoryCommand { get; } = null!;
-    
+
     public Category? SelectedCategory {
         get => _selectedCategory;
         set {
@@ -2328,6 +2385,9 @@ public class MainViewModel : ViewModelBase {
 
         if (messageBoxResult == MessageBoxResult.Yes) {
             try {
+                // Pre-delete safety backup
+                _budgetService.CreateRollingBackup("pre_delete_bill");
+                
                 await _budgetService.DeleteBillAsync(EditingBillClone.Id);
                 IsEditingBill = false;
                 IsEditingBillEnabled = false;
@@ -2425,15 +2485,13 @@ public class MainViewModel : ViewModelBase {
     private void AddAnotherBucket() {
         if (EditingBucketClone == null) return;
 
-        // Validate current item before staging
+        // 1. Validate current item before staging
         bool isValid = EditingBucketClone.ValidateAllProperties();
         List<string> errors = EditingBucketClone.GetValidationErrors();
         if (!isValid || errors.Any()) {
-            // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
             OnPropertyChanged(nameof(EditingBucketClone));
-
-            MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
-                , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving.",
+                "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -2446,14 +2504,15 @@ public class MainViewModel : ViewModelBase {
         // Clean zero IDs
         if (EditingBucketClone.AccountId == 0) EditingBucketClone.AccountId = null;
 
-        // Stage a clone of the filled form
+        // 2. Stage a clone of the filled form
         StagedBuckets.Add(EditingBucketClone.Clone());
 
-        // Prepare a clean fresh instance for the next entry
+        // Unsubscribe from old clone events
         if (EditingBucketClone != null) {
             EditingBucketClone.PropertyChanged -= EditingBucketClone_PropertyChanged;
         }
 
+        // 3. Prepare a clean fresh instance for the next entry
         var nextTrans = new BudgetBucket {
             Name = "",
             Type = BucketType.Standard,
@@ -2466,9 +2525,26 @@ public class MainViewModel : ViewModelBase {
         };
 
         EditingBucketClone = nextTrans;
-
         EditingBucketClone.PropertyChanged += EditingBucketClone_PropertyChanged;
 
+        // 4. Reset Paycheck Allocations & Subcategories for the new draft
+        EditableAllocations.Clear();
+        var defaultAllocations = Paychecks
+            .Where(p => p.EndDate == null || p.EndDate > DateTime.Now)
+            .Select(p => new BucketPaycheckAllocation {
+                PaycheckId = p.Id,
+                PaycheckName = p.Name,
+                AllocationValue = 0m,
+                IsActive = true,
+                CreatedDate = DateTime.Today,
+                SortOrder = 0
+            })
+            .ToList();
+
+        EditableAllocations.ReplaceRange(defaultAllocations);
+        PopulateEditableSubCategories(bucketId: null);
+
+        // 5. Notify UI Commands
         OnPropertyChanged(nameof(TotalBucketItemsToSaveCount));
         OnPropertyChanged(nameof(CanSaveBucket));
         SaveBucketCommand.NotifyCanExecuteChanged();
@@ -2490,9 +2566,28 @@ public class MainViewModel : ViewModelBase {
         // Reset fields on the current active edit form without closing overlay
         EditingBucketClone.Name = string.Empty;
         EditingBucketClone.ExpectedAmount = 0;
+
+        // Reset allocations to default $0 rows for active paychecks
+        EditableAllocations.Clear();
+        var defaultAllocations = Paychecks
+            .Where(p => p.EndDate == null || p.EndDate > DateTime.Now)
+            .Select(p => new BucketPaycheckAllocation {
+                PaycheckId = p.Id,
+                PaycheckName = p.Name,
+                AllocationValue = 0m,
+                IsActive = true,
+                CreatedDate = DateTime.Today,
+                SortOrder = 0
+            })
+            .ToList();
+
+        EditableAllocations.ReplaceRange(defaultAllocations);
+
+        // Reset selected subcategories
+        PopulateEditableSubCategories(bucketId: null);
     }
 
-    private void AddBucket() {
+    private async void AddBucket() {
         try {
             if (EditingBucketClone != null) {
                 EditingBucketClone.PropertyChanged -= EditingBucketClone_PropertyChanged;
@@ -2512,6 +2607,21 @@ public class MainViewModel : ViewModelBase {
             EditingBucketClone.PropertyChanged += EditingBucketClone_PropertyChanged;
 
             EditableAllocations.Clear();
+            // Populate default $0 rows for all active paychecks
+            var defaultAllocations = Paychecks
+                .Where(p => p.EndDate == null || p.EndDate > DateTime.Now)
+                .Select(p => new BucketPaycheckAllocation {
+                    PaycheckId = p.Id,
+                    PaycheckName = p.Name,
+                    AllocationValue = 0m,
+                    IsActive = true,
+                    CreatedDate = DateTime.Today,
+                    SortOrder = 0
+                })
+                .ToList();
+
+            EditableAllocations.ReplaceRange(defaultAllocations);
+
             SelectedBucket = null;
             PopulateEditableSubCategories(bucketId: null);
             IsEditingBucket = true;
@@ -2610,17 +2720,20 @@ public class MainViewModel : ViewModelBase {
         if (EditingBucketClone == null && !StagedBuckets.Any()) return;
 
         try {
+            // Strip out placeholder, unassigned, or zero-ID paycheck allocations
+            var validAllocations = EditableAllocations
+                .Where(a => a.PaycheckId > 0 && a.AllocationValue >= 0)
+                .ToList();
+
             // 1. Stage current draft if valid
             if (EditingBucketClone != null && !string.IsNullOrWhiteSpace(EditingBucketClone.Name)) {
                 bool isValid = EditingBucketClone.ValidateAllProperties();
 
                 List<string> errors = EditingBucketClone.GetValidationErrors();
                 if (!isValid || errors.Any()) {
-                    // Force WPF to re-evaluate all bindings hanging off EditingBucketClone
                     OnPropertyChanged(nameof(EditingBucketClone));
-
-                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
-                        , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving.",
+                        "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -2661,8 +2774,8 @@ public class MainViewModel : ViewModelBase {
                 }
 
                 if (item.Type != BucketType.UpfrontFloor) {
-                    await _budgetService.SaveBucketPaycheckAllocationsAsync(savedBucketId, item.Type,
-                        EditableAllocations);
+                    // Pass cleaned allocations without 0-ID paycheck placeholders
+                    await _budgetService.SaveBucketPaycheckAllocationsAsync(savedBucketId, item.Type, validAllocations);
                 }
 
                 await _budgetService.RecalculateBucketBalanceAsync(savedBucketId);
@@ -2756,6 +2869,7 @@ public class MainViewModel : ViewModelBase {
             IsEditingBucketEnabled = false;
             EditingBucketClone = null;
             EditableAllocations.Clear();
+            EditableSubCategories.Clear();
         }
         catch (Exception ex) {
             Log.Error(ex, "Error cancelling bucket edit.");
@@ -2773,6 +2887,9 @@ public class MainViewModel : ViewModelBase {
 
         if (messageBoxResult == MessageBoxResult.Yes) {
             try {
+                // Pre-delete safety backup
+                _budgetService.CreateRollingBackup("pre_delete_envelope");
+                
                 await _budgetService.DeleteBucketAsync(EditingBucketClone.Id);
                 IsEditingBucket = false;
                 IsEditingBucketEnabled = false;
@@ -3027,6 +3144,7 @@ public class MainViewModel : ViewModelBase {
                     StagedSubCategories.Remove(subCategory);
                 }
             }
+
             StagedCategories.Remove(item);
 
             OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
@@ -3071,7 +3189,7 @@ public class MainViewModel : ViewModelBase {
             SelectedCategory = null;
             IsEditingCategory = true;
             IsEditingCategoryEnabled = true;
-            
+
             // Force ComboBox binding to refresh immediately
             OnPropertyChanged(nameof(AvailableParentCategories));
         }
@@ -3108,7 +3226,7 @@ public class MainViewModel : ViewModelBase {
 
             IsEditingCategory = true;
             IsEditingCategoryEnabled = true;
-        
+
             OnPropertyChanged(nameof(AvailableParentCategories));
             OnPropertyChanged(nameof(TotalCategoryItemsToSaveCount));
             OnPropertyChanged(nameof(CanSaveCategory));
@@ -3352,6 +3470,9 @@ public class MainViewModel : ViewModelBase {
                 "Delete Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.Yes) {
+                // Pre-delete safety backup
+                _budgetService.CreateRollingBackup("pre_delete_category");
+                
                 await _budgetService.DeleteCategoryAsync(EditingCategoryClone.Id);
                 IsEditingCategory = false;
                 IsEditingCategoryEnabled = false;
@@ -3550,6 +3671,9 @@ public class MainViewModel : ViewModelBase {
                 "Delete Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.Yes) {
+                // Pre-delete safety backup
+                _budgetService.CreateRollingBackup("pre_delete_subcategory");
+                
                 await _budgetService.DeleteSubCategoryAsync(EditingSubCategoryClone.Id);
                 IsEditingSubCategory = false;
                 EditingSubCategoryClone = null;
@@ -3577,7 +3701,8 @@ public class MainViewModel : ViewModelBase {
                 return;
             }
 
-            var result = MessageBox.Show($"Are you sure you want to delete this subcategory {SelectedSubCategory.Name}?",
+            var result = MessageBox.Show(
+                $"Are you sure you want to delete this subcategory {SelectedSubCategory.Name}?",
                 "Delete Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (result == MessageBoxResult.Yes) {
@@ -3596,10 +3721,25 @@ public class MainViewModel : ViewModelBase {
             MessageBox.Show("Failed to delete subcategory.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
-    
+
     #endregion
 
     #region Transaction CRUD
+
+    private void AddSplitDetailLeg() {
+        if (EditingTransactionClone == null) return;
+
+        var leg = new TransactionDetail {
+            TransactionId = EditingTransactionClone.TransactionId,
+            Description = EditingTransactionClone.Description,
+            Amount = Math.Max(0m, UnassignedSplitAmount),
+            AccountId = EditingTransactionClone.AccountId,
+            TransactionDate = EditingTransactionClone.TransactionDate
+        };
+
+        EditingSplitDetails.Add(leg);
+        OnPropertyChanged(nameof(UnassignedSplitAmount));
+    }
 
     private void AddAnotherTransaction() {
         if (EditingTransactionClone == null) return;
@@ -3608,9 +3748,7 @@ public class MainViewModel : ViewModelBase {
         bool isValid = EditingTransactionClone.ValidateAllProperties();
         List<string> errors = EditingTransactionClone.GetValidationErrors();
         if (!isValid || errors.Any()) {
-            // Force WPF to re-evaluate all bindings hanging off EditingTransactionClone
             OnPropertyChanged(nameof(EditingTransactionClone));
-
             MessageBox.Show(errors.FirstOrDefault() ?? "Please correct the highlighted errors before saving."
                 , "Validation Error", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -3628,6 +3766,21 @@ public class MainViewModel : ViewModelBase {
         if (EditingTransactionClone.BillId == 0) EditingTransactionClone.BillId = null;
         if (EditingTransactionClone.BucketId == 0) EditingTransactionClone.BucketId = null;
         if (EditingTransactionClone.SubCategoryId == 0) EditingTransactionClone.SubCategoryId = null;
+
+        // Handle Split Details before staging
+        if (IsSplitTransaction) {
+            if (Math.Abs(UnassignedSplitAmount) > 0.01m) {
+                MessageBox.Show(
+                    $"The total allocated split amount does not match the transaction total. Remaining unassigned: {UnassignedSplitAmount:C}",
+                    "Split Mismatch", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            EditingTransactionClone.Details.Clear();
+            foreach (var leg in EditingSplitDetails) {
+                EditingTransactionClone.Details.Add(leg);
+            }
+        }
 
         // Stage a clone of the filled form
         StagedTransactions.Add(EditingTransactionClone.Clone());
@@ -3649,6 +3802,10 @@ public class MainViewModel : ViewModelBase {
         RefreshTransactionEditState(nextTrans);
         EditingTransactionClone = nextTrans;
         EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
+
+        // RESET SPLIT CHECKBOX AND CATEGORIES FOR NEXT ITEM
+        IsSplitTransaction = false;
+        EditingSplitDetails.Clear();
 
         OnPropertyChanged(nameof(TotalTransactionItemsToSaveCount));
         OnPropertyChanged(nameof(CanSaveTransaction));
@@ -3675,6 +3832,10 @@ public class MainViewModel : ViewModelBase {
         EditingTransactionClone.BillId = null;
         EditingTransactionClone.BucketId = null;
         EditingTransactionClone.SubCategoryId = null;
+
+        // Reset Split Transaction State
+        IsSplitTransaction = false;
+        EditingSplitDetails.Clear();
     }
 
     private void AddTransaction() {
@@ -3717,6 +3878,19 @@ public class MainViewModel : ViewModelBase {
 
             EditingTransactionClone = editTrans;
             EditingTransactionClone.PropertyChanged += EditingTransactionClone_PropertyChanged;
+
+            // Load existing split details if present
+            EditingSplitDetails.Clear();
+            if (editTrans.Details != null && editTrans.Details.Count > 0) {
+                foreach (var leg in editTrans.Details) {
+                    EditingSplitDetails.Add(leg);
+                }
+
+                IsSplitTransaction = true;
+            }
+            else {
+                IsSplitTransaction = false;
+            }
 
             IsEditingTransaction = true;
 
@@ -3864,11 +4038,11 @@ public class MainViewModel : ViewModelBase {
                     EditingTransactionClone.FromAccountReconciliationId = null;
                     EditingTransactionClone.FromAccountIsCleared = true;
                     // Revert to original FitId if turning it back to cleared/reconciled
-                    EditingTransactionClone.FromFitId = _originalFromFitId??"";
+                    EditingTransactionClone.FromFitId = _originalFromFitId ?? "";
                     break;
                 case ReconciliationStatus.Reconciled:
                     EditingTransactionClone.FromAccountIsCleared = true;
-                    EditingTransactionClone.FromFitId = _originalFromFitId??"";
+                    EditingTransactionClone.FromFitId = _originalFromFitId ?? "";
                     break;
             }
         }
@@ -3886,11 +4060,11 @@ public class MainViewModel : ViewModelBase {
                 case ReconciliationStatus.Cleared:
                     EditingTransactionClone.ToAccountReconciliationId = null;
                     EditingTransactionClone.ToAccountIsCleared = true;
-                    EditingTransactionClone.ToFitId = _originalToFitId??"";
+                    EditingTransactionClone.ToFitId = _originalToFitId ?? "";
                     break;
                 case ReconciliationStatus.Reconciled:
                     EditingTransactionClone.ToAccountIsCleared = true;
-                    EditingTransactionClone.ToFitId = _originalToFitId??"";
+                    EditingTransactionClone.ToFitId = _originalToFitId ?? "";
                     break;
             }
         }
@@ -3943,6 +4117,20 @@ public class MainViewModel : ViewModelBase {
                 MessageBox.Show("Please enter a description for the transaction.", "Validation Error",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
+            }
+
+            if (IsSplitTransaction) {
+                if (Math.Abs(UnassignedSplitAmount) > 0.01m) {
+                    MessageBox.Show(
+                        $"The total allocated split amount does not match the transaction total. Remaining unassigned: {UnassignedSplitAmount:C}",
+                        "Split Mismatch", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                EditingTransactionClone!.Details.Clear();
+                foreach (var leg in EditingSplitDetails) {
+                    EditingTransactionClone.Details.Add(leg);
+                }
             }
 
             // 2. Persist all staged items to database without triggering projections intermediate
@@ -4039,6 +4227,11 @@ public class MainViewModel : ViewModelBase {
             }
 
             StagedTransactions.Clear();
+
+            // Reset Split Transaction State
+            IsSplitTransaction = false;
+            EditingSplitDetails.Clear();
+
             IsEditingTransaction = false;
             EditingTransactionClone = null;
             IsEditingTransactionEnabled = false;
@@ -4355,6 +4548,9 @@ public class MainViewModel : ViewModelBase {
 
         if (messageBoxResult == MessageBoxResult.Yes) {
             try {
+                // Pre-delete safety backup
+                _budgetService.CreateRollingBackup("pre_delete_paycheck");
+                
                 await _budgetService.DeletePaycheckAsync(EditingPaycheckClone.Id);
                 IsEditingPaycheck = false;
                 IsEditingPaycheckEnabled = false;
@@ -4945,6 +5141,9 @@ public class MainViewModel : ViewModelBase {
             );
 
             if (messageBoxResult == MessageBoxResult.Yes) {
+                // Pre-delete safety backup
+                _budgetService.CreateRollingBackup("pre_delete_account");
+                
                 await _budgetService.DeleteAccountAsync(EditingAccountClone.Id);
                 IsEditingAccount = false;
                 IsEditingAccountEnabled = false;
@@ -6923,18 +7122,15 @@ public class MainViewModel : ViewModelBase {
 
     public SolidColorBrush ReadinessStatusHeaderBrush => ReadinessStatus switch {
         CashHealthStatus.Optimal =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusHeaderOptimalBrush) as
-                SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusHeaderOptimalBrush") as SolidColorBrush
             ?? Brushes.Green,
 
         CashHealthStatus.TransferRecommended =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusHeaderTransferRecommendedBrush)
-                as SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusHeaderTransferRecommendedBrush") as SolidColorBrush
             ?? Brushes.Orange,
 
         CashHealthStatus.GlobalDeficit =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusHeaderGlobalDeficitBrush) as
-                SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusHeaderGlobalDeficitBrush") as SolidColorBrush
             ?? Brushes.Red,
 
         _ => (SolidColorBrush)(new BrushConverter().ConvertFrom("#3B82F6") ?? Brushes.Blue)
@@ -6942,18 +7138,15 @@ public class MainViewModel : ViewModelBase {
 
     public SolidColorBrush ReadinessStatusBackgroundBrush => ReadinessStatus switch {
         CashHealthStatus.Optimal =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusOptimalBackgroundBrush) as
-                SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusOptimalBackgroundBrush") as SolidColorBrush
             ?? Brushes.LightGreen,
 
         CashHealthStatus.TransferRecommended =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys
-                .ReadinessStatusTransferRecommendedBackgroundBrush) as SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusTransferRecommendedBackgroundBrush") as SolidColorBrush
             ?? Brushes.LightYellow,
 
         CashHealthStatus.GlobalDeficit =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusGlobalDeficitBackgroundBrush)
-                as SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusGlobalDeficitBackgroundBrush") as SolidColorBrush
             ?? Brushes.MistyRose,
 
         _ => (SolidColorBrush)(new BrushConverter().ConvertFrom("#F8FAFC") ?? Brushes.White)
@@ -6961,18 +7154,15 @@ public class MainViewModel : ViewModelBase {
 
     public SolidColorBrush ReadinessStatusBorderBrush => ReadinessStatus switch {
         CashHealthStatus.Optimal =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusOptimalBorderBrush) as
-                SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusOptimalBorderBrush") as SolidColorBrush
             ?? Brushes.Green,
 
         CashHealthStatus.TransferRecommended =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusTransferRecommendedBorderBrush)
-                as SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusTransferRecommendedBorderBrush") as SolidColorBrush
             ?? Brushes.Orange,
 
         CashHealthStatus.GlobalDeficit =>
-            System.Windows.Application.Current?.TryFindResource(ThemeKeys.ReadinessStatusGlobalDeficitBorderBrush) as
-                SolidColorBrush
+            Application.Current?.TryFindResource("ReadinessStatusGlobalDeficitBorderBrush") as SolidColorBrush
             ?? Brushes.Red,
 
         _ => (SolidColorBrush)(new BrushConverter().ConvertFrom("#E2E8F0") ?? Brushes.LightGray)
@@ -7114,6 +7304,13 @@ public class MainViewModel : ViewModelBase {
 
             appResources.Clear();
             appResources.Add(new ResourceDictionary { Source = newThemeUri });
+
+            // Force UI bindings dependent on theme brushes to re-evaluate
+            if (Instance != null) {
+                Instance.OnPropertyChanged(nameof(ReadinessStatusHeaderBrush));
+                Instance.OnPropertyChanged(nameof(ReadinessStatusBackgroundBrush));
+                Instance.OnPropertyChanged(nameof(ReadinessStatusBorderBrush));
+            }
 
             foreach (Window window in Application.Current.Windows) {
                 var charts =

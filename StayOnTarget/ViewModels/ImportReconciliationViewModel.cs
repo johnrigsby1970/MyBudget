@@ -389,8 +389,8 @@ public class ImportReconciliationViewModel : ViewModelBase {
                     _account.Id,
                     match.MatchedManualTransactionId!,
                     match.BankId!,
-                    match.IsCleared,
-                    match.Id!.Value
+                    match.IsCleared
+                    //, match.Id!.Value
                 );
             }
 

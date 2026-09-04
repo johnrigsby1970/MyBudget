@@ -1,0 +1,85 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <!-- Base Backgrounds & Surface Colors -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#F4EFEA" />
+    <SolidColorBrush x:Key="SurfaceBackgroundBrush" Color="#EFE9E1" />
+    <SolidColorBrush x:Key="SidebarBackgroundBrush" Color="#E5DDD3" />
+    <SolidColorBrush x:Key="SidebarSelectedBrush" Color="#D3C7B8" />
+    <SolidColorBrush x:Key="SidebarHoverBrush" Color="#DDD2C4" />
+    <SolidColorBrush x:Key="ModalBackgroundBrush" Color="#EFE9E1" />
+
+    <!-- Text & Typography -->
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="#2D2825" />
+    <SolidColorBrush x:Key="SecondaryTextBrush" Color="#736A62" />
+    <SolidColorBrush x:Key="SpecialHeadingBrush" Color="#8C6D53" />
+
+    <!-- Borders & Dividers -->
+    <SolidColorBrush x:Key="BorderColorBrush" Color="#D8CECE" />
+    <SolidColorBrush x:Key="GridLineBrush" Color="#E2D9CF" />
+    <SolidColorBrush x:Key="SeparatorBrush" Color="#A89C91" />
+
+    <!-- DataGrid Colors -->
+    <SolidColorBrush x:Key="DataGridHeaderBackgroundBrush" Color="#E5DDD3" />
+    <SolidColorBrush x:Key="DataGridRowBackgroundBrush" Color="#F4EFEA" />
+    <SolidColorBrush x:Key="DataGridAltRowBackgroundBrush" Color="#EFE9E1" />
+    <SolidColorBrush x:Key="DataGridRowForegroundBrush" Color="#2D2825" />
+
+    <!-- ScrollBar & Track -->
+    <SolidColorBrush x:Key="TrackBackgroundBrush" Color="#E8E2D9" />
+    <SolidColorBrush x:Key="ThumbNormalBrush" Color="#BDB0A3" />
+    <SolidColorBrush x:Key="ThumbHoverBrush" Color="#8C7F72" />
+
+    <!-- Primary Button (Warm Espresso / Dark Taupe) -->
+    <SolidColorBrush x:Key="ButtonPrimaryBackgroundBrush" Color="#5C4D42" />
+    <SolidColorBrush x:Key="ButtonPrimaryForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonPrimaryBorderBrush" Color="#5C4D42" />
+    <SolidColorBrush x:Key="ButtonPrimaryHoverBackgroundBrush" Color="#4A3E35" />
+    <SolidColorBrush x:Key="ButtonPrimaryPressedBackgroundBrush" Color="#382E27" />
+
+    <!-- Secondary Button (Warm Neutral) -->
+    <SolidColorBrush x:Key="ButtonSecondaryBackgroundBrush" Color="#DDD2C4" />
+    <SolidColorBrush x:Key="ButtonSecondaryForegroundBrush" Color="#2D2825" />
+    <SolidColorBrush x:Key="ButtonSecondaryBorderBrush" Color="#C7BBAA" />
+    <SolidColorBrush x:Key="ButtonSecondaryHoverBackgroundBrush" Color="#CFC1B0" />
+    <SolidColorBrush x:Key="ButtonSecondaryPressedBackgroundBrush" Color="#BFB09E" />
+
+    <!-- Danger Button -->
+    <SolidColorBrush x:Key="ButtonDangerBackgroundBrush" Color="#A84B4B" />
+    <SolidColorBrush x:Key="ButtonDangerForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonDangerBorderBrush" Color="#A84B4B" />
+    <SolidColorBrush x:Key="ButtonDangerHoverBackgroundBrush" Color="#8F3C3C" />
+    <SolidColorBrush x:Key="ButtonDangerPressedBackgroundBrush" Color="#752E2E" />
+
+    <!-- Danger Subdued -->
+    <SolidColorBrush x:Key="ButtonDangerSubduedBackgroundBrush" Color="#FCE8E8" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedForegroundBrush" Color="#8F3C3C" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedBorderBrush" Color="#F5C2C2" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedHoverBackgroundBrush" Color="#FAD4D4" />
+    <SolidColorBrush x:Key="ButtonDangerSubduedPressedBackgroundBrush" Color="#F5C2C2" />
+
+    <!-- Accent Button (Warm Caramel / Amber) -->
+    <SolidColorBrush x:Key="ButtonAccentBackgroundBrush" Color="#C18C5D" />
+    <SolidColorBrush x:Key="ButtonAccentForegroundBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ButtonAccentBorderBrush" Color="#C18C5D" />
+    <SolidColorBrush x:Key="ButtonAccentHoverBackgroundBrush" Color="#A8774A" />
+    <SolidColorBrush x:Key="ButtonAccentPressedBackgroundBrush" Color="#8E6238" />
+
+    <!-- Badges & Status Brushes -->
+    <SolidColorBrush x:Key="StrategyBadgeBackgroundBrush" Color="#EFE4D8" />
+    <SolidColorBrush x:Key="StrategyBadgeBorderBrush" Color="#C18C5D" />
+    <SolidColorBrush x:Key="StrategyBadgeTextBrush" Color="#8E6238" />
+    <SolidColorBrush x:Key="PrimaryAccentBrush" Color="#A8774A" />
+
+    <SolidColorBrush x:Key="PositiveBrush" Color="#3B7A57" />
+    <SolidColorBrush x:Key="NegativeBrush" Color="#A84B4B" />
+    <SolidColorBrush x:Key="GoodNumericHighlightBrush" Color="#3B7A57" />
+    <SolidColorBrush x:Key="WarningNumericHighlightBrush" Color="#D97706" />
+    <SolidColorBrush x:Key="BadNumericHighlightBrush" Color="#A84B4B" />
+
+    <!-- Splitter Colors -->
+    <SolidColorBrush x:Key="SplitterBackgroundBrush" Color="Transparent" />
+    <SolidColorBrush x:Key="SplitterLineBrush" Color="#C7BBAA" />
+    <SolidColorBrush x:Key="SplitterGripBrush" Color="#8C7F72" />
+    <SolidColorBrush x:Key="SplitterHoverBrush" Color="#C18C5D" />
+</ResourceDictionary>

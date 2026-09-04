@@ -80,6 +80,8 @@ public class DatabaseContext {
     //     return Path.Combine(dbFolder, DatabaseName);
     // }
 
+    public string DbPath => _dbPath;
+    
     public string BuildConnectionString(string dbPath, string? password) {
         if (string.IsNullOrEmpty(password)) {
             return $"Data Source={dbPath};";
@@ -132,6 +134,22 @@ public class DatabaseContext {
             source.BackupDatabase(destination);
             return newPath;
         }
+    }
+    
+    public string BackupDatabaseToPath(string destinationPath, string? password) {
+        if (string.IsNullOrWhiteSpace(_dbPath)) return string.Empty;
+
+        var sourceConnStr = BuildConnectionString(_dbPath, password);
+        var destConnStr = BuildConnectionString(destinationPath, password);
+
+        using (var source = new SqliteConnection(sourceConnStr))
+        using (var destination = new SqliteConnection(destConnStr)) {
+            source.Open();
+            destination.Open();
+            source.BackupDatabase(destination);
+        }
+
+        return destinationPath;
     }
 
     public void ChangePassword(string dbPath, string oldPassword, string newPassword) {

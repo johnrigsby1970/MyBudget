@@ -241,6 +241,16 @@ public class Transaction : ViewModelBase, INotifyDataErrorInfo {
         set => SetProperty(ref _bucketName, value);
     }
 
+        
+    private RangeObservableCollection<TransactionDetail> _details = new();
+    public RangeObservableCollection<TransactionDetail> Details {
+        get => _details;
+        set => SetProperty(ref _details, value);
+    }
+
+    // Helper to check if this is a split entry
+    public bool IsSplit => Details.Any(x=>!x.IsInterestOnly);
+    
     public Transaction Clone() {
         return (Transaction)this.MemberwiseClone();
     }
@@ -370,6 +380,38 @@ public class TransactionViewModel : Transaction {
     }
 }
 
+public class TransactionDetail : Ledger {
+    // Helper for UI
+
+    private string? _accountName;
+
+    public string? AccountName {
+        get => _accountName;
+        set => SetProperty(ref _accountName, value);
+    }
+
+    private string? _toAccountName;
+
+    public string? ToAccountName {
+        get => _toAccountName;
+        set => SetProperty(ref _toAccountName, value);
+    }
+
+    private string? _billName;
+
+    public string? BillName {
+        get => _billName;
+        set => SetProperty(ref _billName, value);
+    }
+
+    private string? _bucketName;
+
+    public string? BucketName {
+        get => _bucketName;
+        set => SetProperty(ref _bucketName, value);
+    }
+}
+
 public class Ledger : ViewModelBase {
     private string _description = string.Empty;
     private string? _memo = string.Empty;
@@ -388,15 +430,6 @@ public class Ledger : ViewModelBase {
     private bool _isInterestOnly;
     private int? _reconciliationId;
     private bool _isCleared;
-
-    private RangeObservableCollection<Ledger> _details = new();
-    public RangeObservableCollection<Ledger> Details {
-        get => _details;
-        set => SetProperty(ref _details, value);
-    }
-
-    // Helper to check if this is a split entry
-    public bool IsSplit => Details.Any();
     
     private int _id;
 
