@@ -10,14 +10,14 @@ public class ReconciliationService {
         _budgetService = budgetService;
     }
 
-    public async Task<(decimal EndingBalance, DateTime? LastTransactionDate, decimal BeginningBalance, bool
+    public async Task<(decimal EndingBalance, DateTime? LastReconciliationDate, DateTime? LastTransactionDate, decimal BeginningBalance, bool
             HasTransactionPriorToLastReconcile)>
         CalculateRunningBalanceAsync(int accountId, IEnumerable<TransactionViewModel> transactions) {
         try {
             var hasTransactionPriorToLastReconcile = false;
             var account = (await _budgetService.GetAllAccountsAsync()).FirstOrDefault(a => a.Id == accountId);
             if (account == null) {
-                return (0, null, 0, false);
+                return (0, null, null, 0, false);
             }
 
             var openingBalanceState = await _budgetService.GetAccountBalanceOpeningStateAsync(accountId);
@@ -99,13 +99,17 @@ public class ReconciliationService {
                     transaction.RunningBalance = balance;
                 }
             }
-
+            DateTime? reconciliationDate = latestRecon?.ReconciledAsOfDate 
+                                           ?? openingBalanceState.openingBalanceDate 
+                                           ?? account.BalanceAsOf;
+            
             var lastTransactionDate = orderedTransactions.LastOrDefault()?.TransactionDate;
-            return (balance, lastTransactionDate, beginningBalance, hasTransactionPriorToLastReconcile);
+            
+            return (balance, reconciliationDate, lastTransactionDate, beginningBalance, hasTransactionPriorToLastReconcile);
         }
         catch (Exception ex) {
             Log.Error(ex, "Error calculating running balance for account ID {AccountId}.", accountId);
-            return (0, null, 0, false);
+            return (0, null, null, 0, false);
         }
     }
 

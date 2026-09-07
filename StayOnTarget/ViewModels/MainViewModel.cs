@@ -14,7 +14,6 @@ using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
 using StayOnTarget.Extensions;
 using StayOnTarget.Helpers;
-using StayOnTarget.Themes;
 using StayOnTarget.Views;
 
 #pragma warning disable CS0414 // Field is assigned but its value is never used
@@ -2120,6 +2119,7 @@ public class MainViewModel : ViewModelBase {
             EditingBillClone.PropertyChanged += EditingBillClone_PropertyChanged;
 
             IsEditingBill = true;
+            IsEditingBillEnabled = true;
         }
         catch (Exception ex) {
             Log.Error(ex, "Error entering edit mode for bill.");
@@ -2386,7 +2386,7 @@ public class MainViewModel : ViewModelBase {
         if (messageBoxResult == MessageBoxResult.Yes) {
             try {
                 // Pre-delete safety backup
-                _budgetService.CreateRollingBackup("pre_delete_bill");
+                _budgetService.CreateRollingBackup(BackupReason.PreDeleteBill);
                 
                 await _budgetService.DeleteBillAsync(EditingBillClone.Id);
                 IsEditingBill = false;
@@ -2888,7 +2888,7 @@ public class MainViewModel : ViewModelBase {
         if (messageBoxResult == MessageBoxResult.Yes) {
             try {
                 // Pre-delete safety backup
-                _budgetService.CreateRollingBackup("pre_delete_envelope");
+                _budgetService.CreateRollingBackup(BackupReason.PreDeleteBucket);
                 
                 await _budgetService.DeleteBucketAsync(EditingBucketClone.Id);
                 IsEditingBucket = false;
@@ -3471,7 +3471,7 @@ public class MainViewModel : ViewModelBase {
 
             if (result == MessageBoxResult.Yes) {
                 // Pre-delete safety backup
-                _budgetService.CreateRollingBackup("pre_delete_category");
+                _budgetService.CreateRollingBackup(BackupReason.PreDeleteCategory);
                 
                 await _budgetService.DeleteCategoryAsync(EditingCategoryClone.Id);
                 IsEditingCategory = false;
@@ -3672,7 +3672,7 @@ public class MainViewModel : ViewModelBase {
 
             if (result == MessageBoxResult.Yes) {
                 // Pre-delete safety backup
-                _budgetService.CreateRollingBackup("pre_delete_subcategory");
+                _budgetService.CreateRollingBackup(BackupReason.PreDeleteSubCategory);
                 
                 await _budgetService.DeleteSubCategoryAsync(EditingSubCategoryClone.Id);
                 IsEditingSubCategory = false;
@@ -3881,7 +3881,7 @@ public class MainViewModel : ViewModelBase {
 
             // Load existing split details if present
             EditingSplitDetails.Clear();
-            if (editTrans.Details != null && editTrans.Details.Count > 0) {
+            if (editTrans.Details.Count(x => !x.IsInterestOnly) > 2) {
                 foreach (var leg in editTrans.Details) {
                     EditingSplitDetails.Add(leg);
                 }
@@ -4549,7 +4549,7 @@ public class MainViewModel : ViewModelBase {
         if (messageBoxResult == MessageBoxResult.Yes) {
             try {
                 // Pre-delete safety backup
-                _budgetService.CreateRollingBackup("pre_delete_paycheck");
+                _budgetService.CreateRollingBackup(BackupReason.PreDeletePaycheck);
                 
                 await _budgetService.DeletePaycheckAsync(EditingPaycheckClone.Id);
                 IsEditingPaycheck = false;
@@ -5142,7 +5142,7 @@ public class MainViewModel : ViewModelBase {
 
             if (messageBoxResult == MessageBoxResult.Yes) {
                 // Pre-delete safety backup
-                _budgetService.CreateRollingBackup("pre_delete_account");
+                _budgetService.CreateRollingBackup(BackupReason.PreDeleteAccount);
                 
                 await _budgetService.DeleteAccountAsync(EditingAccountClone.Id);
                 IsEditingAccount = false;
@@ -6040,12 +6040,28 @@ public class MainViewModel : ViewModelBase {
 
     private async Task ApplyTransactionAmounts() {
         try {
+            // Expand lookup window backwards by 7 days to catch bills paid in the prior paycheck period
+            var thresholdStartDate = CurrentPeriodDate.AddDays(-7);
+
+            // Fetch paid bill transactions within the extended window
+            var paidBillsInRange = (await _budgetService.GetBillsPaidInRange(thresholdStartDate, NextPeriodDate)).ToList();
+
             if (CurrentPeriodBills.Count != 0) {
                 foreach (var pb in CurrentPeriodBills) {
                     if (pb.TransactionAmount == 0) {
-                        pb.TransactionAmount = CurrentPeriodTransactions
+                        // 1. Check current period transactions
+                        decimal currentAmount = CurrentPeriodTransactions
                             .Where(t => t.BillId == pb.BillId)
                             .Sum(t => t.Amount);
+
+                        // 2. Fall back to threshold range if paid early/late across period boundaries
+                        if (currentAmount == 0) {
+                            currentAmount = paidBillsInRange
+                                .Where(x => x.billId == pb.BillId)
+                                .Sum(x => x.amount);
+                        }
+
+                        pb.TransactionAmount = currentAmount;
                     }
 
                     if (pb.TransactionAmount != 0) {
@@ -6672,11 +6688,11 @@ public class MainViewModel : ViewModelBase {
 
     private async void EditingBillClone_PropertyChanged(object? sender, PropertyChangedEventArgs e) {
         try {
-            if (e.PropertyName == nameof(Bill.Name)) {
+           // if (e.PropertyName == nameof(Bill.Name)) {
                 OnPropertyChanged(nameof(TotalBillItemsToSaveCount));
                 OnPropertyChanged(nameof(CanSaveBill));
                 SaveBillCommand.NotifyCanExecuteChanged();
-            }
+           // }
         }
         catch (Exception ex) {
             Log.Error(ex, "Error in EditingBillClone_PropertyChanged.");

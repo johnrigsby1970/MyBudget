@@ -28,6 +28,23 @@ public partial class BudgetService {
         }
     }
 
+    public async Task<AccountReconciliation?> GetReconciliationByAsOfDateAsync(int accountId, DateTime asOfDate) {
+        try {
+            await using var conn = _db.GetConnection();
+            return await conn.QueryFirstOrDefaultAsync<AccountReconciliation>(
+                @"SELECT * FROM AccountReconciliations
+              WHERE AccountId = @accountId 
+                AND ReconciledAsOfDate = @asOfDate 
+                AND IsInvalidated = 0
+              LIMIT 1",
+                new { accountId, asOfDate = asOfDate.ToString("yyyy-MM-dd") });
+        }
+        catch (Exception ex) {
+            Log.Error(ex, "Error getting reconciliation for account ID {AccountId} on {AsOfDate}.", accountId, asOfDate);
+            return null;
+        }
+    }
+    
     public async Task<AccountReconciliation?> GetLatestValidReconciliationAsync(int accountId) {
         try {
             await using var conn = _db.GetConnection();
@@ -47,6 +64,16 @@ public partial class BudgetService {
     public async Task UpsertAccountReconciliationAsync(AccountReconciliation reconciliation) {
         try {
             await using var conn = _db.GetConnection();
+
+            // Check for an existing valid record on the same date when creating a new reconciliation
+            if (reconciliation.Id == 0) {
+                var existing = await GetReconciliationByAsOfDateAsync(reconciliation.AccountId, reconciliation.ReconciledAsOfDate);
+                if (existing != null) {
+                    // Reuse existing ID to merge/overwrite
+                    reconciliation.Id = existing.Id;
+                }
+            }
+
             var param = new {
                 reconciliation.Id,
                 reconciliation.AccountId,
@@ -58,21 +85,23 @@ public partial class BudgetService {
 
             if (reconciliation.Id == 0) {
                 reconciliation.Id = await conn.ExecuteScalarAsync<int>(@"
-                    INSERT INTO AccountReconciliations (AccountId, ReconciledAsOfDate, ReconciledBalance, ReconciledOnDate, IsInvalidated)
-                    VALUES (@AccountId, @ReconciledAsOfDate, @ReconciledBalance, @ReconciledOnDate, @IsInvalidated);
-                    SELECT last_insert_rowid();", param);
+                INSERT INTO AccountReconciliations (AccountId, ReconciledAsOfDate, ReconciledBalance, ReconciledOnDate, IsInvalidated)
+                VALUES (@AccountId, @ReconciledAsOfDate, @ReconciledBalance, @ReconciledOnDate, @IsInvalidated);
+                SELECT last_insert_rowid();", param);
             }
             else {
                 await conn.ExecuteAsync(@"
-                    UPDATE AccountReconciliations
-                    SET AccountId=@AccountId, ReconciledAsOfDate=@ReconciledAsOfDate,
-                        ReconciledBalance=@ReconciledBalance, ReconciledOnDate=@ReconciledOnDate,
-                        IsInvalidated=@IsInvalidated
-                    WHERE Id=@Id", param);
+                UPDATE AccountReconciliations
+                SET AccountId = @AccountId, 
+                    ReconciledAsOfDate = @ReconciledAsOfDate,
+                    ReconciledBalance = @ReconciledBalance, 
+                    ReconciledOnDate = @ReconciledOnDate,
+                    IsInvalidated = @IsInvalidated
+                WHERE Id = @Id", param);
             }
         }
         catch (Exception ex) {
-            Log.Error(ex, "Error upserting account reconciliation with ID {ReconciliationId}[cite: 23].", reconciliation.Id);
+            Log.Error(ex, "Error upserting account reconciliation with ID {ReconciliationId}.", reconciliation.Id);
             throw;
         }
     }

@@ -135,25 +135,7 @@
                                 </Style>
                             </controls:NumericTextBox.Style>
                         </controls:NumericTextBox>
-                        <!-- <TextBox Grid.Column="3" Grid.Row="1" -->
-                        <!--          Text="{Binding EditingBillClone.DueDay, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" -->
-                        <!--          Margin="5"> -->
-                        <!--     <TextBox.Style> -->
-                        <!--         <Style TargetType="TextBox"> -->
-                        <!--             <Setter Property="Visibility" -->
-                        <!--                     Value="Collapsed" /> -->
-                        <!--             <Style.Triggers> -->
-                        <!--                 <DataTrigger -->
-                        <!--                     Binding="{Binding EditingBillClone.Frequency}" -->
-                        <!--                     Value="Monthly"> -->
-                        <!--                     <Setter Property="Visibility" -->
-                        <!--                             Value="Visible" /> -->
-                        <!--                 </DataTrigger> -->
-                        <!--             </Style.Triggers> -->
-                        <!--         </Style> -->
-                        <!--     </TextBox.Style> -->
-                        <!-- </TextBox> -->
-
+                        
                         <Label Grid.Column="2" Grid.Row="1"
                                Content="Next Due Date:">
                             <Label.Style>

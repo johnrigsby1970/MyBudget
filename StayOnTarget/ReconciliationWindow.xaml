@@ -127,7 +127,8 @@
                     <Label Style="{DynamicResource StyledLabel}"  Content="Target Balance:" Margin="0,0" />
                     <controls:NumericTextBox Grid.Row="1" Grid.Column="1"
                                              Text="{Binding TargetBalance, StringFormat={}{0:C2}, UpdateSourceTrigger=LostFocus}"
-                                             Width="90"
+                                             Width="Auto"
+                                             MinWidth="90"
                                              VerticalAlignment="Center"
                                              Margin="0,0, 15, 0" />
 
@@ -292,7 +293,8 @@
 
                         <controls:NumericTextBox Grid.Row="1" Grid.Column="1"
                                                  Text="{Binding CurrentAssetValue, UpdateSourceTrigger=PropertyChanged}"
-                                                 Width="80"
+                                                 Width="Auto"
+                                                 MinWidth="90"
                                                  Margin="0,5,0,5" />
 
                         <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,5,0,5" />
@@ -369,6 +371,8 @@
                         <TextBlock Style="{DynamicResource StyledTextBlock}"  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Text="Opening Balance"
                                    Margin="0,0,0,5" />
                         <controls:NumericTextBox Grid.Row="0" Grid.Column="1"
+                                                 Width="Auto"
+                                                 MinWidth="90"
                                                  Text="{Binding OpeningBalance, UpdateSourceTrigger=PropertyChanged}"
                                                  Margin="0,0,0,0" />
 

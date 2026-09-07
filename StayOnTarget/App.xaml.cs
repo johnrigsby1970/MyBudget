@@ -371,7 +371,7 @@ public partial class App : Application {
 
             try {
                 // Trigger startup rolling backup
-                budgetService.CreateRollingBackup("startup");
+                budgetService.CreateRollingBackup(BackupReason.Startup);
             }
             catch (Exception ex) {
                 Log.Error(ex, "Error executing startup backup.");

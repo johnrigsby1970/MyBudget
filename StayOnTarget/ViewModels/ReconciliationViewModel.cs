@@ -752,10 +752,17 @@ public partial class ReconciliationViewModel : ViewModelBase {
                 .ToList();
             
             bool hasTransactionPriorToLastReconcile = false;
-            (EndingBalance, lastReconciledDate, beginningBalance, hasTransactionPriorToLastReconcile) =
+            DateTime? lastTransactionDate = null;
+    
+            (EndingBalance, lastReconciledDate, lastTransactionDate, beginningBalance, hasTransactionPriorToLastReconcile) =
                 await _reconciliationService.CalculateRunningBalanceAsync(_account.Id, reconciliationTransactions!);
             BeginningBalance = beginningBalance;
-            LastReconciledDate = lastReconciledDate ?? DateTime.MinValue;
+            
+            // Fall back to opening balance date, and finally the account's non-nullable BalanceAsOf
+            LastReconciledDate = lastReconciledDate 
+                                 ?? openingRecord.openingBalanceDate 
+                                 ?? _account.BalanceAsOf;
+            
             if (CurrentAssetValue == 0) CurrentAssetValue = EndingBalance;
 
             // Historical Orphans: Backdated AND were already marked cleared in the DB

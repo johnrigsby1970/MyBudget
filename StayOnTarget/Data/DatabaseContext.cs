@@ -81,7 +81,7 @@ public class DatabaseContext {
     // }
 
     public string DbPath => _dbPath;
-    
+
     public string BuildConnectionString(string dbPath, string? password) {
         if (string.IsNullOrEmpty(password)) {
             return $"Data Source={dbPath};";
@@ -135,7 +135,7 @@ public class DatabaseContext {
             return newPath;
         }
     }
-    
+
     public string BackupDatabaseToPath(string destinationPath, string? password) {
         if (string.IsNullOrWhiteSpace(_dbPath)) return string.Empty;
 
@@ -184,7 +184,7 @@ public class DatabaseContext {
         try {
             // Registering for non-nullable dictionary:
             SqlMapper.AddTypeHandler(new JsonObjectTypeHandler<Dictionary<string, decimal>>());
-            
+
             using var connection = GetConnection();
             connection.Open();
             Log.Debug("Database connection opened for initialization.");
@@ -484,7 +484,7 @@ public class DatabaseContext {
             EnsureColumnExists(connection, "Bills", "BucketId", "INTEGER REFERENCES Buckets(Id) ON DELETE SET NULL");
             EnsureColumnExists(connection, "Bills", "SubCategoryId",
                 "INTEGER REFERENCES Subcategories(Id) ON DELETE SET NULL");
-            
+
             EnsureColumnExists(connection, "Bills", "Overrides", "TEXT NULL");
             EnsureColumnExists(connection, "Buckets", "Overrides", "TEXT NULL");
 
@@ -567,7 +567,9 @@ public class DatabaseContext {
                 CREATE INDEX IF NOT EXISTS IX_Bills_BucketId ON Bills(BucketId);
                 CREATE INDEX IF NOT EXISTS IX_Subcategories_CategoryId ON Subcategories(CategoryId);
                 CREATE INDEX IF NOT EXISTS IX_Buckets_AccountId ON Buckets(AccountId);
-
+                CREATE UNIQUE INDEX IF NOT EXISTS UX_AccountReconciliations_AccountId_AsOfDate 
+                ON AccountReconciliations(AccountId, ReconciledAsOfDate) 
+                WHERE IsInvalidated = 0;
             ");
             // Turn foreign key enforcement back ON
             connection.Execute("PRAGMA foreign_keys = ON;");

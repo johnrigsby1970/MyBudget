@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using StayOnTarget.Data;
 using Serilog;
+using StayOnTarget.Extensions;
 
 namespace StayOnTarget.Services;
 
@@ -48,7 +49,7 @@ public partial class BudgetService {
     /// Creates a timestamped snapshot of the database and enforces separate retention pools 
     /// for startup backups and pre-action operational backups.
     /// </summary>
-    public string CreateRollingBackup(string reasonTag = "auto") {
+    public string CreateRollingBackup(BackupReason reason = BackupReason.Auto) {
         try {
             var dbPath = _db.DbPath;
 
@@ -66,8 +67,9 @@ public partial class BudgetService {
 
             Directory.CreateDirectory(backupDir);
 
-            bool isStartup = reasonTag.Equals("startup", StringComparison.OrdinalIgnoreCase);
-
+            bool isStartup = reason == BackupReason.Startup;
+            string reasonTag = reason.ToReasonTag();
+            
             // Generate timestamped filename
             string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string backupFileName = $"StayOnTarget_{reasonTag.ToLower()}_{timestamp}.db";
@@ -90,7 +92,7 @@ public partial class BudgetService {
             return destinationPath;
         }
         catch (Exception ex) {
-            Log.Error(ex, "Failed to create database backup for reason: {ReasonTag}", reasonTag);
+            Log.Error(ex, "Failed to create database backup for reason: {ReasonTag}", reason);
             return string.Empty;
         }
     }
